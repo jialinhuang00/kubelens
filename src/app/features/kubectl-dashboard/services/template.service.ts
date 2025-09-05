@@ -9,6 +9,11 @@ export class TemplateService {
   getGeneralTemplates(): CommandTemplate[] {
     return [
       {
+        id: 'config-5',
+        name: 'All Resources All Namespaces',
+        command: 'kubectl get all --all-namespaces',
+      },
+      {
         id: 'view-1',
         name: 'Pod Details + SHA',
         command: 'kubectl get pods -n {namespace} -o "custom-columns=POD_NAME:.metadata.name,DEPLOYMENT:.metadata.ownerReferences[0].name,CONTAINER_NAME:.spec.containers[*].name,IMAGE_SHA:.status.containerStatuses[*].imageID"',
@@ -57,57 +62,58 @@ export class TemplateService {
         id: 'config-4',
         name: 'All Namespaces Pods',
         command: 'kubectl get pods --all-namespaces',
-      }
+      },
+
     ];
   }
 
-  generateDeploymentTemplates(deployments: string[]): CommandTemplate[] {
-    if (deployments.length === 0) return [];
+  generateDeploymentTemplates(selectedDeployment: string): CommandTemplate[] {
+    if (!selectedDeployment) return [];
 
-    return deployments.flatMap(dep => [
+    return [
       {
-        id: `deploy-${dep}-status`,
-        name: `${dep} Rollout Status`,
-        command: `kubectl rollout status deployment/${dep} -n {namespace}`,
+        id: `deploy-${selectedDeployment}-status`,
+        name: `Rollout Status`,
+        command: `kubectl rollout status deployment/${selectedDeployment} -n {namespace}`,
       },
       {
-        id: `deploy-${dep}-history`,
-        name: `${dep} History`,
-        command: `kubectl rollout history deployment/${dep} -n {namespace}`,
+        id: `deploy-${selectedDeployment}-history`,
+        name: `History`,
+        command: `kubectl rollout history deployment/${selectedDeployment} -n {namespace}`,
       },
       {
-        id: `deploy-${dep}-describe`,
-        name: `${dep} Details`,
-        command: `kubectl describe deployment ${dep} -n {namespace}`
+        id: `deploy-${selectedDeployment}-describe`,
+        name: `Details`,
+        command: `kubectl describe deployment ${selectedDeployment} -n {namespace}`
       },
-      {
-        id: `deploy-${dep}-rollback`,
-        name: `${dep} Rollback`,
-        command: `kubectl rollout undo deployment/${dep} -n {namespace}`
-      }
-    ]);
+      // {
+      //   id: `deploy-${selectedDeployment}-rollback`,
+      //   name: `Rollback`,
+      //   command: `kubectl rollout undo deployment/${selectedDeployment} -n {namespace}`
+      // }
+    ];
   }
 
-  generatePodTemplates(pods: string[]): CommandTemplate[] {
-    if (pods.length === 0) return [];
+  generatePodTemplates(selectedPod: string): CommandTemplate[] {
+    if (!selectedPod) return [];
 
-    return pods.flatMap(pod => [
+    return [
       {
-        id: `pod-${pod}-logs`,
-        name: `${pod} Logs`,
-        command: `kubectl logs ${pod} -n {namespace} --tail=50`
+        id: `pod-${selectedPod}-logs`,
+        name: `Logs`,
+        command: `kubectl logs ${selectedPod} -n {namespace} --tail=50`
       },
       {
-        id: `pod-${pod}-describe`,
-        name: `${pod} Details`,
-        command: `kubectl describe pod ${pod} -n {namespace}`
+        id: `pod-${selectedPod}-describe`,
+        name: `Details`,
+        command: `kubectl describe pod ${selectedPod} -n {namespace}`
       },
       {
-        id: `pod-${pod}-exec`,
-        name: `${pod} Exec`,
-        command: `kubectl exec -it ${pod} -n {namespace} -- /bin/sh`
+        id: `pod-${selectedPod}-exec`,
+        name: `Exec Shell`,
+        command: `kubectl exec -it ${selectedPod} -n {namespace} -- /bin/sh`
       }
-    ]);
+    ];
   }
 
   replaceNamespacePlaceholder(command: string, namespace: string): string {

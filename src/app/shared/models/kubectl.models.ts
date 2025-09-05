@@ -13,6 +13,7 @@ export interface CommandTemplate {
   id: string;
   name: string;
   command: string;
+  displayCommand?: string; // Optional display version with placeholders
 }
 
 export interface KubectlResponse {
@@ -22,11 +23,18 @@ export interface KubectlResponse {
   error?: string;
 }
 
+export interface TableData {
+  title: string;
+  headers: string[];
+  data: KubeResource[];
+}
+
 export interface ParsedOutput {
-  type: 'table' | 'events' | 'multiple-pods' | 'raw';
+  type: 'table' | 'events' | 'multiple-pods' | 'multiple-tables' | 'raw';
   data?: KubeResource[];
   headers?: string[];
   rawOutput?: string;
   podData?: PodDescribeData[];
+  tables?: TableData[];
   hasEventsTable?: boolean;
 }

@@ -19,19 +19,33 @@ export class ResourceService {
   generalTemplates = signal<CommandTemplate[]>([]);
   deploymentTemplates = signal<CommandTemplate[]>([]);
   podTemplates = signal<CommandTemplate[]>([]);
+  
+  // Loading states
+  isInitializing = signal<boolean>(true);
+  isLoadingNamespaces = signal<boolean>(false);
 
   async initialize() {
-    await this.loadNamespaces();
-    this.generalTemplates.set(this.templateService.getGeneralTemplates());
+    this.isInitializing.set(true);
+    try {
+      await this.loadNamespaces();
+      this.generalTemplates.set(this.templateService.getGeneralTemplates());
+    } catch (error) {
+      console.error('Failed to initialize:', error);
+    } finally {
+      this.isInitializing.set(false);
+    }
   }
 
   async loadNamespaces() {
+    this.isLoadingNamespaces.set(true);
     try {
       const namespaces = await this.kubectlService.getNamespaces();
       this.namespaces.set(namespaces);
     } catch (error) {
       console.error('Failed to load namespaces:', error);
-      this.namespaces.set(['default', 'noah', 'staging', 'production']);
+      this.namespaces.set([]);
+    } finally {
+      this.isLoadingNamespaces.set(false);
     }
   }
 
@@ -39,15 +53,15 @@ export class ResourceService {
     if (!namespace) return;
     
     try {
-      // Load deployments and update templates
+      // Load deployments (templates will be generated when a deployment is selected)
       const deployments = await this.kubectlService.getDeployments(namespace);
       this.deployments.set(deployments);
-      this.deploymentTemplates.set(this.templateService.generateDeploymentTemplates(deployments));
+      this.deploymentTemplates.set([]); // Clear deployment templates, will be generated on selection
       
-      // Load pods and update templates
+      // Load pods (templates will be generated when a pod is selected)
       const pods = await this.kubectlService.getPods(namespace);
       this.pods.set(pods);
-      this.podTemplates.set(this.templateService.generatePodTemplates(pods));
+      this.podTemplates.set([]); // Clear pod templates, will be generated on selection
       
     } catch (error) {
       console.error('Failed to load resources:', error);
@@ -56,6 +70,16 @@ export class ResourceService {
       this.deploymentTemplates.set([]);
       this.podTemplates.set([]);
     }
+  }
+
+  updateDeploymentTemplates(selectedDeployment: string) {
+    const templates = this.templateService.generateDeploymentTemplates(selectedDeployment);
+    this.deploymentTemplates.set(templates);
+  }
+
+  updatePodTemplates(selectedPod: string) {
+    const templates = this.templateService.generatePodTemplates(selectedPod);
+    this.podTemplates.set(templates);
   }
 
   executeTemplate(template: CommandTemplate, namespace: string): string {

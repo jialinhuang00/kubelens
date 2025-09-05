@@ -46,23 +46,17 @@ body::before {
   background: rgba(26, 26, 46, 0.8);
   backdrop-filter: blur(10px);
   position: relative;
+  overflow: hidden; /* Ensure pseudo-element doesn't overflow */
+  transition: border-color 0.3s ease;
 }
 
-.cyber-container::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border: 1px solid var(--border-glow);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
+.cyber-container:hover {
+  border-color: var(--border-glow);
 }
 
-.cyber-container:hover::before {
-  opacity: 1;
+.cyber-container > * {
+  position: relative;
+  z-index: 2; /* Ensure content appears above the glow border */
 }
 
 .cyber-button {

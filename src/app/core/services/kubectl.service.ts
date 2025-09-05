@@ -35,10 +35,10 @@ export class KubectlService {
       }
       
       // Fallback namespaces if command fails
-      return ['default', 'noah', 'staging', 'production'];
+      return [];
     } catch (error) {
       console.error('Failed to load namespaces:', error);
-      return ['default', 'noah', 'staging', 'production'];
+      return [];
     }
   }
 

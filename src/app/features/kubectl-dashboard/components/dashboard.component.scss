@@ -1,0 +1,417 @@
+// Sticky table headers - need container with fixed height
+.table-container {
+  max-height: 400px;
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 1rem;
+  min-width: 100%;
+}
+
+.compact-table {
+  table-layout: auto;
+  width: 100%;
+  
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-tertiary) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    white-space: nowrap;
+    padding: 8px 12px;
+  }
+  
+  tbody td {
+    white-space: nowrap;
+    padding: 6px 12px;
+    vertical-align: top;
+  }
+  
+  // Special handling for long content columns (like names)
+  td:has(.text-ellipsis) {
+    max-width: 350px;
+    
+    .text-ellipsis {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: block;
+    }
+  }
+}
+
+// Commands section scrollable
+.commands-section {
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+// Output Display section - no scrolling, let tables handle it
+.output-display-section {
+  overflow: visible;
+}
+
+// Execute button flex-wrap layout
+.execute-button-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.execute-button-container button {
+  flex-shrink: 0;
+  min-width: 100px;
+}
+
+.execute-button-container button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.execute-button-container .help-text {
+  flex: 1;
+  min-width: 200px;
+}
+
+// Custom cyberpunk tooltips
+.cyber-tooltip-trigger::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: -35px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+  color: var(--text-primary);
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-glow);
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.2);
+  max-width: 400px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.cyber-tooltip-trigger:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+// Copy button tooltips  
+.copy-btn::after {
+  content: attr(data-copy-tooltip);
+  position: absolute;
+  top: -35px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+  color: var(--text-primary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--accent-cyan);
+  font-size: 10px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  z-index: 1001;
+  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+}
+
+.copy-btn:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+// Copy button styles
+.copy-btn {
+  color: var(--accent-cyan);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  transform: scale(1);
+}
+
+.copy-btn:hover {
+  background: transparent;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+}
+
+.copy-btn:active {
+  transform: scale(0.9);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.5);
+  border-color: var(--accent-cyan);
+  background: rgba(0, 212, 255, 0.1);
+}
+
+// Success animation after copy
+@keyframes copy-success {
+  0% {
+    transform: scale(0.9);
+  }
+  50% {
+    transform: scale(1.1);
+    color: var(--accent-green);
+    border-color: var(--accent-green);
+    box-shadow: 0 0 15px rgba(57, 255, 20, 0.5);
+  }
+  100% {
+    transform: scale(1);
+    color: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+  }
+}
+
+.copy-btn.copied {
+  animation: copy-success 0.6s ease;
+}
+
+// Dropdown option styling - ensure options are visible
+select {
+  option {
+    background: rgba(0, 0, 0, 0.95) !important;
+    color: var(--text-primary) !important;
+    padding: 8px 12px;
+    border: none;
+    
+    &:hover, &:focus, &:active {
+      background: rgba(157, 78, 221, 0.2) !important;
+      color: var(--accent-purple) !important;
+    }
+    
+    &:checked, &:selected {
+      background: rgba(157, 78, 221, 0.3) !important;
+      color: var(--accent-purple) !important;
+    }
+  }
+}
+
+// Pod section visual hierarchy improvements
+.pod-section-container {
+  .pod-selector-wrapper {
+    background: rgba(157, 78, 221, 0.05);
+    border: 1px solid rgba(157, 78, 221, 0.15);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background: rgba(157, 78, 221, 0.08);
+      border-color: rgba(157, 78, 221, 0.25);
+    }
+  }
+  
+  .pod-template-card {
+    background: rgba(157, 78, 221, 0.08);
+    border: 1px solid rgba(157, 78, 221, 0.2);
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(157, 78, 221, 0.1);
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background: rgba(157, 78, 221, 0.15);
+      border-color: rgba(157, 78, 221, 0.3);
+      box-shadow: 0 2px 6px rgba(157, 78, 221, 0.2);
+      transform: translateY(-1px);
+    }
+  }
+}
+
+// Deployment section visual hierarchy improvements
+.deployment-template-card {
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 212, 255, 0.1);
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(0, 212, 255, 0.15);
+    border-color: rgba(0, 212, 255, 0.3);
+    box-shadow: 0 2px 6px rgba(0, 212, 255, 0.2);
+    transform: translateY(-1px);
+  }
+}
+
+// Namespace selector enhancements
+.namespace-selector {
+  background: rgba(57, 255, 20, 0.05);
+  border: 1px solid rgba(57, 255, 20, 0.2);
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(57, 255, 20, 0.08);
+    border-color: rgba(57, 255, 20, 0.3);
+  }
+  
+  .current-namespace-indicator {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+// Smooth accordion animations
+.accordion-content {
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+  max-height: 0;
+  opacity: 0;
+  
+  &.expanded {
+    max-height: 2000px; // Large enough to accommodate content
+    opacity: 1;
+  }
+}
+
+// Accordion header transitions
+.accordion-header {
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+  }
+  
+  .accordion-arrow {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  &.expanded .accordion-arrow {
+    transform: rotate(90deg);
+  }
+}
+
+// Ultra-thin cyberpunk scrollbars with glow animation
+.commands-section {
+  // Webkit scrollbar for Commands sidebar
+  &::-webkit-scrollbar {
+    width: 3px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, rgba(157, 78, 221, 0.4), rgba(157, 78, 221, 0.6));
+    border-radius: 2px;
+    transition: all 0.3s ease;
+    animation: scrollbarGlowPurple 2s ease-in-out infinite alternate;
+    
+    &:hover {
+      background: linear-gradient(45deg, rgba(157, 78, 221, 0.7), rgba(157, 78, 221, 0.9));
+      box-shadow: 0 0 6px rgba(157, 78, 221, 0.5);
+    }
+    
+    &:active {
+      background: rgba(157, 78, 221, 0.9);
+      box-shadow: 0 0 8px rgba(157, 78, 221, 0.8);
+    }
+  }
+  
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+.table-container {
+  // Webkit scrollbar for tables
+  &::-webkit-scrollbar {
+    width: 2px;
+    height: 2px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 1px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, rgba(0, 212, 255, 0.3), rgba(0, 212, 255, 0.5));
+    border-radius: 1px;
+    transition: all 0.3s ease;
+    animation: scrollbarGlowCyan 2.5s ease-in-out infinite alternate;
+    
+    &:hover {
+      background: linear-gradient(45deg, rgba(0, 212, 255, 0.6), rgba(0, 212, 255, 0.8));
+      box-shadow: 0 0 4px rgba(0, 212, 255, 0.6);
+    }
+    
+    &:active {
+      background: rgba(0, 212, 255, 0.9);
+      box-shadow: 0 0 6px rgba(0, 212, 255, 0.8);
+    }
+  }
+  
+  &::-webkit-scrollbar-corner {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 1px;
+  }
+}
+
+// Firefox scrollbar fallback
+.commands-section {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(157, 78, 221, 0.3) rgba(0, 0, 0, 0.2);
+}
+
+.table-container {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 212, 255, 0.25) rgba(0, 0, 0, 0.15);
+}
+
+// Scrollbar glow animations
+@keyframes scrollbarGlowPurple {
+  0% {
+    background: linear-gradient(45deg, rgba(157, 78, 221, 0.2), rgba(157, 78, 221, 0.4));
+    box-shadow: 0 0 2px rgba(157, 78, 221, 0.2);
+  }
+  50% {
+    background: linear-gradient(45deg, rgba(157, 78, 221, 0.5), rgba(157, 78, 221, 0.7));
+    box-shadow: 0 0 4px rgba(157, 78, 221, 0.4);
+  }
+  100% {
+    background: linear-gradient(45deg, rgba(157, 78, 221, 0.3), rgba(157, 78, 221, 0.5));
+    box-shadow: 0 0 3px rgba(157, 78, 221, 0.3);
+  }
+}
+
+@keyframes scrollbarGlowCyan {
+  0% {
+    background: linear-gradient(45deg, rgba(0, 212, 255, 0.2), rgba(0, 212, 255, 0.3));
+    box-shadow: 0 0 1px rgba(0, 212, 255, 0.2);
+  }
+  50% {
+    background: linear-gradient(45deg, rgba(0, 212, 255, 0.4), rgba(0, 212, 255, 0.6));
+    box-shadow: 0 0 3px rgba(0, 212, 255, 0.4);
+  }
+  100% {
+    background: linear-gradient(45deg, rgba(0, 212, 255, 0.25), rgba(0, 212, 255, 0.4));
+    box-shadow: 0 0 2px rgba(0, 212, 255, 0.3);
+  }
+}
+
+// Fast namespace pulse animation
+.namespace-pulse {
+  animation: namespacePulse 0.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes namespacePulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+    box-shadow: 0 0 2px var(--accent-green);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+    box-shadow: 0 0 8px var(--accent-green);
+  }
+}

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { KubeResource, PodDescribeData, ParsedOutput } from '../../../shared/models/kubectl.models';
+import { KubeResource, PodDescribeData, ParsedOutput, TableData } from '../../../shared/models/kubectl.models';
 
-export type { KubeResource, PodDescribeData, ParsedOutput };
+export type { KubeResource, PodDescribeData, ParsedOutput, TableData };
 
 @Injectable({
   providedIn: 'root'
@@ -10,6 +10,15 @@ export class OutputParserService {
 
   parseCommandOutput(output: string, command: string = ''): ParsedOutput {
     const trimmedOutput = output.trim();
+    
+    // Check for multiple tables (kubectl get all --all-namespaces)
+    if (this.hasMultipleTables(trimmedOutput)) {
+      const tables = this.parseMultipleTables(trimmedOutput);
+      return {
+        type: 'multiple-tables',
+        tables
+      };
+    }
     
     // Try to parse as tabular output first
     if (this.isTabularOutput(trimmedOutput, command)) {
@@ -319,5 +328,69 @@ export class OutputParserService {
     }
     
     return podData;
+  }
+
+  private hasMultipleTables(output: string): boolean {
+    // Check if output contains multiple "=== ResourceType ===" sections
+    const tableSectionCount = (output.match(/=== \w+ ===/g) || []).length;
+    return tableSectionCount > 1;
+  }
+
+  private parseMultipleTables(output: string): TableData[] {
+    const tables: TableData[] = [];
+    const sections = output.split(/(?=^=== \w+ ===)/m).filter(section => section.trim());
+    
+    for (const section of sections) {
+      const lines = section.split('\n').filter(line => line.trim());
+      if (lines.length < 2) continue;
+      
+      // Extract title from "=== ResourceType ===" line
+      const titleMatch = lines[0].match(/=== (\w+) ===/);
+      if (!titleMatch) continue;
+      
+      const title = titleMatch[1];
+      
+      // Find the header line (should contain namespace-related headers)
+      let headerIndex = -1;
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.includes('NAMESPACE') && (
+            line.includes('POD_NAME') || 
+            line.includes('SERVICE_NAME') ||
+            line.includes('DEPLOYMENT_NAME') ||
+            line.includes('REPLICASET_NAME') ||
+            line.includes('STATEFULSET_NAME') ||
+            line.includes('DAEMONSET_NAME') ||
+            line.includes('HPA_NAME') ||
+            line.includes('CRONJOB_NAME') ||
+            line.includes('JOB_NAME'))) {
+          headerIndex = i;
+          break;
+        }
+      }
+      
+      if (headerIndex === -1 || headerIndex >= lines.length - 1) continue;
+      
+      // Parse headers and data
+      const headers = lines[headerIndex].split(/\s+/).filter(h => h.trim());
+      const dataLines = lines.slice(headerIndex + 1);
+      
+      const data: KubeResource[] = dataLines.map(line => {
+        const values = line.split(/\s+/);
+        const resource: KubeResource = {};
+        headers.forEach((header, index) => {
+          resource[header.toLowerCase()] = values[index] || '';
+        });
+        return resource;
+      });
+      
+      tables.push({
+        title,
+        headers,
+        data
+      });
+    }
+    
+    return tables;
   }
 }

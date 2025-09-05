@@ -40,3 +40,38 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Environment and config files
+.env
+.env.local
+.env.*.local
+*.log
+
+# Build artifacts and deployment
+/build
+/public
+*.tgz
+*.tar.gz
+
+# IDE specific files
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store?
+ehthumbs.db
+Icon?
+
+# Temporary files
+*.tmp
+*.temp
+/temp
+
+# Kubernetes and cluster files (if sensitive)
+kubeconfig*
+*.kubeconfig
+
+# Git specific
+.git/
+.gitattributes

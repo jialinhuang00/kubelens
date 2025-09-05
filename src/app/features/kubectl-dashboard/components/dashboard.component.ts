@@ -1,15 +1,16 @@
-import { Component, signal, inject, OnInit } from '@angular/core';
+import { Component, signal, inject, OnInit, effect } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { ResourceService } from '../services/resource.service';
 import { KubectlService } from '../../../core/services/kubectl.service';
 import { OutputParserService } from '../services/output-parser.service';
-import { KubeResource, PodDescribeData, CommandTemplate } from '../../../shared/models/kubectl.models';
+import { KubeResource, PodDescribeData, CommandTemplate, TableData } from '../../../shared/models/kubectl.models';
+import { CommandDisplayDirective } from '../../../shared/directives/command-display.directive';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterOutlet, FormsModule, CommonModule],
+  imports: [RouterOutlet, FormsModule, CommonModule, CommandDisplayDirective],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -19,9 +20,20 @@ export class DashboardComponent implements OnInit {
   private outputParserService = inject(OutputParserService);
   protected readonly title = signal('kubecmds-viz');
 
+  constructor() {
+    // Auto-select first namespace when namespaces load
+    effect(() => {
+      const namespaces = this.resourceService.namespaces();
+      if (namespaces.length > 0 && !this.selectedNamespace()) {
+        this.selectedNamespace.set(namespaces[0]);
+        this.resourceService.loadResourcesForNamespace(namespaces[0]);
+      }
+    });
+  }
+
   async ngOnInit() {
     await this.resourceService.initialize();
-    await this.resourceService.loadResourcesForNamespace(this.selectedNamespace());
+    // Resources will be loaded automatically by the effect when first namespace is selected
   }
 
   customCommand = signal<string>('kubectl get pods -n default -o wide');
@@ -33,7 +45,11 @@ export class DashboardComponent implements OnInit {
   isResourceDetailsExpanded = signal<boolean>(false);
   podDescribeData = signal<PodDescribeData[]>([]);
   expandedPods = signal<Set<string>>(new Set());
-  selectedNamespace = signal<string>('noah');
+  selectedNamespace = signal<string>('');
+  selectedDeployment = signal<string>('');
+  selectedPod = signal<string>('');
+  multipleTables = signal<TableData[]>([]);
+  expandedTables = signal<Set<string>>(new Set());
 
   // Accordion states
   isGeneralExpanded = signal<boolean>(true);
@@ -47,6 +63,8 @@ export class DashboardComponent implements OnInit {
   get generalTemplates() { return this.resourceService.generalTemplates; }
   get deploymentTemplates() { return this.resourceService.deploymentTemplates; }
   get podTemplates() { return this.resourceService.podTemplates; }
+  get isInitializing() { return this.resourceService.isInitializing; }
+  get isLoadingNamespaces() { return this.resourceService.isLoadingNamespaces; }
 
   onCustomCommandChange(event: Event) {
     const target = event.target as HTMLInputElement;
@@ -64,6 +82,8 @@ export class DashboardComponent implements OnInit {
     this.isResourceDetailsExpanded.set(false);
     this.podDescribeData.set([]);
     this.expandedPods.set(new Set());
+    this.multipleTables.set([]);
+    this.expandedTables.set(new Set());
 
     try {
       const response = await this.kubectlService.executeCommand(command);
@@ -72,6 +92,12 @@ export class DashboardComponent implements OnInit {
         const parsedOutput = this.outputParserService.parseCommandOutput(response.stdout, command);
         
         switch (parsedOutput.type) {
+          case 'multiple-tables':
+            this.multipleTables.set(parsedOutput.tables || []);
+            // Expand all tables by default
+            const allTableTitles = new Set(parsedOutput.tables?.map(t => t.title) || []);
+            this.expandedTables.set(allTableTitles);
+            break;
           case 'table':
             this.headers.set(parsedOutput.headers || []);
             this.results.set(parsedOutput.data || []);
@@ -104,7 +130,21 @@ export class DashboardComponent implements OnInit {
   onNamespaceChange(event: Event) {
     const target = event.target as HTMLSelectElement;
     this.selectedNamespace.set(target.value);
+    this.selectedDeployment.set(''); // Reset deployment selection when namespace changes
+    this.selectedPod.set(''); // Reset pod selection when namespace changes
     this.resourceService.loadResourcesForNamespace(target.value);
+  }
+
+  onDeploymentChange(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    this.selectedDeployment.set(target.value);
+    this.resourceService.updateDeploymentTemplates(target.value);
+  }
+
+  onPodChange(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    this.selectedPod.set(target.value);
+    this.resourceService.updatePodTemplates(target.value);
   }
 
   executeTemplate(template: CommandTemplate) {
@@ -149,5 +189,37 @@ export class DashboardComponent implements OnInit {
 
   togglePodSection() {
     this.isPodSectionExpanded.set(!this.isPodSectionExpanded());
+  }
+
+  toggleTable(tableTitle: string) {
+    const expanded = this.expandedTables();
+    const newExpanded = new Set(expanded);
+    if (newExpanded.has(tableTitle)) {
+      newExpanded.delete(tableTitle);
+    } else {
+      newExpanded.add(tableTitle);
+    }
+    this.expandedTables.set(newExpanded);
+  }
+
+  isTableExpanded(tableTitle: string): boolean {
+    return this.expandedTables().has(tableTitle);
+  }
+
+  async copyToClipboard(text: string, event?: Event) {
+    try {
+      await navigator.clipboard.writeText(text);
+      
+      // Add success animation
+      if (event?.target) {
+        const button = event.target as HTMLElement;
+        button.classList.add('copied');
+        setTimeout(() => {
+          button.classList.remove('copied');
+        }, 600);
+      }
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
   }
 }
