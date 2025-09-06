@@ -3,31 +3,31 @@
 
   <!-- Namespace Selector -->
   <app-namespace-selector
-    [namespaces]="namespaces"
-    [selectedNamespace]="selectedNamespace"
-    [isInitializing]="isInitializing"
-    [isLoadingNamespaces]="isLoadingNamespaces"
+    [namespaces]="data.namespaces"
+    [selectedNamespace]="data.selectedNamespace"
+    [isInitializing]="data.isInitializing"
+    [isLoadingNamespaces]="data.isLoadingNamespaces"
     (namespaceChange)="onNamespaceChange($event)">
   </app-namespace-selector>
 
   <!-- General Templates -->
   <app-resource-section
     title="General Commands"
-    [templates]="generalTemplates"
-    [isExpanded]="isGeneralExpanded"
-    [isInitializing]="isInitializing"
+    [templates]="data.generalTemplates"
+    [isExpanded]="data.isGeneralExpanded"
+    [isInitializing]="data.isInitializing"
     (toggleExpanded)="onToggleGeneralSection()"
     (templateExecute)="onTemplateExecute($event)">
   </app-resource-section>
 
   <!-- Deployment Section -->
-  @if (deployments.length > 0) {
+  @if (data.deployments.length > 0) {
   <app-resource-section
     title="Deployment Commands"
-    [resources]="deployments"
-    [selectedResource]="selectedDeployment"
-    [templates]="deploymentTemplates"
-    [isExpanded]="isDeploymentExpanded"
+    [resources]="data.deployments"
+    [selectedResource]="data.selectedDeployment"
+    [templates]="data.deploymentTemplates"
+    [isExpanded]="data.isDeploymentExpanded"
     resourceType="deployment"
     accentColor="cyan"
     (resourceChange)="onDeploymentChange($event)"
@@ -37,13 +37,13 @@
   }
 
   <!-- Pod Section -->
-  @if (pods.length > 0) {
+  @if (data.pods.length > 0) {
   <app-resource-section
     title="Pod Commands"
-    [resources]="pods"
-    [selectedResource]="selectedPod"
-    [templates]="podTemplates"
-    [isExpanded]="isPodSectionExpanded"
+    [resources]="data.pods"
+    [selectedResource]="data.selectedPod"
+    [templates]="data.podTemplates"
+    [isExpanded]="data.isPodSectionExpanded"
     resourceType="pod"
     accentColor="purple"
     (resourceChange)="onPodChange($event)"
@@ -53,13 +53,13 @@
   }
 
   <!-- Service Section -->
-  @if (services.length > 0) {
+  @if (data.services.length > 0) {
   <app-resource-section
     title="Service Commands"
-    [resources]="services"
-    [selectedResource]="selectedService"
-    [templates]="serviceTemplates"
-    [isExpanded]="isServiceSectionExpanded"
+    [resources]="data.services"
+    [selectedResource]="data.selectedService"
+    [templates]="data.serviceTemplates"
+    [isExpanded]="data.isServiceSectionExpanded"
     resourceType="service"
     accentColor="orange"
     (resourceChange)="onServiceChange($event)"

@@ -1,0 +1,67 @@
+<div class="space-y-4">
+  @for (tableData of multipleTables; track tableData.title) {
+  <div>
+    <div class="table-container">
+      <table class="min-w-full compact-table">
+        <thead style="background: var(--bg-tertiary);"
+          class="cursor-pointer hover:bg-opacity-80 transition-colors"
+          (click)="onToggleTable(tableData.title)">
+          <tr>
+            @for (header of tableData.headers; track header) {
+            <th class="text-left glow-text"
+              style="color: var(--accent-purple); border-bottom: 1px solid var(--border-subtle);">
+              {{ header }}
+            </th>
+            }
+          </tr>
+        </thead>
+        <tbody style="background: rgba(0, 0, 0, 0.3);"
+          [style.max-height]="isTableExpanded(tableData.title) ? '1000px' : '0px'"
+          [style.overflow]="'hidden'" [style.transition]="'max-height 0.3s ease-in-out'">
+          @if (isTableExpanded(tableData.title)) {
+          @for (item of tableData.data; track $index) {
+          <tr style="border-bottom: 1px solid var(--border-subtle);" class="hover:bg-opacity-50">
+            @for (header of tableData.headers; track header) {
+            <td>
+              @if (header.toLowerCase() === 'status') {
+              <span class="inline-flex px-1 py-0.5 text-xs font-medium rounded-sm"
+                [class]="item[header.toLowerCase()] === 'Running' ? 'neon-border' : 'border border-subtle'"
+                [style]="item[header.toLowerCase()] === 'Running' ? 'color: var(--accent-green); background: rgba(57, 255, 20, 0.1)' : 
+                           item[header.toLowerCase()] === 'Pending' ? 'color: var(--accent-purple); background: rgba(157, 78, 221, 0.1)' :
+                           'color: var(--text-secondary); background: rgba(255, 255, 255, 0.05)'">
+                {{ item[header.toLowerCase()] || '-' }}
+              </span>
+              } @else if (header.toLowerCase().includes('name')) {
+              <div class="flex items-center gap-2 group relative">
+                <span class="text-ellipsis max-w-[300px] cyber-tooltip-trigger"
+                  [attr.data-tooltip]="item[header.toLowerCase()] || '-'"
+                  style="color: var(--text-primary); font-weight: 500;">
+                  {{ item[header.toLowerCase()] || '-' }}
+                </span>
+                <button
+                  class="copy-btn opacity-0 group-hover:opacity-100 transition-all duration-200 p-1 rounded text-xs relative"
+                  (click)="onCopyToClipboard(item[header.toLowerCase()] || '', $event)"
+                  [attr.data-copy-tooltip]="'Copy ' + (item[header.toLowerCase()] || '')">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                    <path d="m4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                  </svg>
+                </button>
+              </div>
+              } @else {
+              <span style="color: var(--text-secondary)">
+                {{ item[header.toLowerCase()] || '-' }}
+              </span>
+              }
+            </td>
+            }
+          </tr>
+          }
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+  }
+</div>

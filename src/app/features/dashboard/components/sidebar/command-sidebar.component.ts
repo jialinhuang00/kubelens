@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { NamespaceSelectorComponent } from './namespace-selector.component';
 import { ResourceSectionComponent } from './resource-section.component';
 import { CommandTemplate } from '../../../../shared/models/kubectl.models';
+import { SidebarData } from '../../../../shared/interfaces/sidebar-data.interface';
 
 @Component({
   selector: 'app-command-sidebar',
@@ -11,31 +12,7 @@ import { CommandTemplate } from '../../../../shared/models/kubectl.models';
   styleUrl: './command-sidebar.component.scss'
 })
 export class CommandSidebarComponent {
-  // Namespace related inputs
-  @Input() namespaces: string[] = [];
-  @Input() selectedNamespace: string = '';
-  @Input() isInitializing: boolean = false;
-  @Input() isLoadingNamespaces: boolean = false;
-
-  // Resource related inputs
-  @Input() deployments: string[] = [];
-  @Input() pods: string[] = [];
-  @Input() services: string[] = [];
-  @Input() selectedDeployment: string = '';
-  @Input() selectedPod: string = '';
-  @Input() selectedService: string = '';
-
-  // Template related inputs
-  @Input() generalTemplates: CommandTemplate[] = [];
-  @Input() deploymentTemplates: CommandTemplate[] = [];
-  @Input() podTemplates: CommandTemplate[] = [];
-  @Input() serviceTemplates: CommandTemplate[] = [];
-
-  // Accordion states
-  @Input() isGeneralExpanded: boolean = false;
-  @Input() isDeploymentExpanded: boolean = false;
-  @Input() isPodSectionExpanded: boolean = false;
-  @Input() isServiceSectionExpanded: boolean = false;
+  @Input() data!: SidebarData;
 
   // Events
   @Output() namespaceChange = new EventEmitter<string>();

@@ -1,0 +1,59 @@
+<div class="space-y-3">
+  <div>
+    <div class="flex items-center justify-between mb-1 cursor-pointer cyber-button p-2"
+      (click)="onToggleResourceDetails()">
+      <h3 class="text-sm font-medium glow-text" style="color: var(--accent-purple)">Resource Details</h3>
+      <span class="text-sm transition-transform duration-200" style="color: var(--accent-cyan);"
+        [style.transform]="isResourceDetailsExpanded ? 'rotate(90deg)' : 'rotate(0deg)'">
+        ▶
+      </span>
+    </div>
+    @if (isResourceDetailsExpanded) {
+    <div class="terminal-output p-2 overflow-x-auto text-xs">
+      <pre>{{ commandOutput }}</pre>
+    </div>
+    }
+  </div>
+  <div>
+    <h3 class="text-sm font-medium mb-1 glow-text" style="color: var(--accent-purple)">Events</h3>
+    <div class="table-container">
+      <table class="min-w-full compact-table">
+        <thead style="background: var(--bg-tertiary);">
+          <tr>
+            @for (header of headers; track header) {
+            <th class="text-left glow-text"
+              style="color: var(--accent-purple); border-bottom: 1px solid var(--border-subtle);">
+              {{ header }}
+            </th>
+            }
+          </tr>
+        </thead>
+        <tbody style="background: rgba(0, 0, 0, 0.3);">
+          @for (item of results; track $index) {
+          <tr style="border-bottom: 1px solid var(--border-subtle);" class="hover:bg-opacity-50">
+            @for (header of headers; track header) {
+            <td>
+              @if (header.toLowerCase() === 'type') {
+              <span class="inline-flex px-1 py-0.5 text-xs font-medium rounded-sm" [style]="item[header.toLowerCase()] === 'Normal' ? 'color: var(--accent-green); background: rgba(57, 255, 20, 0.1)' : 
+                         'color: var(--text-secondary); background: rgba(255, 255, 255, 0.05)'">
+                {{ item[header.toLowerCase()] || '-' }}
+              </span>
+              } @else if (header.toLowerCase() === 'message') {
+              <span class="text-ellipsis" [title]="item[header.toLowerCase()] || '-'"
+                style="color: var(--text-secondary); max-width: 300px;">
+                {{ item[header.toLowerCase()] || '-' }}
+              </span>
+              } @else {
+              <span style="color: var(--text-secondary)">
+                {{ item[header.toLowerCase()] || '-' }}
+              </span>
+              }
+            </td>
+            }
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

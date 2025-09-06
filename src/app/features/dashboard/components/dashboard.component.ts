@@ -1,4 +1,4 @@
-import { Component, signal, inject, OnInit, effect } from '@angular/core';
+import { Component, signal, inject, OnInit, effect, computed } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -13,10 +13,13 @@ import { KubeResource, PodDescribeData, CommandTemplate, TableData, YamlItem } f
 import { CommandDisplayDirective } from '../../../shared/directives/command-display.directive';
 import { YamlDisplayComponent } from './yaml-display/yaml-display.component';
 import { CommandSidebarComponent } from './sidebar/command-sidebar.component';
+import { OutputDisplayComponent } from './output-display/output-display.component';
+import { OutputData } from '../../../shared/interfaces/output-data.interface';
+import { SidebarData } from '../../../shared/interfaces/sidebar-data.interface';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterOutlet, FormsModule, CommonModule, CommandDisplayDirective, YamlDisplayComponent, CommandSidebarComponent],
+  imports: [RouterOutlet, FormsModule, CommonModule, CommandDisplayDirective, YamlDisplayComponent, CommandSidebarComponent, OutputDisplayComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -304,4 +307,45 @@ export class DashboardComponent implements OnInit {
       console.error('Failed to copy text: ', err);
     }
   }
+
+  // Computed signal to combine all output data
+  outputData = computed<OutputData>(() => ({
+    outputType: this.outputType() as any,
+    isLoading: this.isLoading(),
+    results: this.results(),
+    headers: this.headers(),
+    yamlContent: this.yamlContent(),
+    multipleTables: this.multipleTables(),
+    multipleYamls: this.multipleYamls(),
+    podDescribeData: this.podDescribeData(),
+    commandOutput: this.commandOutput(),
+    customCommand: this.customCommand(),
+    hasEventsTable: this.hasEventsTable(),
+    expandedTables: this.expandedTables(),
+    expandedYamls: this.expandedYamls(),
+    expandedPods: this.expandedPods(),
+    isResourceDetailsExpanded: this.isResourceDetailsExpanded()
+  }));
+
+  // Computed signal to combine all sidebar data
+  sidebarData = computed<SidebarData>(() => ({
+    namespaces: this.namespaces(),
+    selectedNamespace: this.selectedNamespace(),
+    deployments: this.deployments(),
+    selectedDeployment: this.selectedDeployment(),
+    pods: this.pods(),
+    selectedPod: this.selectedPod(),
+    services: this.services(),
+    selectedService: this.selectedService(),
+    isInitializing: this.isInitializing(),
+    isLoadingNamespaces: this.isLoadingNamespaces(),
+    generalTemplates: this.generalTemplates,
+    deploymentTemplates: this.deploymentTemplates(),
+    podTemplates: this.podTemplates(),
+    serviceTemplates: this.serviceTemplates(),
+    isGeneralExpanded: this.isGeneralExpanded(),
+    isDeploymentExpanded: this.isDeploymentExpanded(),
+    isPodSectionExpanded: this.isPodSectionExpanded(),
+    isServiceSectionExpanded: this.isServiceSectionExpanded()
+  }));
 }

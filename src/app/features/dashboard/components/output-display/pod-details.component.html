@@ -1,0 +1,70 @@
+<div class="space-y-4">
+  @for (pod of podDescribeData; track pod.name) {
+  <div class="cyber-container p-3">
+    <h3 class="text-sm font-medium mb-2 glow-text" style="color: var(--accent-cyan)">Pod: {{ pod.name }}</h3>
+
+    <!-- Resource Details Accordion -->
+    <div class="mb-3">
+      <div class="flex items-center justify-between mb-1 cursor-pointer cyber-button p-2"
+        (click)="onTogglePodDetails(pod.name)">
+        <h4 class="text-xs font-medium glow-text" style="color: var(--accent-purple)">Resource Details</h4>
+        <span class="text-sm transition-transform duration-200" style="color: var(--accent-cyan);"
+          [style.transform]="isPodExpanded(pod.name) ? 'rotate(90deg)' : 'rotate(0deg)'">
+          ▶
+        </span>
+      </div>
+      @if (isPodExpanded(pod.name)) {
+      <div class="terminal-output p-2 overflow-x-auto text-xs">
+        <pre>{{ pod.details }}</pre>
+      </div>
+      }
+    </div>
+
+    <!-- Events Table -->
+    @if (pod.events.length > 0) {
+    <div>
+      <h4 class="text-xs font-medium mb-1 glow-text" style="color: var(--accent-purple)">Events</h4>
+      <div class="table-container">
+        <table class="min-w-full compact-table">
+          <thead style="background: var(--bg-tertiary);">
+            <tr>
+              @for (header of pod.headers; track header) {
+              <th class="text-left glow-text compact-spacing"
+                style="color: var(--accent-purple); border-bottom: 1px solid var(--border-subtle);">
+                {{ header }}
+              </th>
+              }
+            </tr>
+          </thead>
+          <tbody style="background: rgba(0, 0, 0, 0.3);">
+            @for (event of pod.events; track $index) {
+            <tr style="border-bottom: 1px solid var(--border-subtle);" class="hover:bg-opacity-50">
+              @for (header of pod.headers; track header) {
+              <td>
+                @if (header.toLowerCase() === 'type') {
+                <span class="inline-flex px-1 py-0.5 text-xs font-medium rounded-sm" [style]="event[header.toLowerCase()] === 'Normal' ? 'color: var(--accent-green); background: rgba(57, 255, 20, 0.1)' : 
+                           'color: var(--text-secondary); background: rgba(255, 255, 255, 0.05)'">
+                  {{ event[header.toLowerCase()] || '-' }}
+                </span>
+                } @else if (header.toLowerCase() === 'message') {
+                <span class="text-ellipsis" [title]="event[header.toLowerCase()] || '-'"
+                  style="color: var(--text-secondary); max-width: 300px;">
+                  {{ event[header.toLowerCase()] || '-' }}
+                </span>
+                } @else {
+                <span style="color: var(--text-secondary)">
+                  {{ event[header.toLowerCase()] || '-' }}
+                </span>
+                }
+              </td>
+              }
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+    }
+  </div>
+  }
+</div>

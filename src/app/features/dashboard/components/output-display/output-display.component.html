@@ -1,0 +1,46 @@
+<div class="cyber-container p-3 output-display-section">
+  <h2 class="text-lg font-semibold mb-2 glow-text" style="color: var(--accent-cyan)">Output Display</h2>
+
+  @if (data.multipleTables && data.multipleTables.length > 0) {
+  <app-multiple-tables [multipleTables]="data.multipleTables" [expandedTables]="data.expandedTables"
+    (toggleTable)="onToggleTable($event)" (copyToClipboard)="onCopyToClipboard($event.text, $event.event)">
+  </app-multiple-tables>
+  } @else if (data.outputType === 'multiple-yamls' && data.multipleYamls && data.multipleYamls.length > 0) {
+  <app-multiple-yamls [multipleYamls]="data.multipleYamls" [expandedYamls]="data.expandedYamls"
+    (toggleYamlExpansion)="onToggleYamlExpansion($event)">
+  </app-multiple-yamls>
+  } @else if (data.outputType === 'yaml' && data.yamlContent) {
+  <app-yaml-display [yamlText]="data.yamlContent"></app-yaml-display>
+  } @else if (data.commandOutput && (!data.results || !data.results.length)) {
+  <app-raw-output [commandOutput]="data.commandOutput"></app-raw-output>
+  } @else if (data.podDescribeData && data.podDescribeData.length > 0) {
+  <app-pod-details [podDescribeData]="data.podDescribeData" [expandedPods]="data.expandedPods"
+    (togglePodDetails)="onTogglePodDetails($event)">
+  </app-pod-details>
+  } @else if (data.commandOutput && data.results && data.results.length > 0 && data.hasEventsTable) {
+  <app-events-display [commandOutput]="data.commandOutput" [results]="data.results" [headers]="data.headers"
+    [isResourceDetailsExpanded]="data.isResourceDetailsExpanded" (toggleResourceDetails)="onToggleResourceDetails()">
+  </app-events-display>
+  } @else if (data.results && data.results.length > 0) {
+  <app-table-output [results]="data.results" [headers]="data.headers" [isLoading]="data.isLoading"
+    (copyToClipboard)="onCopyToClipboard($event.text, $event.event)">
+  </app-table-output>
+  } @else if (!data.isLoading) {
+  <div class="text-center text-gray-500 py-8">
+    <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+    </svg>
+    <h3 class="text-lg font-medium text-gray-900 mb-2">Ready to Execute</h3>
+    <p class="text-gray-500">Enter a kubectl command and click "Execute & Visualize" to see beautiful results</p>
+  </div>
+  } @else {
+  <div class="text-center text-gray-500 py-8">
+    <div
+      class="animate-spin inline-block w-8 h-8 border-[3px] border-current border-t-transparent text-blue-600 rounded-full mb-4">
+    </div>
+    <div class="text-lg font-medium">Executing command...</div>
+    <div class="text-sm">{{ data.customCommand }}</div>
+  </div>
+  }
+</div>
