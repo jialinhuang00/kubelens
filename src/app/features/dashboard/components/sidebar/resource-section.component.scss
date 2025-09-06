@@ -1,0 +1,23 @@
+.accordion-header {
+  transition: all 0.3s ease;
+  
+  &.expanded {
+    .accordion-arrow {
+      transform: rotate(90deg);
+    }
+  }
+  
+  .accordion-arrow {
+    transition: transform 0.3s ease;
+  }
+}
+
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out;
+  
+  &.expanded {
+    max-height: 1000px;
+  }
+}

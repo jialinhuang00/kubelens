@@ -1,0 +1,94 @@
+<div class="mb-4" [class.opacity-50]="isInitializing && resourceType === 'general'">
+  <div class="accordion-header flex items-center justify-between mb-2 cursor-pointer p-2 rounded"
+    [class.expanded]="isExpanded" 
+    [class.pointer-events-none]="isInitializing && resourceType === 'general'"
+    style="background: rgba(255, 255, 255, 0.05);" 
+    (click)="!(isInitializing && resourceType === 'general') && onToggleExpanded()">
+    <h3 class="text-sm font-medium" style="color: var(--text-primary)">
+      {{ title }}
+      @if (isInitializing && resourceType === 'general') {
+      <span class="text-xs opacity-75 ml-2">(Loading...)</span>
+      }
+    </h3>
+    <span class="accordion-arrow text-sm" style="color: var(--text-secondary);">
+      ▶
+    </span>
+  </div>
+  
+  <div class="accordion-content" [class.expanded]="isExpanded">
+    @if (resourceType === 'general') {
+      <!-- General Templates (no resource selector) -->
+      <div class="space-y-1 py-1">
+        @if (isInitializing) {
+        <div class="p-3 text-center">
+          <div class="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+          <div class="text-xs" style="color: var(--text-secondary);">Loading general commands...</div>
+        </div>
+        } @else {
+        <app-template-list
+          [templates]="templates"
+          [accentColor]="accentColor"
+          (templateExecute)="onTemplateExecute($event)">
+        </app-template-list>
+        }
+      </div>
+    } @else {
+      <!-- Resource-specific Templates (with resource selector) -->
+      <div class="space-y-3 pl-3 border-l-2 py-1" [style.border-color]="sectionBorderColor">
+        @if (hasResourceSelector) {
+        <!-- Resource Selector -->
+        <div class="mb-3 bg-opacity-50 p-3 rounded-lg"
+          [style.background]="backgroundColorClass" 
+          [style.border]="'1px solid ' + borderColorClass">
+          <label class="block text-xs font-medium mb-2 glow-text" [style.color]="accentColorClass">
+            {{ resourceSelectorLabel }}
+          </label>
+          <div class="relative">
+            <select class="w-full p-2 text-xs font-medium appearance-none cursor-pointer rounded-md"
+              [style.background]="'rgba(0, 0, 0, 0.6)'"
+              [style.border]="'1px solid ' + accentColorClass"
+              [style.color]="'var(--text-primary)'"
+              [value]="selectedResource" 
+              (change)="onResourceChange($event)">
+              <option value="" style="background: rgba(0, 0, 0, 0.9); color: var(--text-primary);">
+                {{ resourceTypePlaceholder }}
+              </option>
+              @for (resource of resources; track resource) {
+              <option [value]="resource" style="background: rgba(0, 0, 0, 0.9); color: var(--text-primary);">
+                {{ resource }}
+              </option>
+              }
+            </select>
+            <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              <svg class="w-3 h-3" [style.color]="accentColorClass" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+        }
+
+        <!-- Templates -->
+        @if (templates.length > 0) {
+        <div class="space-y-2 pl-2">
+          <app-template-list
+            [templates]="templates"
+            [accentColor]="accentColor"
+            [selectedResource]="selectedResource"
+            [resourceType]="resourceType"
+            (templateExecute)="onTemplateExecute($event)">
+          </app-template-list>
+        </div>
+        } @else if (selectedResource) {
+        <div class="text-xs text-center py-3 italic" style="color: var(--text-secondary);">
+          No templates available for selected {{ resourceType }}
+        </div>
+        } @else {
+        <div class="text-xs text-center py-3 italic" style="color: var(--text-secondary);">
+          Select a {{ resourceType }} to see available commands
+        </div>
+        }
+      </div>
+    }
+  </div>
+</div>

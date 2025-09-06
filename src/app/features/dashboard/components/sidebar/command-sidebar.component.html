@@ -1,0 +1,70 @@
+<div class="cyber-container p-3 commands-section">
+  <h2 class="text-lg font-semibold mb-3 glow-text" style="color: var(--text-primary)">Commands</h2>
+
+  <!-- Namespace Selector -->
+  <app-namespace-selector
+    [namespaces]="namespaces"
+    [selectedNamespace]="selectedNamespace"
+    [isInitializing]="isInitializing"
+    [isLoadingNamespaces]="isLoadingNamespaces"
+    (namespaceChange)="onNamespaceChange($event)">
+  </app-namespace-selector>
+
+  <!-- General Templates -->
+  <app-resource-section
+    title="General Commands"
+    [templates]="generalTemplates"
+    [isExpanded]="isGeneralExpanded"
+    [isInitializing]="isInitializing"
+    (toggleExpanded)="onToggleGeneralSection()"
+    (templateExecute)="onTemplateExecute($event)">
+  </app-resource-section>
+
+  <!-- Deployment Section -->
+  @if (deployments.length > 0) {
+  <app-resource-section
+    title="Deployment Commands"
+    [resources]="deployments"
+    [selectedResource]="selectedDeployment"
+    [templates]="deploymentTemplates"
+    [isExpanded]="isDeploymentExpanded"
+    resourceType="deployment"
+    accentColor="cyan"
+    (resourceChange)="onDeploymentChange($event)"
+    (toggleExpanded)="onToggleDeploymentSection()"
+    (templateExecute)="onTemplateExecute($event)">
+  </app-resource-section>
+  }
+
+  <!-- Pod Section -->
+  @if (pods.length > 0) {
+  <app-resource-section
+    title="Pod Commands"
+    [resources]="pods"
+    [selectedResource]="selectedPod"
+    [templates]="podTemplates"
+    [isExpanded]="isPodSectionExpanded"
+    resourceType="pod"
+    accentColor="purple"
+    (resourceChange)="onPodChange($event)"
+    (toggleExpanded)="onTogglePodSection()"
+    (templateExecute)="onTemplateExecute($event)">
+  </app-resource-section>
+  }
+
+  <!-- Service Section -->
+  @if (services.length > 0) {
+  <app-resource-section
+    title="Service Commands"
+    [resources]="services"
+    [selectedResource]="selectedService"
+    [templates]="serviceTemplates"
+    [isExpanded]="isServiceSectionExpanded"
+    resourceType="service"
+    accentColor="orange"
+    (resourceChange)="onServiceChange($event)"
+    (toggleExpanded)="onToggleServiceSection()"
+    (templateExecute)="onTemplateExecute($event)">
+  </app-resource-section>
+  }
+</div>

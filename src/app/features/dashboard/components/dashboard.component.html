@@ -7,318 +7,35 @@
 
     <div class="grid grid-cols-[350px_1fr] gap-4">
       <!-- Sidebar: Commands -->
-      <div class="cyber-container p-3 commands-section">
-        <h2 class="text-lg font-semibold mb-3 glow-text" style="color: var(--text-primary)">Commands</h2>
-
-        <!-- Namespace Selector -->
-        <div class="mb-4 p-3 rounded-lg border" [class.opacity-50]="isInitializing()"
-          style="background: rgba(57, 255, 20, 0.05); border-color: rgba(57, 255, 20, 0.2);">
-          <div class="flex items-center gap-2 mb-2">
-            @if (isInitializing() || isLoadingNamespaces()) {
-            <div class="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin"></div>
-            } @else {
-            <svg class="w-4 h-4" style="color: var(--accent-green);" fill="none" stroke="currentColor"
-              viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            }
-            <label class="text-sm font-semibold glow-text" style="color: var(--accent-green);">
-              Target Namespace
-              @if (isInitializing()) {
-              <span class="text-xs opacity-75">(Initializing...)</span>
-              } @else if (isLoadingNamespaces()) {
-              <span class="text-xs opacity-75">(Loading...)</span>
-              }
-            </label>
-          </div>
-          <div class="relative">
-            <select class="w-full p-2 text-xs font-medium appearance-none cursor-pointer rounded-md border"
-              style="background: rgba(0, 0, 0, 0.6); border-color: var(--accent-green); color: var(--text-primary);"
-              [value]="selectedNamespace()" [disabled]="isInitializing() || isLoadingNamespaces()"
-              (change)="onNamespaceChange($event)">
-              @if (isInitializing()) {
-              <option value="">Initializing...</option>
-              } @else if (isLoadingNamespaces()) {
-              <option value="">Loading namespaces...</option>
-              } @else if (namespaces().length === 0) {
-              <option value="">No namespaces available</option>
-              } @else {
-              @for (ns of namespaces(); track ns) {
-              <option [value]="ns" style="background: rgba(0, 0, 0, 0.9); color: var(--text-primary);">{{ ns }}</option>
-              }
-              }
-            </select>
-            <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              <svg class="w-3 h-3" style="color: var(--accent-green)" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-              </svg>
-            </div>
-          </div>
-          @if (selectedNamespace()) {
-          <div class="mt-3 flex items-center gap-2">
-            <div class="w-3 h-3 bg-green-400 rounded-full namespace-pulse"
-              style="background: var(--accent-green); box-shadow: 0 0 4px var(--accent-green);"></div>
-            <span class="text-sm font-semibold" style="color: var(--accent-green);">
-              Currently targeting: <span class="font-bold text-base">{{ selectedNamespace() }}</span>
-            </span>
-          </div>
-          }
-        </div>
-
-        <!-- General Templates -->
-        <div class="mb-4" [class.opacity-50]="isInitializing()">
-          <div class="accordion-header flex items-center justify-between mb-2 cursor-pointer p-2 rounded"
-            [class.expanded]="isGeneralExpanded()" [class.pointer-events-none]="isInitializing()"
-            style="background: rgba(255, 255, 255, 0.05);" (click)="!isInitializing() && toggleGeneralSection()">
-            <h3 class="text-sm font-medium" style="color: var(--text-primary)">
-              General Commands
-              @if (isInitializing()) {
-              <span class="text-xs opacity-75 ml-2">(Loading...)</span>
-              }
-            </h3>
-            <span class="accordion-arrow text-sm" style="color: var(--text-secondary);">
-              ▶
-            </span>
-          </div>
-          <div class="accordion-content" [class.expanded]="isGeneralExpanded()">
-            <div class="space-y-1 py-1">
-              @if (isInitializing()) {
-              <div class="p-3 text-center">
-                <div
-                  class="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto mb-2">
-                </div>
-                <div class="text-xs" style="color: var(--text-secondary);">Loading general commands...</div>
-              </div>
-              } @else {
-              @for (template of generalTemplates; track template.id) {
-              <div class="p-2 cursor-pointer hover:bg-opacity-30 transition-colors border border-gray-600 rounded"
-                style="background: rgba(255, 255, 255, 0.03); border-color: rgba(255, 255, 255, 0.08);"
-                (click)="executeTemplate(template)">
-                <div class="text-xs font-medium mb-1" style="color: var(--text-primary);">
-                  {{ template.name }}
-                </div>
-                <div class="text-xs opacity-75 truncate" style="color: var(--text-secondary); line-height: 1.2;"
-                  [title]="template.command">
-                  {{ template.command }}
-                </div>
-              </div>
-              }
-              }
-            </div>
-          </div>
-        </div>
-
-        <!-- Deployment Specific Templates -->
-        @if (deployments().length > 0) {
-        <div class="mb-4">
-          <div class="accordion-header flex items-center justify-between mb-2 cursor-pointer p-2 rounded"
-            [class.expanded]="isDeploymentExpanded()" style="background: rgba(255, 255, 255, 0.05);"
-            (click)="toggleDeploymentSection()">
-            <h3 class="text-sm font-medium" style="color: var(--text-primary)">Deployment Commands</h3>
-            <span class="accordion-arrow text-sm" style="color: var(--text-secondary);">
-              ▶
-            </span>
-          </div>
-          <div class="accordion-content" [class.expanded]="isDeploymentExpanded()">
-            <div class="space-y-3 pl-3 border-l-2 py-1" style="border-color: rgba(0, 212, 255, 0.3);">
-              <!-- Deployment Selector -->
-              <div class="mb-3 bg-opacity-50 p-3 rounded-lg"
-                style="background: rgba(0, 212, 255, 0.05); border: 1px solid rgba(0, 212, 255, 0.15);">
-                <label class="block text-xs font-medium mb-2 glow-text" style="color: var(--accent-cyan);">
-                  Select Deployment
-                </label>
-                <div class="relative">
-                  <select class="w-full p-2 text-xs font-medium appearance-none cursor-pointer rounded-md"
-                    style="background: rgba(0, 0, 0, 0.6); border: 1px solid var(--accent-cyan); color: var(--text-primary);"
-                    [value]="selectedDeployment()" (change)="onDeploymentChange($event)">
-                    <option value="" style="background: rgba(0, 0, 0, 0.9); color: var(--text-primary);">Choose a
-                      deployment...</option>
-                    @for (deployment of deployments(); track deployment) {
-                    <option [value]="deployment" style="background: rgba(0, 0, 0, 0.9); color: var(--text-primary);">{{
-                      deployment }}</option>
-                    }
-                  </select>
-                  <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                    <svg class="w-3 h-3" style="color: var(--accent-cyan)" fill="none" stroke="currentColor"
-                      viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Deployment Templates -->
-              @if (deploymentTemplates().length > 0) {
-              <div class="space-y-2 pl-2">
-                @for (template of deploymentTemplates(); track template.id) {
-                <div class="p-3 cursor-pointer hover:bg-opacity-50 transition-all duration-200 border rounded-lg"
-                  style="background: rgba(0, 212, 255, 0.08); border-color: rgba(0, 212, 255, 0.2); box-shadow: 0 1px 3px rgba(0, 212, 255, 0.1);"
-                  (click)="executeTemplate(template)">
-                  <div class="text-xs font-semibold mb-1 glow-text" style="color: var(--accent-cyan);">
-                    {{ template.name }}
-                  </div>
-                  <div class="text-xs opacity-80 truncate" style="color: var(--text-primary); line-height: 1.2;"
-                    [title]="template.command" [appCommandDisplay]="template.command"
-                    [selectedDeployment]="selectedDeployment()">
-                  </div>
-                </div>
-                }
-              </div>
-              } @else if (selectedDeployment()) {
-              <div class="text-xs text-center py-3 italic" style="color: var(--text-secondary);">
-                No templates available for selected deployment
-              </div>
-              } @else {
-              <div class="text-xs text-center py-3 italic" style="color: var(--text-secondary);">
-                Select a deployment to see available commands
-              </div>
-              }
-            </div>
-          </div>
-        </div>
-        }
-
-        <!-- Pod Specific Templates -->
-        @if (pods().length > 0) {
-        <div class="mb-4">
-          <div class="accordion-header flex items-center justify-between mb-2 cursor-pointer p-2 rounded"
-            [class.expanded]="isPodSectionExpanded()" style="background: rgba(255, 255, 255, 0.05);"
-            (click)="togglePodSection()">
-            <h3 class="text-sm font-medium" style="color: var(--text-primary)">Pod Commands</h3>
-            <span class="accordion-arrow text-sm" style="color: var(--text-secondary);">
-              ▶
-            </span>
-          </div>
-          <div class="accordion-content" [class.expanded]="isPodSectionExpanded()">
-            <div class="space-y-3 pl-3 border-l-2 py-1" style="border-color: rgba(157, 78, 221, 0.3);">
-              <!-- Pod Selector -->
-              <div class="mb-3 bg-opacity-50 p-3 rounded-lg"
-                style="background: rgba(157, 78, 221, 0.05); border: 1px solid rgba(157, 78, 221, 0.15);">
-                <label class="block text-xs font-medium mb-2 glow-text" style="color: var(--accent-purple);">
-                  Select Pod
-                </label>
-                <div class="relative">
-                  <select class="w-full p-2 text-xs font-medium appearance-none cursor-pointer rounded-md"
-                    style="background: rgba(0, 0, 0, 0.6); border: 1px solid var(--accent-purple); color: var(--text-primary);"
-                    [value]="selectedPod()" (change)="onPodChange($event)">
-                    <option value="" style="background: rgba(0, 0, 0, 0.9); color: var(--text-primary);">Choose a pod...
-                    </option>
-                    @for (pod of pods(); track pod) {
-                    <option [value]="pod" style="background: rgba(0, 0, 0, 0.9); color: var(--text-primary);">{{ pod }}
-                    </option>
-                    }
-                  </select>
-                  <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                    <svg class="w-3 h-3" style="color: var(--accent-purple)" fill="none" stroke="currentColor"
-                      viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Pod Templates -->
-              @if (podTemplates().length > 0) {
-              <div class="space-y-2 pl-2">
-                @for (template of podTemplates(); track template.id) {
-                <div class="p-3 cursor-pointer hover:bg-opacity-50 transition-all duration-200 border rounded-lg"
-                  style="background: rgba(157, 78, 221, 0.08); border-color: rgba(157, 78, 221, 0.2); box-shadow: 0 1px 3px rgba(157, 78, 221, 0.1);"
-                  (click)="executeTemplate(template)">
-                  <div class="text-xs font-semibold mb-1 glow-text" style="color: var(--accent-purple);">
-                    {{ template.name }}
-                  </div>
-                  <div class="text-xs opacity-80 truncate" style="color: var(--text-primary); line-height: 1.2;"
-                    [title]="template.command" [appCommandDisplay]="template.command" [selectedPod]="selectedPod()">
-                  </div>
-                </div>
-                }
-              </div>
-              } @else if (selectedPod()) {
-              <div class="text-xs text-center py-3 italic" style="color: var(--text-secondary);">
-                No templates available for selected pod
-              </div>
-              } @else {
-              <div class="text-xs text-center py-3 italic" style="color: var(--text-secondary);">
-                Select a pod to see available commands
-              </div>
-              }
-            </div>
-          </div>
-        </div>
-        }
-
-        <!-- Service Specific Templates -->
-        @if (services().length > 0) {
-        <div class="mb-4">
-          <div class="accordion-header flex items-center justify-between mb-2 cursor-pointer p-2 rounded"
-            [class.expanded]="isServiceSectionExpanded()" style="background: rgba(255, 255, 255, 0.05);"
-            (click)="toggleServiceSection()">
-            <h3 class="text-sm font-medium" style="color: var(--text-primary)">Service Commands</h3>
-            <span class="accordion-arrow text-sm" style="color: var(--text-secondary);">
-              ▶
-            </span>
-          </div>
-          <div class="accordion-content" [class.expanded]="isServiceSectionExpanded()">
-            <div class="space-y-3 pl-3 border-l-2 py-1" style="border-color: rgba(255, 149, 0, 0.3);">
-              <!-- Service Selector -->
-              <div class="mb-3 bg-opacity-50 p-3 rounded-lg"
-                style="background: rgba(255, 149, 0, 0.05); border: 1px solid rgba(255, 149, 0, 0.15);">
-                <label class="block text-xs font-medium mb-2 glow-text" style="color: var(--accent-orange, #ff9500);">
-                  Select Service
-                </label>
-                <div class="relative">
-                  <select class="w-full p-2 text-xs font-medium appearance-none cursor-pointer rounded-md"
-                    style="background: rgba(0, 0, 0, 0.6); border: 1px solid var(--accent-orange, #ff9500); color: var(--text-primary);"
-                    [value]="selectedService()" (change)="onServiceChange($event)">
-                    <option value="" style="background: rgba(0, 0, 0, 0.9); color: var(--text-primary);">Choose a
-                      service...</option>
-                    @for (service of services(); track service) {
-                    <option [value]="service" style="background: rgba(0, 0, 0, 0.9); color: var(--text-primary);">{{
-                      service }}</option>
-                    }
-                  </select>
-                  <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                    <svg class="w-3 h-3" style="color: var(--accent-orange, #ff9500)" fill="none" stroke="currentColor"
-                      viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Service Templates -->
-              @if (serviceTemplates().length > 0) {
-              <div class="space-y-2 pl-2">
-                @for (template of serviceTemplates(); track template.id) {
-                <div class="p-3 cursor-pointer hover:bg-opacity-50 transition-all duration-200 border rounded-lg"
-                  style="background: rgba(255, 149, 0, 0.08); border-color: rgba(255, 149, 0, 0.2); box-shadow: 0 1px 3px rgba(255, 149, 0, 0.1);"
-                  (click)="executeTemplate(template)">
-                  <div class="text-xs font-semibold mb-1 glow-text" style="color: var(--accent-orange, #ff9500);">
-                    {{ template.name }}
-                  </div>
-                  <div class="text-xs opacity-80 truncate" style="color: var(--text-primary); line-height: 1.2;"
-                    [title]="template.command" [appCommandDisplay]="template.command"
-                    [selectedService]="selectedService()">
-                  </div>
-                </div>
-                }
-              </div>
-              } @else if (selectedService()) {
-              <div class="text-xs text-center py-3 italic" style="color: var(--text-secondary);">
-                No templates available for selected service
-              </div>
-              } @else {
-              <div class="text-xs text-center py-3 italic" style="color: var(--text-secondary);">
-                Select a service to see available commands
-              </div>
-              }
-            </div>
-          </div>
-        </div>
-        }
-      </div>
+      <app-command-sidebar
+        [namespaces]="namespaces()"
+        [selectedNamespace]="selectedNamespace()"
+        [isInitializing]="isInitializing()"
+        [isLoadingNamespaces]="isLoadingNamespaces()"
+        [deployments]="deployments()"
+        [pods]="pods()"
+        [services]="services()"
+        [selectedDeployment]="selectedDeployment()"
+        [selectedPod]="selectedPod()"
+        [selectedService]="selectedService()"
+        [generalTemplates]="generalTemplates"
+        [deploymentTemplates]="deploymentTemplates()"
+        [podTemplates]="podTemplates()"
+        [serviceTemplates]="serviceTemplates()"
+        [isGeneralExpanded]="isGeneralExpanded()"
+        [isDeploymentExpanded]="isDeploymentExpanded()"
+        [isPodSectionExpanded]="isPodSectionExpanded()"
+        [isServiceSectionExpanded]="isServiceSectionExpanded()"
+        (namespaceChange)="onNamespaceChange($event)"
+        (deploymentChange)="onDeploymentChange($event)"
+        (podChange)="onPodChange($event)"
+        (serviceChange)="onServiceChange($event)"
+        (templateExecute)="executeTemplate($event)"
+        (toggleGeneralSection)="toggleGeneralSection()"
+        (toggleDeploymentSection)="toggleDeploymentSection()"
+        (togglePodSection)="togglePodSection()"
+        (toggleServiceSection)="toggleServiceSection()">
+      </app-command-sidebar>
 
       <!-- Main Content Area -->
       <div class="space-y-3 overflow-x-auto">

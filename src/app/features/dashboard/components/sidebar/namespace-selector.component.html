@@ -1,0 +1,55 @@
+<div class="mb-4 p-3 rounded-lg border" [class.opacity-50]="isInitializing"
+  style="background: rgba(57, 255, 20, 0.05); border-color: rgba(57, 255, 20, 0.2);">
+  <div class="flex items-center gap-2 mb-2">
+    @if (isInitializing || isLoadingNamespaces) {
+    <div class="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin"></div>
+    } @else {
+    <svg class="w-4 h-4" style="color: var(--accent-green);" fill="none" stroke="currentColor"
+      viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+    </svg>
+    }
+    <label class="text-sm font-semibold glow-text" style="color: var(--accent-green);">
+      Target Namespace
+      @if (isInitializing) {
+      <span class="text-xs opacity-75">(Initializing...)</span>
+      } @else if (isLoadingNamespaces) {
+      <span class="text-xs opacity-75">(Loading...)</span>
+      }
+    </label>
+  </div>
+  <div class="relative">
+    <select class="w-full p-2 text-xs font-medium appearance-none cursor-pointer rounded-md border"
+      style="background: rgba(0, 0, 0, 0.6); border-color: var(--accent-green); color: var(--text-primary);"
+      [value]="selectedNamespace" [disabled]="isInitializing || isLoadingNamespaces"
+      (change)="onNamespaceChange($event)">
+      @if (isInitializing) {
+      <option value="">Initializing...</option>
+      } @else if (isLoadingNamespaces) {
+      <option value="">Loading namespaces...</option>
+      } @else if (namespaces.length === 0) {
+      <option value="">No namespaces available</option>
+      } @else {
+      @for (ns of namespaces; track ns) {
+      <option [value]="ns" style="background: rgba(0, 0, 0, 0.9); color: var(--text-primary);">{{ ns }}</option>
+      }
+      }
+    </select>
+    <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+      <svg class="w-3 h-3" style="color: var(--accent-green)" fill="none" stroke="currentColor"
+        viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+      </svg>
+    </div>
+  </div>
+  @if (selectedNamespace) {
+  <div class="mt-3 flex items-center gap-2">
+    <div class="w-3 h-3 bg-green-400 rounded-full namespace-pulse"
+      style="background: var(--accent-green); box-shadow: 0 0 4px var(--accent-green);"></div>
+    <span class="text-sm font-semibold" style="color: var(--accent-green);">
+      Currently targeting: <span class="font-bold text-base">{{ selectedNamespace }}</span>
+    </span>
+  </div>
+  }
+</div>

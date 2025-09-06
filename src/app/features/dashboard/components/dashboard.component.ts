@@ -12,10 +12,11 @@ import { TemplateService } from '../services/template.service';
 import { KubeResource, PodDescribeData, CommandTemplate, TableData, YamlItem } from '../../../shared/models/kubectl.models';
 import { CommandDisplayDirective } from '../../../shared/directives/command-display.directive';
 import { YamlDisplayComponent } from './yaml-display/yaml-display.component';
+import { CommandSidebarComponent } from './sidebar/command-sidebar.component';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterOutlet, FormsModule, CommonModule, CommandDisplayDirective, YamlDisplayComponent],
+  imports: [RouterOutlet, FormsModule, CommonModule, CommandDisplayDirective, YamlDisplayComponent, CommandSidebarComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -182,31 +183,31 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  onNamespaceChange(event: Event) {
-    const target = event.target as HTMLSelectElement;
-    this.selectedNamespace.set(target.value);
+  onNamespaceChange(namespace: string | Event) {
+    const value = typeof namespace === 'string' ? namespace : (namespace.target as HTMLSelectElement).value;
+    this.selectedNamespace.set(value);
     this.selectedDeployment.set(''); // Reset deployment selection when namespace changes
     this.selectedPod.set(''); // Reset pod selection when namespace changes
-    this.namespaceService.setCurrentNamespace(target.value);
-    this.loadResourcesForNamespace(target.value);
+    this.namespaceService.setCurrentNamespace(value);
+    this.loadResourcesForNamespace(value);
   }
 
-  onDeploymentChange(event: Event) {
-    const target = event.target as HTMLSelectElement;
-    this.selectedDeployment.set(target.value);
-    this.deploymentService.setSelectedDeployment(target.value);
+  onDeploymentChange(deployment: string | Event) {
+    const value = typeof deployment === 'string' ? deployment : (deployment.target as HTMLSelectElement).value;
+    this.selectedDeployment.set(value);
+    this.deploymentService.setSelectedDeployment(value);
   }
 
-  onPodChange(event: Event) {
-    const target = event.target as HTMLSelectElement;
-    this.selectedPod.set(target.value);
-    this.podService.setSelectedPod(target.value);
+  onPodChange(pod: string | Event) {
+    const value = typeof pod === 'string' ? pod : (pod.target as HTMLSelectElement).value;
+    this.selectedPod.set(value);
+    this.podService.setSelectedPod(value);
   }
 
-  onServiceChange(event: Event) {
-    const target = event.target as HTMLSelectElement;
-    this.selectedService.set(target.value);
-    this.svcService.setSelectedService(target.value);
+  onServiceChange(service: string | Event) {
+    const value = typeof service === 'string' ? service : (service.target as HTMLSelectElement).value;
+    this.selectedService.set(value);
+    this.svcService.setSelectedService(value);
   }
 
   executeTemplate(template: CommandTemplate) {
