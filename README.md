@@ -14,14 +14,13 @@ A visual interface for executing and visualizing kubectl commands, built with An
 
 ### 1. Setup Kubernetes Test Environment
 
+**Optional** - Skip this if you already have kubectl + cluster access
+
 ```bash
 bash scripts/cluster-setup.sh
 ```
 
-This will:
-- Create a kind cluster with multiple namespaces
-- Build and deploy test services
-- Set up sample pods and deployments
+Creates kind cluster with test services. Perfect for demo/testing.
 
 ### 2. Start the Application
 

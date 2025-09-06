@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { DashboardComponent } from './features/kubectl-dashboard/components/dashboard.component';
+import { DashboardComponent } from './features/dashboard/components/dashboard.component';
 
 @Component({
   selector: 'app-root',

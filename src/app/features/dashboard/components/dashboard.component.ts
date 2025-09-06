@@ -2,9 +2,13 @@ import { Component, signal, inject, OnInit, effect } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { ResourceService } from '../services/resource.service';
+import { NamespaceService } from '../../k8s/services/namespace.service';
+import { DeploymentService } from '../../k8s/services/deployment.service';
+import { PodService } from '../../k8s/services/pod.service';
+import { SvcService } from '../../k8s/services/svc.service';
 import { KubectlService } from '../../../core/services/kubectl.service';
 import { OutputParserService } from '../services/output-parser.service';
+import { TemplateService } from '../services/template.service';
 import { KubeResource, PodDescribeData, CommandTemplate, TableData, YamlItem } from '../../../shared/models/kubectl.models';
 import { CommandDisplayDirective } from '../../../shared/directives/command-display.directive';
 import { YamlDisplayComponent } from './yaml-display/yaml-display.component';
@@ -16,24 +20,29 @@ import { YamlDisplayComponent } from './yaml-display/yaml-display.component';
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit {
-  private resourceService = inject(ResourceService);
+  private namespaceService = inject(NamespaceService);
+  private deploymentService = inject(DeploymentService);
+  private podService = inject(PodService);
+  private svcService = inject(SvcService);
   private kubectlService = inject(KubectlService);
   private outputParserService = inject(OutputParserService);
+  private templateService = inject(TemplateService);
   protected readonly title = signal('kubecmds-viz');
 
   constructor() {
     // Auto-select first namespace when namespaces load
     effect(() => {
-      const namespaces = this.resourceService.namespaces();
+      const namespaces = this.namespaceService.namespaces();
       if (namespaces.length > 0 && !this.selectedNamespace()) {
         this.selectedNamespace.set(namespaces[0]);
-        this.resourceService.loadResourcesForNamespace(namespaces[0]);
+        this.namespaceService.setCurrentNamespace(namespaces[0]);
+        this.loadResourcesForNamespace(namespaces[0]);
       }
     });
   }
 
   async ngOnInit() {
-    await this.resourceService.initialize();
+    await this.namespaceService.loadNamespaces();
     // Resources will be loaded automatically by the effect when first namespace is selected
   }
 
@@ -64,16 +73,23 @@ export class DashboardComponent implements OnInit {
   isServiceSectionExpanded = signal<boolean>(false);
 
   // Expose service signals to template
-  get namespaces() { return this.resourceService.namespaces; }
-  get deployments() { return this.resourceService.deployments; }
-  get pods() { return this.resourceService.pods; }
-  get services() { return this.resourceService.services; }
-  get generalTemplates() { return this.resourceService.generalTemplates; }
-  get deploymentTemplates() { return this.resourceService.deploymentTemplates; }
-  get podTemplates() { return this.resourceService.podTemplates; }
-  get serviceTemplates() { return this.resourceService.serviceTemplates; }
-  get isInitializing() { return this.resourceService.isInitializing; }
-  get isLoadingNamespaces() { return this.resourceService.isLoadingNamespaces; }
+  get namespaces() { return this.namespaceService.namespaces; }
+  get deployments() { return this.deploymentService.deployments; }
+  get pods() { return this.podService.pods; }
+  get services() { return this.svcService.services; }
+  get generalTemplates() { return this.templateService.getGeneralTemplates(); }
+  get deploymentTemplates() { return this.deploymentService.templates; }
+  get podTemplates() { return this.podService.templates; }
+  get serviceTemplates() { return this.svcService.templates; }
+  get isInitializing() { return this.namespaceService.isLoading; }
+  get isLoadingNamespaces() { return this.namespaceService.isLoading; }
+
+  private loadResourcesForNamespace(namespace: string) {
+    if (!namespace) return;
+    this.deploymentService.loadDeployments(namespace);
+    this.podService.loadPods(namespace);
+    this.svcService.loadServices(namespace);
+  }
 
   onCustomCommandChange(event: Event) {
     const target = event.target as HTMLInputElement;
@@ -171,29 +187,30 @@ export class DashboardComponent implements OnInit {
     this.selectedNamespace.set(target.value);
     this.selectedDeployment.set(''); // Reset deployment selection when namespace changes
     this.selectedPod.set(''); // Reset pod selection when namespace changes
-    this.resourceService.loadResourcesForNamespace(target.value);
+    this.namespaceService.setCurrentNamespace(target.value);
+    this.loadResourcesForNamespace(target.value);
   }
 
   onDeploymentChange(event: Event) {
     const target = event.target as HTMLSelectElement;
     this.selectedDeployment.set(target.value);
-    this.resourceService.updateDeploymentTemplates(target.value);
+    this.deploymentService.setSelectedDeployment(target.value);
   }
 
   onPodChange(event: Event) {
     const target = event.target as HTMLSelectElement;
     this.selectedPod.set(target.value);
-    this.resourceService.updatePodTemplates(target.value);
+    this.podService.setSelectedPod(target.value);
   }
 
   onServiceChange(event: Event) {
     const target = event.target as HTMLSelectElement;
     this.selectedService.set(target.value);
-    this.resourceService.updateServiceTemplates(target.value);
+    this.svcService.setSelectedService(target.value);
   }
 
   executeTemplate(template: CommandTemplate) {
-    const command = this.resourceService.executeTemplate(template, this.selectedNamespace());
+    const command = this.templateService.replaceNamespacePlaceholder(template.command, this.selectedNamespace());
     this.customCommand.set(command);
     this.executeCustomCommand();
   }
