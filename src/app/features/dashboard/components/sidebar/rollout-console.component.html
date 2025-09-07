@@ -1,102 +1,100 @@
 @if (deploymentName) {
-<div class="mt-3 rollout-console">
+<div class="mt-3 ml-2 rollout-console">
   <!-- Rollout Console Header -->
   <div class="accordion-header flex items-center justify-between mb-2 cursor-pointer p-2 rounded"
-    [class.expanded]="isExpanded" 
-    style="background: rgba(0, 255, 255, 0.1);" 
-    (click)="onToggleExpanded()">
+    [class.expanded]="isExpanded" style="background: rgba(0, 255, 255, 0.1);" (click)="onToggleExpanded()">
     <h4 class="text-sm font-medium flex items-center" style="color: var(--accent-cyan)">
-      🎬 Rollout Console
+      Rollout Console
       <span class="text-xs ml-2 opacity-75">({{ deploymentName }})</span>
     </h4>
     <span class="accordion-arrow text-sm" style="color: var(--text-secondary);">
       ▶
     </span>
   </div>
-  
+
   <div class="accordion-content" [class.expanded]="isExpanded">
-    <div class="space-y-3 pl-3 border-l-2 py-1" style="border-color: var(--accent-cyan)">
-      
+    <div class="space-y-3 border-l-2 py-1 pl-2" style="border-color: var(--accent-cyan)">
+
       <!-- Version Player Controls -->
       <div class="player-controls bg-opacity-20 p-3 rounded-lg"
         style="background: rgba(0, 255, 255, 0.05); border: 1px solid rgba(0, 255, 255, 0.3);">
-        <div class="text-xs font-medium mb-2 glow-text" style="color: var(--accent-cyan);">
-          🎮 Version Player
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-xs font-medium glow-text" style="color: var(--accent-cyan);">
+            Version Player
+            @if (deploymentStatus && buttonStates) {
+            <span class="ml-2 text-xs opacity-75" style="color: var(--text-secondary);">
+              {{ getStatusText() }}
+            </span>
+            }
+          </div>
+          <!-- macOS Style Status Lights -->
+          <div class="flex items-center space-x-1">
+            <div class="w-3 h-3 rounded-full border border-gray-600 status-light"
+              [style.background-color]="getStatusColor('red')" title="Failed/Error/No Ready Replicas">
+            </div>
+            <div class="w-3 h-3 rounded-full border border-gray-600 status-light"
+              [style.background-color]="getStatusColor('yellow')" title="Paused/Rolling Out (Active)">
+            </div>
+            <div class="w-3 h-3 rounded-full border border-gray-600 status-light"
+              [style.background-color]="getStatusColor('green')" title="Stable/Rolling Out (Target)/Ready">
+            </div>
+          </div>
         </div>
-        
-        <div class="flex items-center justify-center space-x-1">
+
+        <div class="flex items-center justify-center space-x-1 flex-wrap">
           <!-- Rollback to Previous -->
-          <button 
-            class="player-btn rollback-btn p-2 rounded hover:bg-opacity-75 transition-all duration-200"
-            title="Rollback to Previous Version"
-            (click)="onRollbackToPrevious()">
+          <button class="player-btn rollback-btn p-2 rounded hover:bg-opacity-75 transition-all duration-200"
+            [title]="getRollbackTooltip()" [disabled]="!buttonStates?.rollbackEnabled"
+            [class.disabled]="!buttonStates?.rollbackEnabled" (click)="onRollbackToPrevious()">
             <mat-icon>skip_previous</mat-icon>
           </button>
-          
+
           <!-- Pause Rollout -->
-          <button 
-            class="player-btn pause-btn p-2 rounded hover:bg-opacity-75 transition-all duration-200"
-            title="Pause Rollout"
-            (click)="onPauseRollout()">
+          <button class="player-btn pause-btn p-2 rounded hover:bg-opacity-75 transition-all duration-200"
+            [title]="getPauseTooltip()" [disabled]="!buttonStates?.pauseEnabled"
+            [class.disabled]="!buttonStates?.pauseEnabled" (click)="onPauseRollout()">
             <mat-icon>pause</mat-icon>
           </button>
-          
+
           <!-- Resume Rollout -->
-          <button 
-            class="player-btn play-btn p-2 rounded hover:bg-opacity-75 transition-all duration-200"
-            title="Resume Rollout"
-            (click)="onResumeRollout()">
+          <button class="player-btn play-btn p-2 rounded hover:bg-opacity-75 transition-all duration-200"
+            [title]="getResumeTooltip()" [disabled]="!buttonStates?.resumeEnabled"
+            [class.disabled]="!buttonStates?.resumeEnabled" (click)="onResumeRollout()">
             <mat-icon>play_arrow</mat-icon>
           </button>
-          
+
           <!-- Restart Deployment -->
-          <button 
-            class="player-btn restart-btn p-2 rounded hover:bg-opacity-75 transition-all duration-200"
-            title="Restart Deployment"
-            (click)="onRestartDeployment()">
+          <button class="player-btn restart-btn p-2 rounded hover:bg-opacity-75 transition-all duration-200"
+            [title]="getRestartTooltip()" [disabled]="!buttonStates?.restartEnabled"
+            [class.disabled]="!buttonStates?.restartEnabled" (click)="onRestartDeployment()">
             <mat-icon>refresh</mat-icon>
           </button>
-          
+
           <!-- Version Upgrades -->
           <div class="version-separator"></div>
-          <button 
-            class="player-btn upgrade-btn px-3 py-2 rounded hover:bg-opacity-75 transition-all duration-200"
-            title="Upgrade to v2"
-            (click)="onUpgradeToVersion('v2')">
+          <button class="player-btn upgrade-btn px-3 py-2 rounded hover:bg-opacity-75 transition-all duration-200"
+            title="Upgrade to v2" [disabled]="!buttonStates?.upgradeEnabled"
+            [class.disabled]="!buttonStates?.upgradeEnabled" (click)="onUpgradeToVersion('v2')">
             <span class="text-xs font-medium">v2</span>
           </button>
-          <button 
-            class="player-btn upgrade-btn px-3 py-2 rounded hover:bg-opacity-75 transition-all duration-200"
-            title="Upgrade to v3"
-            (click)="onUpgradeToVersion('v3')">
+          <button class="player-btn upgrade-btn px-3 py-2 rounded hover:bg-opacity-75 transition-all duration-200"
+            title="Upgrade to v3" [disabled]="!buttonStates?.upgradeEnabled"
+            [class.disabled]="!buttonStates?.upgradeEnabled" (click)="onUpgradeToVersion('v3')">
             <span class="text-xs font-medium">v3</span>
           </button>
         </div>
       </div>
 
-      <!-- Current Status Display -->
-      @if (currentStatus) {
-      <div class="status-display bg-opacity-20 p-3 rounded-lg"
-        style="background: rgba(0, 255, 255, 0.05); border: 1px solid rgba(0, 255, 255, 0.3);">
-        <div class="text-xs font-medium mb-2 glow-text" style="color: var(--accent-cyan);">
-          📈 Current Status
-        </div>
-        <div class="text-xs font-mono" style="color: var(--text-primary);">
-          {{ currentStatus }}
-        </div>
-      </div>
-      }
 
       <!-- Version History Toggle -->
       <div class="history-toggle">
-        <button 
-          class="w-full text-left p-2 rounded text-xs hover:bg-opacity-75 transition-all duration-200"
+        <button class="w-full text-left p-2 rounded text-xs hover:bg-opacity-75 transition-all duration-200"
           style="background: rgba(0, 255, 255, 0.1); border: 1px solid rgba(0, 255, 255, 0.3); color: var(--accent-cyan);"
           (click)="onToggleHistory()">
           📊 Version History
           <span class="float-right">{{ showHistoryTable() ? '▼' : '▶' }}</span>
         </button>
-        
+
         @if (showHistoryTable()) {
         <div class="mt-2 history-table">
           @if (rolloutHistory.length > 0) {
@@ -106,7 +104,7 @@
                 <tr class="border-b" style="border-color: rgba(0, 255, 255, 0.3);">
                   <th class="text-left p-1 font-medium" style="color: var(--accent-cyan);">Rev</th>
                   <th class="text-left p-1 font-medium" style="color: var(--accent-cyan);">Image</th>
-                  <th class="text-left p-1 font-medium" style="color: var(--accent-cyan);">Status</th>
+                  <th class="text-left p-1 font-medium" style="color: var(--accent-cyan);">Change Cause</th>
                   <th class="text-left p-1 font-medium" style="color: var(--accent-cyan);">Created</th>
                 </tr>
               </thead>
@@ -115,7 +113,7 @@
                 <tr class="border-b" style="border-color: rgba(0, 255, 255, 0.1);">
                   <td class="p-1" style="color: var(--text-primary);">{{ item.revision }}</td>
                   <td class="p-1 font-mono text-xs" style="color: var(--text-primary);">{{ item.image }}</td>
-                  <td class="p-1" style="color: var(--text-primary);">{{ item.status }}</td>
+                  <td class="p-1" style="color: var(--text-primary);">{{ item.changeCause }}</td>
                   <td class="p-1" style="color: var(--text-secondary);">{{ item.created }}</td>
                 </tr>
                 }
@@ -131,22 +129,6 @@
         }
       </div>
 
-      <!-- Rollout Commands -->
-      <div class="rollout-commands">
-        <div class="text-xs font-medium mb-2 glow-text" style="color: var(--accent-cyan);">
-          🔧 Manual Commands
-        </div>
-        <div class="space-y-1">
-          @for (template of rolloutTemplates; track template.id) {
-          <button 
-            class="w-full text-left p-2 rounded text-xs hover:bg-opacity-75 transition-all duration-200"
-            style="background: rgba(0, 255, 255, 0.05); border: 1px solid rgba(0, 255, 255, 0.2); color: var(--text-primary);"
-            (click)="onTemplateExecute(template)">
-            {{ template.name }}
-          </button>
-          }
-        </div>
-      </div>
     </div>
   </div>
 </div>

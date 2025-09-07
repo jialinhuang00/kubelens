@@ -90,6 +90,32 @@
           color: var(--accent-cyan);
         }
       }
+      
+      // Disabled button styles
+      &.disabled,
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        background: rgba(128, 128, 128, 0.1) !important;
+        border-color: rgba(128, 128, 128, 0.2) !important;
+        color: var(--text-secondary) !important;
+        
+        &:hover {
+          background: rgba(128, 128, 128, 0.1) !important;
+          border-color: rgba(128, 128, 128, 0.2) !important;
+          transform: none !important;
+          
+          mat-icon,
+          span {
+            color: var(--text-secondary) !important;
+          }
+        }
+        
+        mat-icon,
+        span {
+          color: var(--text-secondary) !important;
+        }
+      }
     }
     
     .version-separator {

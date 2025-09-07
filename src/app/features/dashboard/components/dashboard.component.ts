@@ -138,10 +138,28 @@ export class DashboardComponent implements OnInit {
     this.loadResourcesForNamespace(value);
   }
 
-  onDeploymentChange(deployment: string | Event) {
+  async onDeploymentChange(deployment: string | Event) {
     const value = typeof deployment === 'string' ? deployment : (deployment.target as HTMLSelectElement).value;
     this.selectedDeployment.set(value);
     this.deploymentService.setSelectedDeployment(value);
+
+    // if deployment change, get status and history
+    if (value && this.selectedNamespace()) {
+      try {
+        await Promise.all([
+          this.deploymentService.getDeploymentStatus(value, this.selectedNamespace()),
+          this.deploymentService.getRolloutHistory(value, this.selectedNamespace())
+        ]);
+
+        // monitor status for Version Player
+        this.deploymentService.startRolloutMonitoring(value, this.selectedNamespace());
+      } catch (error) {
+        console.error('Failed to load deployment data:', error);
+      }
+    } else {
+      // no deployment, no listening
+      this.deploymentService.stopRolloutMonitoring();
+    }
   }
 
   onPodChange(pod: string | Event) {
@@ -221,7 +239,11 @@ export class DashboardComponent implements OnInit {
     deploymentTemplates: this.deploymentTemplates,
     rolloutTemplates: this.rolloutTemplates,
     podTemplates: this.podTemplates,
-    serviceTemplates: this.serviceTemplates
+    serviceTemplates: this.serviceTemplates,
+    deploymentStatus: this.deploymentService.deploymentStatus(),
+    buttonStates: this.deploymentService.deploymentStatus() ?
+      this.deploymentService.getButtonStates(this.deploymentService.deploymentStatus()) : null,
+    rolloutHistory: this.deploymentService.rolloutHistory()
   }));
 
   // Rollout event handlers
@@ -231,6 +253,29 @@ export class DashboardComponent implements OnInit {
 
     const command = this.rolloutService.generateSetImageCommand(event.deployment, namespace, event.image);
     await this.executeCommand(command);
+  }
+
+  // when rollout, update immediately
+  async onRolloutAction(action: string) {
+    const deployment = this.selectedDeployment();
+    const namespace = this.selectedNamespace();
+
+    if (deployment && namespace) {
+      console.log(`🔄 Rollout action triggered: ${action}`);
+
+      // wait a second for kubectl
+      setTimeout(async () => {
+        try {
+          await Promise.all([
+            this.deploymentService.getDeploymentStatus(deployment, namespace),
+            this.deploymentService.getRolloutHistory(deployment, namespace)
+          ]);
+          console.log(`✅ Status updated after ${action}`);
+        } catch (error) {
+          console.error(`❌ Failed to update status after ${action}:`, error);
+        }
+      }, 1000);
+    }
   }
 
   // execute streaming command

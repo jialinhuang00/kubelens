@@ -95,9 +95,13 @@
           [deploymentName]="selectedResource"
           [isExpanded]="isRolloutConsoleExpanded"
           [rolloutTemplates]="rolloutTemplates"
+          [deploymentStatus]="deploymentStatus"
+          [buttonStates]="buttonStates"
+          [rolloutHistory]="rolloutHistory"
           (toggleExpanded)="onRolloutConsoleToggle()"
           (templateExecute)="onTemplateExecute($event)"
-          (imageUpgrade)="onImageUpgrade($event)">
+          (imageUpgrade)="onImageUpgrade($event)"
+          (rolloutAction)="onRolloutAction($event)">
         </app-rollout-console>
         }
       </div>

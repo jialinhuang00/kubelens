@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { TemplateListComponent } from './template-list.component';
 import { RolloutConsoleComponent } from './rollout-console.component';
 import { CommandTemplate } from '../../../../shared/models/kubectl.models';
+import { DeploymentStatus, RolloutButtonStates, RolloutHistoryItem } from '../../../k8s/services/deployment.service';
 
 @Component({
   selector: 'app-resource-section',
@@ -23,12 +24,16 @@ export class ResourceSectionComponent {
   // Rollout Console specific inputs
   @Input() rolloutTemplates: CommandTemplate[] = [];
   @Input() isRolloutConsoleExpanded: boolean = false;
+  @Input() deploymentStatus: DeploymentStatus | null = null;
+  @Input() buttonStates: RolloutButtonStates | null = null;
+  @Input() rolloutHistory: RolloutHistoryItem[] = [];
 
   @Output() resourceChange = new EventEmitter<string>();
   @Output() templateExecute = new EventEmitter<CommandTemplate>();
   @Output() toggleExpanded = new EventEmitter<void>();
   @Output() rolloutConsoleToggle = new EventEmitter<void>();
   @Output() imageUpgrade = new EventEmitter<{deployment: string, image: string}>();
+  @Output() rolloutAction = new EventEmitter<string>();
 
   get accentColorClass(): string {
     const colorMap = {
@@ -113,6 +118,10 @@ export class ResourceSectionComponent {
 
   onImageUpgrade(event: {deployment: string, image: string}) {
     this.imageUpgrade.emit(event);
+  }
+
+  onRolloutAction(action: string) {
+    this.rolloutAction.emit(action);
   }
 
   get shouldShowRolloutConsole(): boolean {

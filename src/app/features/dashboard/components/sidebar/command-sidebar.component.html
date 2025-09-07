@@ -30,13 +30,17 @@
     [isExpanded]="isDeploymentExpanded()"
     [rolloutTemplates]="data.rolloutTemplates"
     [isRolloutConsoleExpanded]="isRolloutConsoleExpanded()"
+    [deploymentStatus]="data.deploymentStatus"
+    [buttonStates]="data.buttonStates"
+    [rolloutHistory]="data.rolloutHistory"
     resourceType="deployment"
     accentColor="cyan"
     (resourceChange)="onDeploymentChange($event)"
     (toggleExpanded)="onToggleDeploymentSection()"
     (templateExecute)="onTemplateExecute($event)"
     (rolloutConsoleToggle)="onToggleRolloutConsole()"
-    (imageUpgrade)="onImageUpgrade($event)">
+    (imageUpgrade)="onImageUpgrade($event)"
+    (rolloutAction)="onRolloutAction($event)">
   </app-resource-section>
   }
 

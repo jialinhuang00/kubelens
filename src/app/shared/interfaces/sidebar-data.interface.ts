@@ -1,3 +1,5 @@
+import { DeploymentStatus, RolloutButtonStates, RolloutHistoryItem } from '../../features/k8s/services/deployment.service';
+
 export interface SidebarData {
   // Resource data
   namespaces: string[];
@@ -19,6 +21,11 @@ export interface SidebarData {
   rolloutTemplates: any[];
   podTemplates: any[];
   serviceTemplates: any[];
+  
+  // Deployment status for smart button states
+  deploymentStatus: DeploymentStatus | null;
+  buttonStates: RolloutButtonStates | null;
+  rolloutHistory: RolloutHistoryItem[];
   
   // UI expansion states (now managed by UiStateService)
   // isGeneralExpanded, isDeploymentExpanded, isPodSectionExpanded, isServiceSectionExpanded

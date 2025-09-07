@@ -86,11 +86,11 @@ export class TemplateService {
         name: `Details`,
         command: `kubectl describe deployment ${selectedDeployment} -n {namespace}`
       },
-      {
-        id: `deploy-${selectedDeployment}-rollback`,
-        name: `Rollback`,
-        command: `kubectl rollout undo deployment/${selectedDeployment} -n {namespace}`
-      }
+      // {
+      //   id: `deploy-${selectedDeployment}-rollback`,
+      //   name: `Rollback`,
+      //   command: `kubectl rollout undo deployment/${selectedDeployment} -n {namespace}`
+      // }
     ];
   }
 
@@ -205,10 +205,10 @@ export class TemplateService {
   }
 
   substituteTemplate(
-    command: string, 
-    namespace: string, 
-    deployment?: string, 
-    pod?: string, 
+    command: string,
+    namespace: string,
+    deployment?: string,
+    pod?: string,
     service?: string
   ): string {
     return command
