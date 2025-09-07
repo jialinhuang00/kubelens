@@ -7,12 +7,12 @@ set -e  # Exit on any error
 
 echo "🚀 Setting up Kubernetes test environment..."
 
-# Color definitions
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Color definitions - improved visibility
+RED='\033[1;31m'      # Bold red
+GREEN='\033[1;32m'    # Bold green  
+YELLOW='\033[1;33m'   # Bold yellow
+BLUE='\033[1;36m'     # Bold cyan (more visible than blue)
+NC='\033[0m'          # No Color
 
 print_step() {
     echo -e "${BLUE}📋 $1${NC}"

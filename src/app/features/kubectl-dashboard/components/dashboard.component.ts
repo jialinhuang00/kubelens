@@ -5,12 +5,13 @@ import { CommonModule } from '@angular/common';
 import { ResourceService } from '../services/resource.service';
 import { KubectlService } from '../../../core/services/kubectl.service';
 import { OutputParserService } from '../services/output-parser.service';
-import { KubeResource, PodDescribeData, CommandTemplate, TableData } from '../../../shared/models/kubectl.models';
+import { KubeResource, PodDescribeData, CommandTemplate, TableData, YamlItem } from '../../../shared/models/kubectl.models';
 import { CommandDisplayDirective } from '../../../shared/directives/command-display.directive';
+import { YamlDisplayComponent } from './yaml-display/yaml-display.component';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterOutlet, FormsModule, CommonModule, CommandDisplayDirective],
+  imports: [RouterOutlet, FormsModule, CommonModule, CommandDisplayDirective, YamlDisplayComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -43,32 +44,50 @@ export class DashboardComponent implements OnInit {
   headers = signal<string[]>([]);
   hasEventsTable = signal<boolean>(false);
   isResourceDetailsExpanded = signal<boolean>(false);
+  yamlContent = signal<string>('');
+  outputType = signal<string>('raw');
   podDescribeData = signal<PodDescribeData[]>([]);
   expandedPods = signal<Set<string>>(new Set());
   selectedNamespace = signal<string>('');
   selectedDeployment = signal<string>('');
   selectedPod = signal<string>('');
+  selectedService = signal<string>('');
   multipleTables = signal<TableData[]>([]);
   expandedTables = signal<Set<string>>(new Set());
+  multipleYamls = signal<YamlItem[]>([]);
+  expandedYamls = signal<Set<string>>(new Set());
 
   // Accordion states
-  isGeneralExpanded = signal<boolean>(true);
-  isDeploymentExpanded = signal<boolean>(true);
-  isPodSectionExpanded = signal<boolean>(true);
+  isGeneralExpanded = signal<boolean>(false);
+  isDeploymentExpanded = signal<boolean>(false);
+  isPodSectionExpanded = signal<boolean>(false);
+  isServiceSectionExpanded = signal<boolean>(false);
 
   // Expose service signals to template
   get namespaces() { return this.resourceService.namespaces; }
   get deployments() { return this.resourceService.deployments; }
   get pods() { return this.resourceService.pods; }
+  get services() { return this.resourceService.services; }
   get generalTemplates() { return this.resourceService.generalTemplates; }
   get deploymentTemplates() { return this.resourceService.deploymentTemplates; }
   get podTemplates() { return this.resourceService.podTemplates; }
+  get serviceTemplates() { return this.resourceService.serviceTemplates; }
   get isInitializing() { return this.resourceService.isInitializing; }
   get isLoadingNamespaces() { return this.resourceService.isLoadingNamespaces; }
 
   onCustomCommandChange(event: Event) {
     const target = event.target as HTMLInputElement;
-    this.customCommand.set(target.value);
+    this.customCommand.set(target.value.trim());
+  }
+
+  onCommandInputKeyDown(event: KeyboardEvent) {
+    // Check for Cmd+Enter (macOS) or Ctrl+Enter (Windows/Linux)
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault(); // Prevent default form submission
+      if (!this.isLoading()) {
+        this.executeCustomCommand();
+      }
+    }
   }
 
   async executeCustomCommand() {
@@ -81,39 +100,59 @@ export class DashboardComponent implements OnInit {
     this.hasEventsTable.set(false);
     this.isResourceDetailsExpanded.set(false);
     this.podDescribeData.set([]);
+    this.yamlContent.set('');
+    this.outputType.set('raw');
     this.expandedPods.set(new Set());
     this.multipleTables.set([]);
     this.expandedTables.set(new Set());
+    this.multipleYamls.set([]);
+    this.expandedYamls.set(new Set());
 
     try {
       const response = await this.kubectlService.executeCommand(command);
-      
+
       if (response.success) {
         const parsedOutput = this.outputParserService.parseCommandOutput(response.stdout, command);
-        
+
         switch (parsedOutput.type) {
           case 'multiple-tables':
             this.multipleTables.set(parsedOutput.tables || []);
             // Expand all tables by default
             const allTableTitles = new Set(parsedOutput.tables?.map(t => t.title) || []);
             this.expandedTables.set(allTableTitles);
+            this.outputType.set('multiple-tables');
+            break;
+          case 'multiple-yamls':
+            this.multipleYamls.set(parsedOutput.yamls || []);
+            // Expand all YAMLs by default
+            const allYamlTitles = new Set(parsedOutput.yamls?.map(y => y.title) || []);
+            // this.expandedYamls.set(allYamlTitles);
+            this.outputType.set('multiple-yamls');
             break;
           case 'table':
             this.headers.set(parsedOutput.headers || []);
             this.results.set(parsedOutput.data || []);
+            this.outputType.set('table');
             break;
           case 'events':
             this.commandOutput.set(parsedOutput.rawOutput || '');
             this.headers.set(parsedOutput.headers || []);
             this.results.set(parsedOutput.data || []);
-            this.hasEventsTable.set(true);
+            this.hasEventsTable.set(false);
+            this.outputType.set('events');
             break;
           case 'multiple-pods':
             this.podDescribeData.set(parsedOutput.podData || []);
+            this.outputType.set('multiple-pods');
+            break;
+          case 'yaml':
+            this.yamlContent.set(parsedOutput.yamlContent || '');
+            this.outputType.set('yaml');
             break;
           case 'raw':
           default:
             this.commandOutput.set(parsedOutput.rawOutput || '');
+            this.outputType.set('raw');
             break;
         }
       } else {
@@ -145,6 +184,12 @@ export class DashboardComponent implements OnInit {
     const target = event.target as HTMLSelectElement;
     this.selectedPod.set(target.value);
     this.resourceService.updatePodTemplates(target.value);
+  }
+
+  onServiceChange(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    this.selectedService.set(target.value);
+    this.resourceService.updateServiceTemplates(target.value);
   }
 
   executeTemplate(template: CommandTemplate) {
@@ -191,6 +236,10 @@ export class DashboardComponent implements OnInit {
     this.isPodSectionExpanded.set(!this.isPodSectionExpanded());
   }
 
+  toggleServiceSection() {
+    this.isServiceSectionExpanded.set(!this.isServiceSectionExpanded());
+  }
+
   toggleTable(tableTitle: string) {
     const expanded = this.expandedTables();
     const newExpanded = new Set(expanded);
@@ -206,10 +255,25 @@ export class DashboardComponent implements OnInit {
     return this.expandedTables().has(tableTitle);
   }
 
+  toggleYamlExpansion(yamlTitle: string) {
+    const expanded = this.expandedYamls();
+    const newExpanded = new Set(expanded);
+    if (newExpanded.has(yamlTitle)) {
+      newExpanded.delete(yamlTitle);
+    } else {
+      newExpanded.add(yamlTitle);
+    }
+    this.expandedYamls.set(newExpanded);
+  }
+
+  isYamlExpanded(yamlTitle: string): boolean {
+    return this.expandedYamls().has(yamlTitle);
+  }
+
   async copyToClipboard(text: string, event?: Event) {
     try {
       await navigator.clipboard.writeText(text);
-      
+
       // Add success animation
       if (event?.target) {
         const button = event.target as HTMLElement;

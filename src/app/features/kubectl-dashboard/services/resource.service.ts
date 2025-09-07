@@ -14,12 +14,13 @@ export class ResourceService {
   namespaces = signal<string[]>([]);
   deployments = signal<string[]>([]);
   pods = signal<string[]>([]);
-  
+  services = signal<string[]>([]);
+
   // Template data  
   generalTemplates = signal<CommandTemplate[]>([]);
   deploymentTemplates = signal<CommandTemplate[]>([]);
   podTemplates = signal<CommandTemplate[]>([]);
-  
+  serviceTemplates = signal<CommandTemplate[]>([]);
   // Loading states
   isInitializing = signal<boolean>(true);
   isLoadingNamespaces = signal<boolean>(false);
@@ -51,18 +52,23 @@ export class ResourceService {
 
   async loadResourcesForNamespace(namespace: string) {
     if (!namespace) return;
-    
+
     try {
       // Load deployments (templates will be generated when a deployment is selected)
       const deployments = await this.kubectlService.getDeployments(namespace);
       this.deployments.set(deployments);
       this.deploymentTemplates.set([]); // Clear deployment templates, will be generated on selection
-      
+
       // Load pods (templates will be generated when a pod is selected)
       const pods = await this.kubectlService.getPods(namespace);
       this.pods.set(pods);
       this.podTemplates.set([]); // Clear pod templates, will be generated on selection
       
+      // Load services (templates will be generated when a service is selected)
+      const services = await this.kubectlService.getServices(namespace);
+      this.services.set(services);
+      this.serviceTemplates.set([]); // Clear service templates, will be generated on selection
+
     } catch (error) {
       console.error('Failed to load resources:', error);
       this.deployments.set([]);
@@ -80,6 +86,11 @@ export class ResourceService {
   updatePodTemplates(selectedPod: string) {
     const templates = this.templateService.generatePodTemplates(selectedPod);
     this.podTemplates.set(templates);
+  }
+
+  updateServiceTemplates(selectedService: string) {
+    const templates = this.templateService.generateServiceTemplates(selectedService);
+    this.serviceTemplates.set(templates);
   }
 
   executeTemplate(template: CommandTemplate, namespace: string): string {

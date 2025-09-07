@@ -86,11 +86,11 @@ export class TemplateService {
         name: `Details`,
         command: `kubectl describe deployment ${selectedDeployment} -n {namespace}`
       },
-      // {
-      //   id: `deploy-${selectedDeployment}-rollback`,
-      //   name: `Rollback`,
-      //   command: `kubectl rollout undo deployment/${selectedDeployment} -n {namespace}`
-      // }
+      {
+        id: `deploy-${selectedDeployment}-rollback`,
+        name: `Rollback`,
+        command: `kubectl rollout undo deployment/${selectedDeployment} -n {namespace}`
+      }
     ];
   }
 
@@ -112,6 +112,43 @@ export class TemplateService {
         id: `pod-${selectedPod}-exec`,
         name: `Exec Shell`,
         command: `kubectl exec -it ${selectedPod} -n {namespace} -- /bin/sh`
+      }
+    ];
+  }
+
+  generateServiceTemplates(selectedService: string): CommandTemplate[] {
+    if (!selectedService) return [];
+
+    return [
+      {
+        id: `service-${selectedService}-describe`,
+        name: `Details`,
+        command: `kubectl describe service ${selectedService} -n {namespace}`
+      },
+      {
+        id: `service-${selectedService}-endpoints`,
+        name: `Endpoints`,
+        command: `kubectl get endpoints ${selectedService} -n {namespace} -o wide`
+      },
+      {
+        id: `service-${selectedService}-port-forward`,
+        name: `Port Forward`,
+        command: `kubectl port-forward service/${selectedService} 8080:80 -n {namespace}`
+      },
+      {
+        id: `service-${selectedService}-yaml`,
+        name: `YAML`,
+        command: `kubectl get service ${selectedService} -n {namespace} -o yaml`
+      },
+      {
+        id: `service-${selectedService}-type-nodeport`,
+        name: `Change to NodePort`,
+        command: `kubectl patch service ${selectedService} -n {namespace} -p '{"spec":{"type":"NodePort"}}'`
+      },
+      {
+        id: `service-${selectedService}-type-clusterip`,
+        name: `Change to ClusterIP`,
+        command: `kubectl patch service ${selectedService} -n {namespace} -p '{"spec":{"type":"ClusterIP"}}'`
       }
     ];
   }

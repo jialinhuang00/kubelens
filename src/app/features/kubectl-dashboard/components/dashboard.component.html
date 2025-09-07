@@ -244,6 +244,74 @@
           </div>
         </div>
         }
+
+        <!-- Service Specific Templates -->
+        @if (services().length > 0) {
+        <div class="mb-4">
+          <div class="accordion-header flex items-center justify-between mb-2 cursor-pointer p-2 rounded"
+            [class.expanded]="isServiceSectionExpanded()"
+            style="background: rgba(255, 255, 255, 0.05);" (click)="toggleServiceSection()">
+            <h3 class="text-sm font-medium" style="color: var(--text-primary)">Service Commands</h3>
+            <span class="accordion-arrow text-sm" style="color: var(--text-secondary);">
+              ▶
+            </span>
+          </div>
+          <div class="accordion-content" [class.expanded]="isServiceSectionExpanded()">
+            <div class="space-y-3 pl-3 border-l-2 py-1" style="border-color: rgba(255, 149, 0, 0.3);">
+              <!-- Service Selector -->
+              <div class="mb-3 bg-opacity-50 p-3 rounded-lg" style="background: rgba(255, 149, 0, 0.05); border: 1px solid rgba(255, 149, 0, 0.15);">
+                <label class="block text-xs font-medium mb-2 glow-text" style="color: var(--accent-orange, #ff9500);">
+                  Select Service
+                </label>
+                <div class="relative">
+                  <select class="w-full p-2 text-xs font-medium appearance-none cursor-pointer rounded-md"
+                    style="background: rgba(0, 0, 0, 0.6); border: 1px solid var(--accent-orange, #ff9500); color: var(--text-primary);"
+                    [value]="selectedService()" (change)="onServiceChange($event)">
+                    <option value="" style="background: rgba(0, 0, 0, 0.9); color: var(--text-primary);">Choose a service...</option>
+                    @for (service of services(); track service) {
+                    <option [value]="service" style="background: rgba(0, 0, 0, 0.9); color: var(--text-primary);">{{ service }}</option>
+                    }
+                  </select>
+                  <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                    <svg class="w-3 h-3" style="color: var(--accent-orange, #ff9500)" fill="none" stroke="currentColor"
+                      viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Service Templates -->
+              @if (serviceTemplates().length > 0) {
+              <div class="space-y-2 pl-2">
+                @for (template of serviceTemplates(); track template.id) {
+                <div class="p-3 cursor-pointer hover:bg-opacity-50 transition-all duration-200 border rounded-lg"
+                  style="background: rgba(255, 149, 0, 0.08); border-color: rgba(255, 149, 0, 0.2); box-shadow: 0 1px 3px rgba(255, 149, 0, 0.1);"
+                  (click)="executeTemplate(template)">
+                  <div class="text-xs font-semibold mb-1 glow-text" style="color: var(--accent-orange, #ff9500);">
+                    {{ template.name }}
+                  </div>
+                  <div class="text-xs opacity-80 truncate" style="color: var(--text-primary); line-height: 1.2;"
+                    [title]="template.command"
+                    [appCommandDisplay]="template.command"
+                    [selectedService]="selectedService()">
+                  </div>
+                </div>
+                }
+              </div>
+              } @else if (selectedService()) {
+              <div class="text-xs text-center py-3 italic" style="color: var(--text-secondary);">
+                No templates available for selected service
+              </div>
+              } @else {
+              <div class="text-xs text-center py-3 italic" style="color: var(--text-secondary);">
+                Select a service to see available commands
+              </div>
+              }
+            </div>
+          </div>
+        </div>
+        }
       </div>
 
       <!-- Main Content Area -->
@@ -259,7 +327,8 @@
               <input type="text" class="w-full p-2 bg-black border border-subtle font-mono text-xs terminal-output"
                 style="color: var(--accent-green); border-color: var(--border-subtle);"
                 placeholder="kubectl get pods -n noah" [value]="customCommand()"
-                (input)="onCustomCommandChange($event)">
+                (input)="onCustomCommandChange($event)"
+                (keydown)="onCommandInputKeyDown($event)">
             </div>
             <div class="execute-button-container">
               <button class="cyber-button py-2 px-3 font-semibold text-xs" [disabled]="isLoading()"
@@ -267,7 +336,7 @@
                 {{ isLoading() ? 'EXECUTING...' : 'EXECUTE' }}
               </button>
               <div class="help-text text-xs" style="color: var(--text-secondary); line-height: 2.5;">
-                Supports: Tables • YAML • JSON • custom-columns • --no-headers
+                Supports: -o yaml/json/wide/custom-columns • jsonpath • --no-headers • Cmd+Enter to execute
               </div>
             </div>
           </div>
@@ -345,8 +414,32 @@
               </div>
               }
             </div>
+            } @else if (outputType() === 'multiple-yamls' && multipleYamls().length > 0) {
+            <!-- Multiple YAML Display -->
+            <div class="space-y-4">
+              @for (yaml of multipleYamls(); track yaml.title) {
+              <div class="cyber-container p-3">
+                <div class="flex items-center justify-between mb-2 cursor-pointer cyber-button p-2"
+                  (click)="toggleYamlExpansion(yaml.title)">
+                  <h3 class="text-sm font-medium glow-text" style="color: var(--accent-cyan)">{{ yaml.title }}</h3>
+                  <span class="text-sm transition-transform duration-200" style="color: var(--accent-cyan);"
+                    [style.transform]="isYamlExpanded(yaml.title) ? 'rotate(90deg)' : 'rotate(0deg)'">
+                    ▶
+                  </span>
+                </div>
+                @if (isYamlExpanded(yaml.title)) {
+                <div class="mt-2">
+                  <app-yaml-display [yamlText]="yaml.yamlContent"></app-yaml-display>
+                </div>
+                }
+              </div>
+              }
+            </div>
+            } @else if (outputType() === 'yaml' && yamlContent()) {
+            <!-- Interactive YAML Display -->
+            <app-yaml-display [yamlText]="yamlContent()"></app-yaml-display>
             } @else if (commandOutput() && !results().length) {
-            <!-- Raw Output (JSON, YAML, text, etc.) -->
+            <!-- Raw Output (JSON, text, etc.) -->
             <div class="terminal-output p-2 overflow-x-auto text-xs">
               <pre>{{ commandOutput() }}</pre>
             </div>

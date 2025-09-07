@@ -29,12 +29,19 @@ export interface TableData {
   data: KubeResource[];
 }
 
+export interface YamlItem {
+  title: string;        // 從 metadata.name 提取
+  yamlContent: string;  // 個別物件的 YAML
+}
+
 export interface ParsedOutput {
-  type: 'table' | 'events' | 'multiple-pods' | 'multiple-tables' | 'raw';
+  type: 'table' | 'events' | 'multiple-pods' | 'multiple-tables' | 'multiple-yamls' | 'raw' | 'yaml';
   data?: KubeResource[];
   headers?: string[];
   rawOutput?: string;
   podData?: PodDescribeData[];
   tables?: TableData[];
+  yamls?: YamlItem[];
   hasEventsTable?: boolean;
+  yamlContent?: string;
 }
