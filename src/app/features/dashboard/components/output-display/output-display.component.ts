@@ -30,8 +30,6 @@ export class OutputDisplayComponent {
   
   private uiStateService = inject(UiStateService);
 
-  @Output() copyToClipboard = new EventEmitter<{ text: string, event?: Event }>();
-
   // UI state now handled internally via service
   get expandedPods() { return this.uiStateService.expandedPodsState; }
   get expandedTables() { return this.uiStateService.expandedTablesState; }
@@ -52,10 +50,6 @@ export class OutputDisplayComponent {
 
   onToggleResourceDetails() {
     this.uiStateService.toggleResourceDetails();
-  }
-
-  onCopyToClipboard(text: string, event?: Event) {
-    this.copyToClipboard.emit({ text, event });
   }
 
   isPodExpanded(podName: string): boolean {

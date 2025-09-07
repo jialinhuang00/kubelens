@@ -1,6 +1,7 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { KubeResource } from '../../../../shared/models/kubectl.models';
+import { ClipboardService } from '../../../../shared/services/clipboard.service';
 
 @Component({
   selector: 'app-table-output',
@@ -9,13 +10,13 @@ import { KubeResource } from '../../../../shared/models/kubectl.models';
   styleUrl: './table-output.component.scss'
 })
 export class TableOutputComponent {
+  private clipboardService = inject(ClipboardService);
+  
   @Input() results: KubeResource[] = [];
   @Input() headers: string[] = [];
   @Input() isLoading: boolean = false;
 
-  @Output() copyToClipboard = new EventEmitter<{ text: string, event?: Event }>();
-
-  onCopyToClipboard(text: string, event?: Event) {
-    this.copyToClipboard.emit({ text, event });
+  async onCopyToClipboard(text: string, event?: Event): Promise<void> {
+    await this.clipboardService.copyToClipboard(text, event);
   }
 }

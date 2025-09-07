@@ -12,6 +12,7 @@ import { ClipboardService } from '../../../../shared/services/clipboard.service'
   styleUrl: './rollout-console.component.scss'
 })
 export class RolloutConsoleComponent {
+  private clipboardService = inject(ClipboardService);
   @Input() deploymentName: string = '';
   @Input() isExpanded: boolean = false;
   @Input() rolloutTemplates: CommandTemplate[] = [];
@@ -216,5 +217,9 @@ export class RolloutConsoleComponent {
     } else {
       return 'Rollback to previous deployment version';
     }
+  }
+
+  async onCopyToClipboard(text: string, event?: Event): Promise<void> {
+    await this.clipboardService.copyToClipboard(text, event);
   }
 }

@@ -391,8 +391,4 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  // Only delegate clipboard (still needed for business logic)
-  copyToClipboard(text: string, event?: Event) {
-    return this.uiStateService.copyToClipboard(text, event);
-  }
 }

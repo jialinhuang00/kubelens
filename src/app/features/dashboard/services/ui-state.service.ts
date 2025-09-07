@@ -113,21 +113,4 @@ export class UiStateService {
     this.expandedTables.set(new Set(tableNames));
   }
 
-  // Copy to clipboard utility (moved from component)
-  async copyToClipboard(text: string, event?: Event): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(text);
-
-      // Add success animation
-      if (event?.target) {
-        const button = event.target as HTMLElement;
-        button.classList.add('copied');
-        setTimeout(() => {
-          button.classList.remove('copied');
-        }, 600);
-      }
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-    }
-  }
 }

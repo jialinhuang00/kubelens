@@ -3,7 +3,7 @@
 
   @if (data.multipleTables && data.multipleTables.length > 0) {
   <app-multiple-tables [multipleTables]="data.multipleTables" [expandedTables]="expandedTables()"
-    (toggleTable)="onToggleTable($event)" (copyToClipboard)="onCopyToClipboard($event.text, $event.event)">
+    (toggleTable)="onToggleTable($event)">
   </app-multiple-tables>
   } @else if (data.outputType === 'multiple-yamls' && data.multipleYamls && data.multipleYamls.length > 0) {
   <app-multiple-yamls [multipleYamls]="data.multipleYamls" [expandedYamls]="expandedYamls()"
@@ -22,8 +22,7 @@
     [isResourceDetailsExpanded]="isResourceDetailsExpanded()" (toggleResourceDetails)="onToggleResourceDetails()">
   </app-events-display>
   } @else if (data.results && data.results.length > 0) {
-  <app-table-output [results]="data.results" [headers]="data.headers" [isLoading]="data.isLoading"
-    (copyToClipboard)="onCopyToClipboard($event.text, $event.event)">
+  <app-table-output [results]="data.results" [headers]="data.headers" [isLoading]="data.isLoading">
   </app-table-output>
   } @else if (!data.isLoading) {
   <div class="text-center text-gray-500 py-8">
