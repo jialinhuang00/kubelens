@@ -1,30 +1,43 @@
-@for (template of templates; track template.id) {
-<div class="template-item p-2 cursor-pointer hover:bg-opacity-30 transition-colors border rounded"
-  [class.resource-template]="!isGeneralTemplate"
-  [class.general-template]="isGeneralTemplate"
-  [style.background]="templateBackgroundColor"
-  [style.border-color]="templateBorderColor"
-  [style.box-shadow]="templateBoxShadow"
-  (click)="onTemplateExecute(template)">
+<!-- Template Item Template -->
+<ng-template #templateItem let-cmdTemplate>
+  <div class="template-item p-2 cursor-pointer hover:bg-opacity-30 transition-colors border rounded"
+    [class.resource-template]="!isGeneralTemplate"
+    [class.general-template]="isGeneralTemplate"
+    [style.background]="templateBackgroundColor"
+    [style.border-color]="templateBorderColor"
+    [style.box-shadow]="templateBoxShadow"
+    (click)="onTemplateExecute(cmdTemplate)">
+    <ng-container *ngTemplateOutlet="templateName; context: { $implicit: cmdTemplate }"></ng-container>
+    <ng-container *ngTemplateOutlet="templateCommand; context: { $implicit: cmdTemplate }"></ng-container>
+  </div>
+</ng-template>
+
+<ng-template #templateName let-cmdTemplate>
   <div class="template-name text-xs font-medium mb-1"
     [class.font-semibold]="!isGeneralTemplate"
     [class.glow-text]="!isGeneralTemplate"
     [style.color]="isGeneralTemplate ? 'var(--text-primary)' : accentColorClass">
-    {{ template.name }}
+    {{ cmdTemplate.name }}
   </div>
+</ng-template>
+
+<ng-template #templateCommand let-cmdTemplate>
   <div class="template-command text-xs opacity-75 truncate" 
     [style.color]="isGeneralTemplate ? 'var(--text-secondary)' : 'var(--text-primary)'"
     [style.line-height]="'1.2'"
-    [title]="template.command">
+    [title]="cmdTemplate.command">
     @if (isGeneralTemplate) {
-      {{ template.command }}
+      {{ cmdTemplate.command }}
     } @else {
-      <span [appCommandDisplay]="template.command" 
+      <span [appCommandDisplay]="cmdTemplate.command" 
             [selectedDeployment]="resourceType === 'deployment' ? selectedResource : ''"
             [selectedPod]="resourceType === 'pod' ? selectedResource : ''"
             [selectedService]="resourceType === 'service' ? selectedResource : ''">
       </span>
     }
   </div>
-</div>
+</ng-template>
+
+@for (template of templates; track template.id) {
+  <ng-container *ngTemplateOutlet="templateItem; context: { $implicit: template }"></ng-container>
 }

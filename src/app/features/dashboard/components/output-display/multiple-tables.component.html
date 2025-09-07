@@ -1,3 +1,39 @@
+<!-- Cell Templates -->
+<ng-template #statusCell let-status>
+  <span class="inline-flex px-1 py-0.5 text-xs font-medium rounded-sm"
+    [class]="status === 'Running' ? 'neon-border' : 'border border-subtle'"
+    [style]="status === 'Running' ? 'color: var(--accent-green); background: rgba(57, 255, 20, 0.1)' : 
+               status === 'Pending' ? 'color: var(--accent-purple); background: rgba(157, 78, 221, 0.1)' :
+               'color: var(--text-secondary); background: rgba(255, 255, 255, 0.05)'">
+    {{ status || '-' }}
+  </span>
+</ng-template>
+
+<ng-template #nameCell let-name>
+  <div class="flex items-center gap-2 group relative">
+    <span class="text-ellipsis max-w-[300px] cyber-tooltip-trigger"
+      [attr.data-tooltip]="name || '-'"
+      style="color: var(--text-primary); font-weight: 500;">
+      {{ name || '-' }}
+    </span>
+    <button
+      class="copy-btn opacity-0 group-hover:opacity-100 transition-all duration-200 p-1 rounded text-xs relative"
+      (click)="onCopyToClipboard(name || '', $event)"
+      [attr.data-copy-tooltip]="'Copy ' + (name || '')">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+        <path d="m4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+      </svg>
+    </button>
+  </div>
+</ng-template>
+
+<ng-template #defaultCell let-cellValue>
+  <span style="color: var(--text-secondary)">
+    {{ cellValue || '-' }}
+  </span>
+</ng-template>
+
 <div class="space-y-4">
   @for (tableData of multipleTables; track tableData.title) {
   <div>
@@ -24,35 +60,11 @@
             @for (header of tableData.headers; track header) {
             <td>
               @if (header.toLowerCase() === 'status') {
-              <span class="inline-flex px-1 py-0.5 text-xs font-medium rounded-sm"
-                [class]="item[header.toLowerCase()] === 'Running' ? 'neon-border' : 'border border-subtle'"
-                [style]="item[header.toLowerCase()] === 'Running' ? 'color: var(--accent-green); background: rgba(57, 255, 20, 0.1)' : 
-                           item[header.toLowerCase()] === 'Pending' ? 'color: var(--accent-purple); background: rgba(157, 78, 221, 0.1)' :
-                           'color: var(--text-secondary); background: rgba(255, 255, 255, 0.05)'">
-                {{ item[header.toLowerCase()] || '-' }}
-              </span>
+                <ng-container *ngTemplateOutlet="statusCell; context: { $implicit: item[header.toLowerCase()] }"></ng-container>
               } @else if (header.toLowerCase().includes('name')) {
-              <div class="flex items-center gap-2 group relative">
-                <span class="text-ellipsis max-w-[300px] cyber-tooltip-trigger"
-                  [attr.data-tooltip]="item[header.toLowerCase()] || '-'"
-                  style="color: var(--text-primary); font-weight: 500;">
-                  {{ item[header.toLowerCase()] || '-' }}
-                </span>
-                <button
-                  class="copy-btn opacity-0 group-hover:opacity-100 transition-all duration-200 p-1 rounded text-xs relative"
-                  (click)="onCopyToClipboard(item[header.toLowerCase()] || '', $event)"
-                  [attr.data-copy-tooltip]="'Copy ' + (item[header.toLowerCase()] || '')">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2">
-                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-                    <path d="m4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-                  </svg>
-                </button>
-              </div>
+                <ng-container *ngTemplateOutlet="nameCell; context: { $implicit: item[header.toLowerCase()] }"></ng-container>
               } @else {
-              <span style="color: var(--text-secondary)">
-                {{ item[header.toLowerCase()] || '-' }}
-              </span>
+                <ng-container *ngTemplateOutlet="defaultCell; context: { $implicit: item[header.toLowerCase()] }"></ng-container>
               }
             </td>
             }

@@ -14,6 +14,7 @@ export interface CommandTemplate {
   name: string;
   command: string;
   displayCommand?: string; // Optional display version with placeholders
+  top?: boolean;
 }
 
 export interface KubectlResponse {

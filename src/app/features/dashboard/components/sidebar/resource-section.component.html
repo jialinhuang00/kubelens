@@ -35,14 +35,27 @@
     } @else {
       <!-- Resource-specific Templates (with resource selector) -->
       <div class="space-y-3 pl-3 border-l-2 py-1" [style.border-color]="sectionBorderColor">
+        
+          <!-- Sticky Commands - Always visible -->
+        @if (filteredStickyTemplates.length > 0) {
+        <div class="mb-3">
+          <app-template-list
+            [templates]="filteredStickyTemplates"
+            [accentColor]="accentColor"
+            [resourceType]="resourceType"
+            (templateExecute)="onTemplateExecute($event)">
+          </app-template-list>
+        </div>
+        }
+
         @if (hasResourceSelector) {
         <!-- Resource Selector -->
         <div class="mb-3 bg-opacity-50 p-3 rounded-lg"
           [style.background]="backgroundColorClass" 
           [style.border]="'1px solid ' + borderColorClass">
-          <label class="block text-xs font-medium mb-2 glow-text" [style.color]="accentColorClass">
-            {{ resourceSelectorLabel }}
-          </label>
+          <label class="block text-xs font-medium mb-2 glow-text" [style.color]="accentColorClass">{{ resourceSelectorLabel }}</label>
+
+          <!-- Select UI -->
           <div class="relative">
             <select class="w-full p-2 text-xs font-medium appearance-none cursor-pointer rounded-md"
               [style.background]="'rgba(0, 0, 0, 0.6)'"
@@ -68,11 +81,11 @@
         </div>
         }
 
-        <!-- Templates -->
+        <!-- when you select specific resource -->
         @if (templates.length > 0) {
         <div class="space-y-2 pl-2">
           <app-template-list
-            [templates]="templates"
+            [templates]="filteredTemplates" 
             [accentColor]="accentColor"
             [selectedResource]="selectedResource"
             [resourceType]="resourceType"

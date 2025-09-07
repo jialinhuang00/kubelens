@@ -20,7 +20,7 @@ export class ResourceSectionComponent {
   @Input() isInitializing: boolean = false;
   @Input() resourceType: 'deployment' | 'pod' | 'service' | 'general' = 'general';
   @Input() accentColor: 'cyan' | 'purple' | 'orange' | 'green' = 'green';
-  
+
   // Rollout Console specific inputs
   @Input() rolloutTemplates: CommandTemplate[] = [];
   @Input() isRolloutConsoleExpanded: boolean = false;
@@ -32,7 +32,7 @@ export class ResourceSectionComponent {
   @Output() templateExecute = new EventEmitter<CommandTemplate>();
   @Output() toggleExpanded = new EventEmitter<void>();
   @Output() rolloutConsoleToggle = new EventEmitter<void>();
-  @Output() imageUpgrade = new EventEmitter<{deployment: string, image: string}>();
+  @Output() imageUpgrade = new EventEmitter<{ deployment: string, image: string }>();
 
   get accentColorClass(): string {
     const colorMap = {
@@ -42,6 +42,14 @@ export class ResourceSectionComponent {
       'green': 'var(--accent-green)'
     };
     return colorMap[this.accentColor];
+  }
+
+  get filteredTemplates(): CommandTemplate[] {
+    return this.templates.slice().filter(t => !t.top);
+  }
+
+  get filteredStickyTemplates(): CommandTemplate[] {
+    return this.templates.slice().filter(t => t.top);
   }
 
   get backgroundColorClass(): string {
@@ -115,7 +123,7 @@ export class ResourceSectionComponent {
     this.rolloutConsoleToggle.emit();
   }
 
-  onImageUpgrade(event: {deployment: string, image: string}) {
+  onImageUpgrade(event: { deployment: string, image: string }) {
     this.imageUpgrade.emit(event);
   }
 

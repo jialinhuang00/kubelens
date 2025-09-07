@@ -14,14 +14,14 @@ export class TemplateService {
         command: 'kubectl get all --all-namespaces',
       },
       {
+        id: 'config-4',
+        name: 'All Namespaces Pods',
+        command: 'kubectl get pods --all-namespaces',
+      },
+      {
         id: 'view-1',
         name: 'Pod Details + SHA',
         command: 'kubectl get pods -n {namespace} -o "custom-columns=POD_NAME:.metadata.name,DEPLOYMENT:.metadata.ownerReferences[0].name,CONTAINER_NAME:.spec.containers[*].name,IMAGE_SHA:.status.containerStatuses[*].imageID"',
-      },
-      {
-        id: 'view-2',
-        name: 'Pod Images',
-        command: 'kubectl get pods -n {namespace} -o custom-columns="POD_NAME:.metadata.name,IMAGE:.spec.containers[*].image" --no-headers',
       },
       {
         id: 'view-3',
@@ -29,48 +29,44 @@ export class TemplateService {
         command: 'kubectl get replicasets -n {namespace} -o "custom-columns=REPLICASET:.metadata.name,DEPLOYMENT:.metadata.ownerReferences[0].name,DESIRED:.spec.replicas,CURRENT:.status.replicas,READY:.status.readyReplicas"',
       },
       {
-        id: 'view-4',
-        name: 'Deployments',
-        command: 'kubectl get deployments -n {namespace}',
-      },
-      {
-        id: 'view-5',
-        name: 'Services',
-        command: 'kubectl get services -n {namespace}',
-      },
-      {
         id: 'view-6',
         name: 'Events Timeline',
         command: 'kubectl get events -n {namespace} --sort-by=.metadata.creationTimestamp',
       },
-      {
-        id: 'config-1',
-        name: 'Current Context',
-        command: 'kubectl config current-context',
-      },
-      {
-        id: 'config-2',
-        name: 'All Contexts',
-        command: 'kubectl config get-contexts',
-      },
+      // {
+      //   id: 'config-1',
+      //   name: 'Current Context',
+      //   command: 'kubectl config current-context',
+      // },
+      // {
+      //   id: 'config-2',
+      //   name: 'All Contexts',
+      //   command: 'kubectl config get-contexts',
+      // },
       {
         id: 'config-3',
         name: 'Node Status',
         command: 'kubectl get nodes -o wide',
       },
-      {
-        id: 'config-4',
-        name: 'All Namespaces Pods',
-        command: 'kubectl get pods --all-namespaces',
-      },
+
 
     ];
   }
 
   generateDeploymentTemplates(selectedDeployment: string): CommandTemplate[] {
-    if (!selectedDeployment) return [];
+    const stickyTemplates = [
+      {
+        id: 'deployment overall',
+        name: 'Deployments',
+        command: 'kubectl get deployments -n {namespace}',
+        top: true
+      },
+    ];
+
+    if (!selectedDeployment) return stickyTemplates;
 
     return [
+      ...stickyTemplates,
       {
         id: `deploy-${selectedDeployment}-status`,
         name: `Rollout Status`,
@@ -95,9 +91,19 @@ export class TemplateService {
   }
 
   generatePodTemplates(selectedPod: string): CommandTemplate[] {
-    if (!selectedPod) return [];
+    const stickyTemplates = [
+      {
+        id: 'pods image',
+        name: 'Pod Images',
+        command: 'kubectl get pods -n {namespace} -o custom-columns="POD_NAME:.metadata.name,IMAGE:.spec.containers[*].image" --no-headers',
+        top: true
+      },
+    ];
+
+    if (!selectedPod) return stickyTemplates;
 
     return [
+      ...stickyTemplates,
       {
         id: `pod-${selectedPod}-logs`,
         name: `Logs`,
@@ -117,9 +123,19 @@ export class TemplateService {
   }
 
   generateServiceTemplates(selectedService: string): CommandTemplate[] {
-    if (!selectedService) return [];
+    const stickyTemplates = [
+      {
+        id: 'service overall',
+        name: 'Services',
+        command: 'kubectl get services -n {namespace}',
+        top: true
+      },
+    ];
+
+    if (!selectedService) return stickyTemplates;
 
     return [
+      ...stickyTemplates,
       {
         id: `service-${selectedService}-describe`,
         name: `Details`,

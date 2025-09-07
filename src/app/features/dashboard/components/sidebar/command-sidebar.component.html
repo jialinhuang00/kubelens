@@ -7,7 +7,8 @@
     [selectedNamespace]="data.selectedNamespace"
     [isInitializing]="data.isInitializing"
     [isLoadingNamespaces]="data.isLoadingNamespaces"
-    (namespaceChange)="onNamespaceChange($event)">
+    (namespaceChange)="onNamespaceChange($event)"
+  >
   </app-namespace-selector>
 
   <!-- General Templates -->
@@ -17,7 +18,8 @@
     [isExpanded]="isGeneralExpanded()"
     [isInitializing]="data.isInitializing"
     (toggleExpanded)="onToggleGeneralSection()"
-    (templateExecute)="onTemplateExecute($event)">
+    (templateExecute)="onTemplateExecute($event)"
+  >
   </app-resource-section>
 
   <!-- Deployment Section -->
@@ -39,7 +41,8 @@
     (toggleExpanded)="onToggleDeploymentSection()"
     (templateExecute)="onTemplateExecute($event)"
     (rolloutConsoleToggle)="onToggleRolloutConsole()"
-    (imageUpgrade)="onImageUpgrade($event)">
+    (imageUpgrade)="onImageUpgrade($event)"
+  >
   </app-resource-section>
   }
 
@@ -55,7 +58,8 @@
     accentColor="purple"
     (resourceChange)="onPodChange($event)"
     (toggleExpanded)="onTogglePodSection()"
-    (templateExecute)="onTemplateExecute($event)">
+    (templateExecute)="onTemplateExecute($event)"
+  >
   </app-resource-section>
   }
 
@@ -71,7 +75,8 @@
     accentColor="orange"
     (resourceChange)="onServiceChange($event)"
     (toggleExpanded)="onToggleServiceSection()"
-    (templateExecute)="onTemplateExecute($event)">
+    (templateExecute)="onTemplateExecute($event)"
+  >
   </app-resource-section>
   }
 </div>
