@@ -16,6 +16,7 @@ export interface SidebarData {
   // Templates (guaranteed to be arrays, not undefined)
   generalTemplates: any[];
   deploymentTemplates: any[];
+  rolloutTemplates: any[];
   podTemplates: any[];
   serviceTemplates: any[];
   

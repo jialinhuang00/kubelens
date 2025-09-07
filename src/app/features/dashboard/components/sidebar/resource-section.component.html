@@ -88,6 +88,18 @@
           Select a {{ resourceType }} to see available commands
         </div>
         }
+
+        <!-- Rollout Console for Deployment -->
+        @if (shouldShowRolloutConsole) {
+        <app-rollout-console
+          [deploymentName]="selectedResource"
+          [isExpanded]="isRolloutConsoleExpanded"
+          [rolloutTemplates]="rolloutTemplates"
+          (toggleExpanded)="onRolloutConsoleToggle()"
+          (templateExecute)="onTemplateExecute($event)"
+          (imageUpgrade)="onImageUpgrade($event)">
+        </app-rollout-console>
+        }
       </div>
     }
   </div>

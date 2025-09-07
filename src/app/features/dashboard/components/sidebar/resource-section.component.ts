@@ -1,11 +1,12 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TemplateListComponent } from './template-list.component';
+import { RolloutConsoleComponent } from './rollout-console.component';
 import { CommandTemplate } from '../../../../shared/models/kubectl.models';
 
 @Component({
   selector: 'app-resource-section',
-  imports: [CommonModule, TemplateListComponent],
+  imports: [CommonModule, TemplateListComponent, RolloutConsoleComponent],
   templateUrl: './resource-section.component.html',
   styleUrl: './resource-section.component.scss'
 })
@@ -18,10 +19,16 @@ export class ResourceSectionComponent {
   @Input() isInitializing: boolean = false;
   @Input() resourceType: 'deployment' | 'pod' | 'service' | 'general' = 'general';
   @Input() accentColor: 'cyan' | 'purple' | 'orange' | 'green' = 'green';
+  
+  // Rollout Console specific inputs
+  @Input() rolloutTemplates: CommandTemplate[] = [];
+  @Input() isRolloutConsoleExpanded: boolean = false;
 
   @Output() resourceChange = new EventEmitter<string>();
   @Output() templateExecute = new EventEmitter<CommandTemplate>();
   @Output() toggleExpanded = new EventEmitter<void>();
+  @Output() rolloutConsoleToggle = new EventEmitter<void>();
+  @Output() imageUpgrade = new EventEmitter<{deployment: string, image: string}>();
 
   get accentColorClass(): string {
     const colorMap = {
@@ -98,5 +105,17 @@ export class ResourceSectionComponent {
       'general': ''
     };
     return labelMap[this.resourceType];
+  }
+
+  onRolloutConsoleToggle() {
+    this.rolloutConsoleToggle.emit();
+  }
+
+  onImageUpgrade(event: {deployment: string, image: string}) {
+    this.imageUpgrade.emit(event);
+  }
+
+  get shouldShowRolloutConsole(): boolean {
+    return this.resourceType === 'deployment' && !!this.selectedResource;
   }
 }

@@ -1,0 +1,123 @@
+.rollout-console {
+  .accordion-header {
+    transition: all 0.3s ease;
+    
+    &.expanded .accordion-arrow {
+      transform: rotate(90deg);
+    }
+  }
+
+  .accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    
+    &.expanded {
+      max-height: 800px; // Generous max-height for rollout console
+    }
+  }
+
+  .player-controls {
+    .player-btn {
+      background: rgba(0, 255, 255, 0.1);
+      border: 1px solid rgba(0, 255, 255, 0.2);
+      color: var(--text-primary);
+      min-width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+      
+      span {
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+      }
+      
+      &:hover {
+        background: rgba(0, 255, 255, 0.15);
+        border-color: rgba(0, 255, 255, 0.4);
+        transform: translateY(-1px);
+      }
+      
+      &.rollback-btn:hover {
+        background: rgba(255, 165, 0, 0.15);
+        border-color: rgba(255, 165, 0, 0.4);
+        
+        mat-icon {
+          color: #ff9500;
+        }
+      }
+      
+      &.pause-btn:hover {
+        background: rgba(255, 193, 7, 0.15);
+        border-color: rgba(255, 193, 7, 0.4);
+        
+        mat-icon {
+          color: #ffc107;
+        }
+      }
+      
+      &.play-btn:hover {
+        background: rgba(76, 175, 80, 0.15);
+        border-color: rgba(76, 175, 80, 0.4);
+        
+        mat-icon {
+          color: #4caf50;
+        }
+      }
+      
+      &.restart-btn:hover {
+        background: rgba(244, 67, 54, 0.15);
+        border-color: rgba(244, 67, 54, 0.4);
+        
+        mat-icon {
+          color: #f44336;
+        }
+      }
+      
+      &.upgrade-btn:hover {
+        background: rgba(0, 255, 255, 0.15);
+        border-color: rgba(0, 255, 255, 0.4);
+        
+        span {
+          color: var(--accent-cyan);
+        }
+      }
+    }
+    
+    .version-separator {
+      width: 1px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.1);
+      margin: 0 8px;
+    }
+  }
+
+  .history-table {
+    table {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      
+      th, td {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 120px;
+      }
+      
+      tr:hover {
+        background: rgba(0, 255, 255, 0.05);
+      }
+    }
+  }
+
+  .glow-text {
+    text-shadow: 0 0 5px currentColor;
+  }
+}

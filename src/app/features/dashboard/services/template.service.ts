@@ -153,6 +153,53 @@ export class TemplateService {
     ];
   }
 
+  generateRolloutTemplates(deploymentName: string): CommandTemplate[] {
+    if (!deploymentName) return [];
+
+    return [
+      {
+        id: `rollout-${deploymentName}-history`,
+        name: 'History',
+        command: `kubectl rollout history deployment/${deploymentName} -n {namespace}`,
+      },
+      {
+        id: `rollout-${deploymentName}-status`,
+        name: 'Status',
+        command: `kubectl rollout status deployment/${deploymentName} -n {namespace}`,
+      },
+      {
+        id: `rollout-${deploymentName}-undo`,
+        name: 'Undo Last',
+        command: `kubectl rollout undo deployment/${deploymentName} -n {namespace}`,
+      },
+      {
+        id: `rollout-${deploymentName}-pause`,
+        name: 'Pause',
+        command: `kubectl rollout pause deployment/${deploymentName} -n {namespace}`,
+      },
+      {
+        id: `rollout-${deploymentName}-resume`,
+        name: 'Resume',
+        command: `kubectl rollout resume deployment/${deploymentName} -n {namespace}`,
+      },
+      {
+        id: `rollout-${deploymentName}-restart`,
+        name: 'Restart',
+        command: `kubectl rollout restart deployment/${deploymentName} -n {namespace}`,
+      },
+      {
+        id: `rollout-${deploymentName}-set-image-v2`,
+        name: 'Set Image (v2)',
+        command: `kubectl set image deployment/${deploymentName} ${deploymentName}=jia0/${deploymentName}:v2 -n {namespace}`,
+      },
+      {
+        id: `rollout-${deploymentName}-set-image-v3`,
+        name: 'Set Image (v3)',
+        command: `kubectl set image deployment/${deploymentName} ${deploymentName}=jia0/${deploymentName}:v3 -n {namespace}`,
+      }
+    ];
+  }
+
   replaceNamespacePlaceholder(command: string, namespace: string): string {
     return command.replace(/{namespace}/g, namespace);
   }

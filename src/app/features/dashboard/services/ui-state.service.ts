@@ -15,6 +15,7 @@ export class UiStateService {
   private isDeploymentExpanded = signal<boolean>(false);
   private isPodSectionExpanded = signal<boolean>(false);
   private isServiceSectionExpanded = signal<boolean>(false);
+  private isRolloutConsoleExpanded = signal<boolean>(false);
 
   // Public readonly signals
   readonly expandedPodsState = this.expandedPods.asReadonly();
@@ -25,6 +26,7 @@ export class UiStateService {
   readonly isDeploymentExpandedState = this.isDeploymentExpanded.asReadonly();
   readonly isPodSectionExpandedState = this.isPodSectionExpanded.asReadonly();
   readonly isServiceSectionExpandedState = this.isServiceSectionExpanded.asReadonly();
+  readonly isRolloutConsoleExpandedState = this.isRolloutConsoleExpanded.asReadonly();
 
   // Output display methods
   toggleResourceDetails() {
@@ -79,6 +81,10 @@ export class UiStateService {
 
   toggleServiceSection() {
     this.isServiceSectionExpanded.set(!this.isServiceSectionExpanded());
+  }
+
+  toggleRolloutConsole() {
+    this.isRolloutConsoleExpanded.set(!this.isRolloutConsoleExpanded());
   }
 
   // Utility methods

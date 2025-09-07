@@ -10,6 +10,7 @@ import { KubectlService } from '../../../core/services/kubectl.service';
 import { OutputParserService } from '../services/output-parser.service';
 import { TemplateService } from '../services/template.service';
 import { UiStateService } from '../services/ui-state.service';
+import { RolloutService } from '../services/rollout.service';
 import { KubeResource, PodDescribeData, CommandTemplate, TableData, YamlItem } from '../../../shared/models/kubectl.models';
 import { CommandSidebarComponent } from './sidebar/command-sidebar.component';
 import { OutputDisplayComponent } from './output-display/output-display.component';
@@ -33,6 +34,7 @@ export class DashboardComponent implements OnInit {
   private outputParserService = inject(OutputParserService);
   private templateService = inject(TemplateService);
   private uiStateService = inject(UiStateService);
+  private rolloutService = inject(RolloutService);
 
   protected readonly title = signal('kubecmds-viz');
 
@@ -64,6 +66,7 @@ export class DashboardComponent implements OnInit {
   get services() { return this.svcService.services; }
   get generalTemplates() { return this.templateService.getGeneralTemplates(); }
   get deploymentTemplates() { return this.templateService.generateDeploymentTemplates(this.selectedDeployment()); }
+  get rolloutTemplates() { return this.templateService.generateRolloutTemplates(this.selectedDeployment()); }
   get podTemplates() { return this.templateService.generatePodTemplates(this.selectedPod()); }
   get serviceTemplates() { return this.templateService.generateServiceTemplates(this.selectedService()); }
   get isInitializing() { return this.namespaceService.isLoading; }
@@ -248,9 +251,19 @@ export class DashboardComponent implements OnInit {
     isLoadingNamespaces: this.isLoadingNamespaces(),
     generalTemplates: this.generalTemplates,
     deploymentTemplates: this.deploymentTemplates,
+    rolloutTemplates: this.rolloutTemplates,
     podTemplates: this.podTemplates,
     serviceTemplates: this.serviceTemplates
   }));
+
+  // Rollout event handlers
+  async onImageUpgrade(event: { deployment: string, image: string }) {
+    const namespace = this.selectedNamespace();
+    if (!namespace) return;
+
+    const command = this.rolloutService.generateSetImageCommand(event.deployment, namespace, event.image);
+    await this.executeCommand(command);
+  }
 
   // Only delegate clipboard (still needed for business logic)
   copyToClipboard(text: string, event?: Event) {

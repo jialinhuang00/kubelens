@@ -28,11 +28,15 @@
     [selectedResource]="data.selectedDeployment"
     [templates]="data.deploymentTemplates"
     [isExpanded]="isDeploymentExpanded()"
+    [rolloutTemplates]="data.rolloutTemplates"
+    [isRolloutConsoleExpanded]="isRolloutConsoleExpanded()"
     resourceType="deployment"
     accentColor="cyan"
     (resourceChange)="onDeploymentChange($event)"
     (toggleExpanded)="onToggleDeploymentSection()"
-    (templateExecute)="onTemplateExecute($event)">
+    (templateExecute)="onTemplateExecute($event)"
+    (rolloutConsoleToggle)="onToggleRolloutConsole()"
+    (imageUpgrade)="onImageUpgrade($event)">
   </app-resource-section>
   }
 

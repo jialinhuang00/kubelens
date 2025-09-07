@@ -23,12 +23,14 @@ export class CommandSidebarComponent {
   @Output() podChange = new EventEmitter<string>();
   @Output() serviceChange = new EventEmitter<string>();
   @Output() templateExecute = new EventEmitter<CommandTemplate>();
+  @Output() imageUpgrade = new EventEmitter<{deployment: string, image: string}>();
 
   // UI state now handled internally via service
   get isGeneralExpanded() { return this.uiStateService.isGeneralExpandedState; }
   get isDeploymentExpanded() { return this.uiStateService.isDeploymentExpandedState; }
   get isPodSectionExpanded() { return this.uiStateService.isPodSectionExpandedState; }
   get isServiceSectionExpanded() { return this.uiStateService.isServiceSectionExpandedState; }
+  get isRolloutConsoleExpanded() { return this.uiStateService.isRolloutConsoleExpandedState; }
 
   onNamespaceChange(namespace: string) {
     this.namespaceChange.emit(namespace);
@@ -65,5 +67,13 @@ export class CommandSidebarComponent {
 
   onToggleServiceSection() {
     this.uiStateService.toggleServiceSection();
+  }
+
+  onToggleRolloutConsole() {
+    this.uiStateService.toggleRolloutConsole();
+  }
+
+  onImageUpgrade(event: {deployment: string, image: string}) {
+    this.imageUpgrade.emit(event);
   }
 }
