@@ -13,12 +13,13 @@ import { UiStateService } from '../services/ui-state.service';
 import { KubeResource, PodDescribeData, CommandTemplate, TableData, YamlItem } from '../../../shared/models/kubectl.models';
 import { CommandSidebarComponent } from './sidebar/command-sidebar.component';
 import { OutputDisplayComponent } from './output-display/output-display.component';
+import { CommandInputComponent } from './command-input/command-input.component';
 import { OutputData } from '../../../shared/interfaces/output-data.interface';
 import { SidebarData } from '../../../shared/interfaces/sidebar-data.interface';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterOutlet, FormsModule, CommonModule, CommandSidebarComponent, OutputDisplayComponent],
+  imports: [RouterOutlet, FormsModule, CommonModule, CommandSidebarComponent, OutputDisplayComponent, CommandInputComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -200,9 +201,8 @@ export class DashboardComponent implements OnInit {
     this.executeCommand(substitutedCommand);
   }
 
-  onCustomCommandChange(event: Event) {
-    const target = event.target as HTMLInputElement;
-    this.customCommand.set(target.value);
+  onCustomCommandChange(value: string) {
+    this.customCommand.set(value);
   }
 
   onCommandInputKeyDown(event: KeyboardEvent) {

@@ -1,0 +1,29 @@
+<div class="cyber-container p-3">
+  <h2 class="text-lg font-semibold mb-2 glow-text" style="color: var(--accent-cyan)">Command Interface</h2>
+  <div class="grid grid-cols-1 gap-2">
+    <div>
+      <label class="block text-xs font-medium mb-1" style="color: var(--text-secondary)">
+        Kubectl Command
+      </label>
+      <input 
+        type="text" 
+        class="w-full p-2 bg-black border border-subtle font-mono text-xs terminal-output"
+        style="color: var(--accent-green); border-color: var(--border-subtle);"
+        placeholder="kubectl get pods -n noah" 
+        [value]="command" 
+        (input)="onCommandChange($event)"
+        (keydown)="onKeyDown($event)">
+    </div>
+    <div class="execute-button-container">
+      <button 
+        class="cyber-button py-2 px-3 font-semibold text-xs" 
+        [disabled]="isLoading"
+        (click)="onExecute()">
+        {{ isLoading ? 'EXECUTING...' : 'EXECUTE' }}
+      </button>
+      <div class="help-text text-xs" style="color: var(--text-secondary); line-height: 2.5;">
+        Supports: -o yaml/json/wide/custom-columns • jsonpath • --no-headers • Cmd+Enter to execute
+      </div>
+    </div>
+  </div>
+</div>

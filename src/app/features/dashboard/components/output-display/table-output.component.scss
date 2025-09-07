@@ -1,1 +1,205 @@
-// Table output specific styles can be added here if needed
+// Table output specific styles
+.table-container {
+  max-height: 400px;
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 1rem;
+  min-width: 100%;
+}
+
+.compact-table {
+  table-layout: auto;
+  width: 100%;
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-tertiary) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    white-space: nowrap;
+    padding: 8px 12px;
+  }
+
+  tbody td {
+    white-space: nowrap;
+    padding: 6px 12px;
+    vertical-align: top;
+  }
+
+  // Special handling for long content columns (like names)
+  td:has(.text-ellipsis) {
+    max-width: 350px;
+
+    .text-ellipsis {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: block;
+    }
+  }
+}
+
+// Custom cyberpunk tooltips
+.cyber-tooltip-trigger {
+  position: relative;
+}
+
+.cyber-tooltip-trigger::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: -35px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+  color: var(--text-primary);
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-glow);
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.2);
+  max-width: 400px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.cyber-tooltip-trigger:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+// Copy button tooltips  
+.copy-btn {
+  position: relative;
+  color: var(--accent-cyan);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  transform: scale(1);
+}
+
+.copy-btn::after {
+  content: attr(data-copy-tooltip);
+  position: absolute;
+  top: -35px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+  color: var(--text-primary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--accent-cyan);
+  font-size: 10px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  z-index: 1001;
+  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+}
+
+.copy-btn:hover {
+  background: transparent;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+}
+
+.copy-btn:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.copy-btn:active {
+  transform: scale(0.9);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.5);
+  border-color: var(--accent-cyan);
+  background: rgba(0, 212, 255, 0.1);
+}
+
+// Success animation after copy
+@keyframes copy-success {
+  0% {
+    transform: scale(0.9);
+  }
+
+  50% {
+    transform: scale(1.1);
+    color: var(--accent-green);
+    border-color: var(--accent-green);
+    box-shadow: 0 0 15px rgba(57, 255, 20, 0.5);
+  }
+
+  100% {
+    transform: scale(1);
+    color: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+  }
+}
+
+.copy-btn.copied {
+  animation: copy-success 0.6s ease;
+}
+
+.table-container {
+
+  // Webkit scrollbar for tables
+  &::-webkit-scrollbar {
+    width: 2px;
+    height: 2px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 1px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, rgba(0, 212, 255, 0.3), rgba(0, 212, 255, 0.5));
+    border-radius: 1px;
+    transition: all 0.3s ease;
+    animation: scrollbarGlowCyan 2.5s ease-in-out infinite alternate;
+
+    &:hover {
+      background: linear-gradient(45deg, rgba(0, 212, 255, 0.6), rgba(0, 212, 255, 0.8));
+      box-shadow: 0 0 4px rgba(0, 212, 255, 0.6);
+    }
+
+    &:active {
+      background: rgba(0, 212, 255, 0.9);
+      box-shadow: 0 0 6px rgba(0, 212, 255, 0.8);
+    }
+  }
+
+  &::-webkit-scrollbar-corner {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 1px;
+  }
+}
+
+// Firefox scrollbar fallback
+.table-container {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 212, 255, 0.25) rgba(0, 0, 0, 0.15);
+}
+
+@keyframes scrollbarGlowCyan {
+  0% {
+    background: linear-gradient(45deg, rgba(0, 212, 255, 0.2), rgba(0, 212, 255, 0.3));
+    box-shadow: 0 0 1px rgba(0, 212, 255, 0.2);
+  }
+
+  50% {
+    background: linear-gradient(45deg, rgba(0, 212, 255, 0.4), rgba(0, 212, 255, 0.6));
+    box-shadow: 0 0 3px rgba(0, 212, 255, 0.4);
+  }
+
+  100% {
+    background: linear-gradient(45deg, rgba(0, 212, 255, 0.25), rgba(0, 212, 255, 0.4));
+    box-shadow: 0 0 2px rgba(0, 212, 255, 0.3);
+  }
+}

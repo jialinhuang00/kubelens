@@ -398,12 +398,12 @@ export class OutputParserService {
 
       if (headerIndex === -1 || headerIndex >= lines.length - 1) continue;
 
-      // Parse headers and data
-      const headers = lines[headerIndex].split(/\s+/).filter(h => h.trim());
+      // Parse headers and data - use 2+ spaces for better column separation
+      const headers = lines[headerIndex].split(/\s{2,}/).filter(h => h.trim());
       const dataLines = lines.slice(headerIndex + 1);
 
       const data: KubeResource[] = dataLines.map(line => {
-        const values = line.split(/\s+/);
+        const values = line.split(/\s{2,}/);
         const resource: KubeResource = {};
         headers.forEach((header, index) => {
           resource[header.toLowerCase()] = values[index] || '';

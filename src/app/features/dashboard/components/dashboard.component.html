@@ -19,29 +19,13 @@
       <!-- Main Content Area -->
       <div class="space-y-3 overflow-x-auto">
         <!-- Custom Command Input -->
-        <div class="cyber-container p-3">
-          <h2 class="text-lg font-semibold mb-2 glow-text" style="color: var(--accent-cyan)">Command Interface</h2>
-          <div class="grid grid-cols-1 gap-2">
-            <div>
-              <label class="block text-xs font-medium mb-1" style="color: var(--text-secondary)">
-                Kubectl Command
-              </label>
-              <input type="text" class="w-full p-2 bg-black border border-subtle font-mono text-xs terminal-output"
-                style="color: var(--accent-green); border-color: var(--border-subtle);"
-                placeholder="kubectl get pods -n noah" [value]="customCommand()" (input)="onCustomCommandChange($event)"
-                (keydown)="onCommandInputKeyDown($event)">
-            </div>
-            <div class="execute-button-container">
-              <button class="cyber-button py-2 px-3 font-semibold text-xs" [disabled]="isLoading()"
-                (click)="executeCustomCommand()">
-                {{ isLoading() ? 'EXECUTING...' : 'EXECUTE' }}
-              </button>
-              <div class="help-text text-xs" style="color: var(--text-secondary); line-height: 2.5;">
-                Supports: -o yaml/json/wide/custom-columns • jsonpath • --no-headers • Cmd+Enter to execute
-              </div>
-            </div>
-          </div>
-        </div>
+        <app-command-input
+          [command]="customCommand()"
+          [isLoading]="isLoading()"
+          (commandChange)="onCustomCommandChange($event)"
+          (commandExecute)="executeCustomCommand()"
+          (keyDown)="onCommandInputKeyDown($event)">
+        </app-command-input>
 
         <!-- Command Output & Visualization -->
         <app-output-display
