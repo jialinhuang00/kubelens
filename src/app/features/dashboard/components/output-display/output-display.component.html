@@ -2,11 +2,11 @@
   <h2 class="text-lg font-semibold mb-2 glow-text" style="color: var(--accent-cyan)">Output Display</h2>
 
   @if (data.multipleTables && data.multipleTables.length > 0) {
-  <app-multiple-tables [multipleTables]="data.multipleTables" [expandedTables]="data.expandedTables"
+  <app-multiple-tables [multipleTables]="data.multipleTables" [expandedTables]="expandedTables()"
     (toggleTable)="onToggleTable($event)" (copyToClipboard)="onCopyToClipboard($event.text, $event.event)">
   </app-multiple-tables>
   } @else if (data.outputType === 'multiple-yamls' && data.multipleYamls && data.multipleYamls.length > 0) {
-  <app-multiple-yamls [multipleYamls]="data.multipleYamls" [expandedYamls]="data.expandedYamls"
+  <app-multiple-yamls [multipleYamls]="data.multipleYamls" [expandedYamls]="expandedYamls()"
     (toggleYamlExpansion)="onToggleYamlExpansion($event)">
   </app-multiple-yamls>
   } @else if (data.outputType === 'yaml' && data.yamlContent) {
@@ -14,12 +14,12 @@
   } @else if (data.commandOutput && (!data.results || !data.results.length)) {
   <app-raw-output [commandOutput]="data.commandOutput"></app-raw-output>
   } @else if (data.podDescribeData && data.podDescribeData.length > 0) {
-  <app-pod-details [podDescribeData]="data.podDescribeData" [expandedPods]="data.expandedPods"
+  <app-pod-details [podDescribeData]="data.podDescribeData" [expandedPods]="expandedPods()"
     (togglePodDetails)="onTogglePodDetails($event)">
   </app-pod-details>
   } @else if (data.commandOutput && data.results && data.results.length > 0 && data.hasEventsTable) {
   <app-events-display [commandOutput]="data.commandOutput" [results]="data.results" [headers]="data.headers"
-    [isResourceDetailsExpanded]="data.isResourceDetailsExpanded" (toggleResourceDetails)="onToggleResourceDetails()">
+    [isResourceDetailsExpanded]="isResourceDetailsExpanded()" (toggleResourceDetails)="onToggleResourceDetails()">
   </app-events-display>
   } @else if (data.results && data.results.length > 0) {
   <app-table-output [results]="data.results" [headers]="data.headers" [isLoading]="data.isLoading"

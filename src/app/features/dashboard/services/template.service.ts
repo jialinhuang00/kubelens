@@ -156,4 +156,18 @@ export class TemplateService {
   replaceNamespacePlaceholder(command: string, namespace: string): string {
     return command.replace(/{namespace}/g, namespace);
   }
+
+  substituteTemplate(
+    command: string, 
+    namespace: string, 
+    deployment?: string, 
+    pod?: string, 
+    service?: string
+  ): string {
+    return command
+      .replace(/{namespace}/g, namespace)
+      .replace(/{deployment}/g, deployment || '')
+      .replace(/{pod}/g, pod || '')
+      .replace(/{service}/g, service || '');
+  }
 }

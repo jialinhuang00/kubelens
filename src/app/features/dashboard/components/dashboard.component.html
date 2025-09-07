@@ -13,11 +13,7 @@
         (deploymentChange)="onDeploymentChange($event)"
         (podChange)="onPodChange($event)"
         (serviceChange)="onServiceChange($event)"
-        (templateExecute)="executeTemplate($event)"
-        (toggleGeneralSection)="toggleGeneralSection()"
-        (toggleDeploymentSection)="toggleDeploymentSection()"
-        (togglePodSection)="togglePodSection()"
-        (toggleServiceSection)="toggleServiceSection()">
+        (templateExecute)="executeTemplate($event)">
       </app-command-sidebar>
 
       <!-- Main Content Area -->
@@ -50,11 +46,7 @@
         <!-- Command Output & Visualization -->
         <app-output-display
           [data]="outputData()"
-          (copyToClipboard)="copyToClipboard($event.text, $event.event)"
-          (toggleTable)="toggleTable($event)"
-          (toggleYamlExpansion)="toggleYamlExpansion($event)"
-          (togglePodDetails)="togglePodDetails($event)"
-          (toggleResourceDetails)="toggleResourceDetails()">
+          (copyToClipboard)="copyToClipboard($event.text, $event.event)">
         </app-output-display>
       </div>
     </div>

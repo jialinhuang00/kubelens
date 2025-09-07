@@ -13,17 +13,15 @@ export interface SidebarData {
   isInitializing: boolean;
   isLoadingNamespaces: boolean;
   
-  // Templates
+  // Templates (guaranteed to be arrays, not undefined)
   generalTemplates: any[];
   deploymentTemplates: any[];
   podTemplates: any[];
   serviceTemplates: any[];
   
-  // UI expansion states
-  isGeneralExpanded: boolean;
-  isDeploymentExpanded: boolean;
-  isPodSectionExpanded: boolean;
-  isServiceSectionExpanded: boolean;
+  // UI expansion states (now managed by UiStateService)
+  // isGeneralExpanded, isDeploymentExpanded, isPodSectionExpanded, isServiceSectionExpanded
+  // are now handled internally by components using UiStateService
 }
 
 export interface SidebarEvents {

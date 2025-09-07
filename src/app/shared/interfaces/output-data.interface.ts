@@ -2,28 +2,28 @@ export interface OutputData {
   outputType: 'table' | 'yaml' | 'multiple-tables' | 'multiple-yamls' | 'pod-describe' | 'events' | 'raw';
   isLoading: boolean;
   
-  // Table data
-  results?: any[];
-  headers?: string[];
+  // Table data (required for components)
+  results: any[];
+  headers: string[];
   
   // YAML data
-  yamlContent?: string;
+  yamlContent: string;
   
   // Multiple tables
-  multipleTables?: Array<{
+  multipleTables: Array<{
     title: string;
     headers: string[];
     data: any[];
   }>;
   
   // Multiple YAMLs
-  multipleYamls?: Array<{
+  multipleYamls: Array<{
     title: string;
     yamlContent: string;
   }>;
   
   // Pod describe data
-  podDescribeData?: Array<{
+  podDescribeData: Array<{
     name: string;
     details: string;
     events: any[];
@@ -31,17 +31,15 @@ export interface OutputData {
   }>;
   
   // Raw output
-  commandOutput?: string;
-  customCommand?: string;
+  commandOutput: string;
+  customCommand: string;
   
   // Events data
-  hasEventsTable?: boolean;
+  hasEventsTable: boolean;
   
-  // UI state
-  expandedTables: Set<string>;
-  expandedYamls: Set<string>;
-  expandedPods: Set<string>;
-  isResourceDetailsExpanded: boolean;
+  // UI state (now managed by UiStateService)
+  // expandedTables, expandedYamls, expandedPods, isResourceDetailsExpanded
+  // are now handled internally by components using UiStateService
 }
 
 export interface OutputEvents {

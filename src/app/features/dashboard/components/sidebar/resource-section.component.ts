@@ -2,11 +2,10 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TemplateListComponent } from './template-list.component';
 import { CommandTemplate } from '../../../../shared/models/kubectl.models';
-import { CommandDisplayDirective } from '../../../../shared/directives/command-display.directive';
 
 @Component({
   selector: 'app-resource-section',
-  imports: [CommonModule, TemplateListComponent, CommandDisplayDirective],
+  imports: [CommonModule, TemplateListComponent],
   templateUrl: './resource-section.component.html',
   styleUrl: './resource-section.component.scss'
 })
@@ -27,7 +26,7 @@ export class ResourceSectionComponent {
   get accentColorClass(): string {
     const colorMap = {
       'cyan': 'var(--accent-cyan)',
-      'purple': 'var(--accent-purple)', 
+      'purple': 'var(--accent-purple)',
       'orange': 'var(--accent-orange, #ff9500)',
       'green': 'var(--accent-green)'
     };
@@ -94,7 +93,7 @@ export class ResourceSectionComponent {
   get resourceSelectorLabel(): string {
     const labelMap = {
       'deployment': 'Select Deployment',
-      'pod': 'Select Pod', 
+      'pod': 'Select Pod',
       'service': 'Select Service',
       'general': ''
     };

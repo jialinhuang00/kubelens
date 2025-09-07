@@ -1,9 +1,10 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NamespaceSelectorComponent } from './namespace-selector.component';
 import { ResourceSectionComponent } from './resource-section.component';
 import { CommandTemplate } from '../../../../shared/models/kubectl.models';
 import { SidebarData } from '../../../../shared/interfaces/sidebar-data.interface';
+import { UiStateService } from '../../services/ui-state.service';
 
 @Component({
   selector: 'app-command-sidebar',
@@ -13,17 +14,21 @@ import { SidebarData } from '../../../../shared/interfaces/sidebar-data.interfac
 })
 export class CommandSidebarComponent {
   @Input() data!: SidebarData;
+  
+  private uiStateService = inject(UiStateService);
 
-  // Events
+  // Resource change events (still needed for business logic)
   @Output() namespaceChange = new EventEmitter<string>();
   @Output() deploymentChange = new EventEmitter<string>();
   @Output() podChange = new EventEmitter<string>();
   @Output() serviceChange = new EventEmitter<string>();
   @Output() templateExecute = new EventEmitter<CommandTemplate>();
-  @Output() toggleGeneralSection = new EventEmitter<void>();
-  @Output() toggleDeploymentSection = new EventEmitter<void>();
-  @Output() togglePodSection = new EventEmitter<void>();
-  @Output() toggleServiceSection = new EventEmitter<void>();
+
+  // UI state now handled internally via service
+  get isGeneralExpanded() { return this.uiStateService.isGeneralExpandedState; }
+  get isDeploymentExpanded() { return this.uiStateService.isDeploymentExpandedState; }
+  get isPodSectionExpanded() { return this.uiStateService.isPodSectionExpandedState; }
+  get isServiceSectionExpanded() { return this.uiStateService.isServiceSectionExpandedState; }
 
   onNamespaceChange(namespace: string) {
     this.namespaceChange.emit(namespace);
@@ -45,19 +50,20 @@ export class CommandSidebarComponent {
     this.templateExecute.emit(template);
   }
 
+  // UI events handled internally
   onToggleGeneralSection() {
-    this.toggleGeneralSection.emit();
+    this.uiStateService.toggleGeneralSection();
   }
 
   onToggleDeploymentSection() {
-    this.toggleDeploymentSection.emit();
+    this.uiStateService.toggleDeploymentSection();
   }
 
   onTogglePodSection() {
-    this.togglePodSection.emit();
+    this.uiStateService.togglePodSection();
   }
 
   onToggleServiceSection() {
-    this.toggleServiceSection.emit();
+    this.uiStateService.toggleServiceSection();
   }
 }

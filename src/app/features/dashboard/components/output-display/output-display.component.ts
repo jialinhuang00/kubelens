@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TableOutputComponent } from './table-output.component';
 import { EventsDisplayComponent } from './events-display.component';
@@ -8,6 +8,7 @@ import { MultipleYamlsComponent } from './multiple-yamls.component';
 import { PodDetailsComponent } from './pod-details.component';
 import { YamlDisplayComponent } from '../yaml-display/yaml-display.component';
 import { OutputData } from '../../../../shared/interfaces/output-data.interface';
+import { UiStateService } from '../../services/ui-state.service';
 
 @Component({
   selector: 'app-output-display',
@@ -26,27 +27,31 @@ import { OutputData } from '../../../../shared/interfaces/output-data.interface'
 })
 export class OutputDisplayComponent {
   @Input() data!: OutputData;
+  
+  private uiStateService = inject(UiStateService);
 
-  @Output() togglePodDetails = new EventEmitter<string>();
-  @Output() toggleTable = new EventEmitter<string>();
-  @Output() toggleYamlExpansion = new EventEmitter<string>();
-  @Output() toggleResourceDetails = new EventEmitter<void>();
   @Output() copyToClipboard = new EventEmitter<{ text: string, event?: Event }>();
 
+  // UI state now handled internally via service
+  get expandedPods() { return this.uiStateService.expandedPodsState; }
+  get expandedTables() { return this.uiStateService.expandedTablesState; }
+  get expandedYamls() { return this.uiStateService.expandedYamlsState; }
+  get isResourceDetailsExpanded() { return this.uiStateService.isResourceDetailsExpandedState; }
+
   onTogglePodDetails(podName: string) {
-    this.togglePodDetails.emit(podName);
+    this.uiStateService.togglePodDetails(podName);
   }
 
   onToggleTable(tableTitle: string) {
-    this.toggleTable.emit(tableTitle);
+    this.uiStateService.toggleTable(tableTitle);
   }
 
   onToggleYamlExpansion(yamlTitle: string) {
-    this.toggleYamlExpansion.emit(yamlTitle);
+    this.uiStateService.toggleYamlExpansion(yamlTitle);
   }
 
   onToggleResourceDetails() {
-    this.toggleResourceDetails.emit();
+    this.uiStateService.toggleResourceDetails();
   }
 
   onCopyToClipboard(text: string, event?: Event) {
@@ -54,14 +59,14 @@ export class OutputDisplayComponent {
   }
 
   isPodExpanded(podName: string): boolean {
-    return this.data?.expandedPods?.has(podName) ?? false;
+    return this.uiStateService.isPodExpanded(podName);
   }
 
   isTableExpanded(tableTitle: string): boolean {
-    return this.data?.expandedTables?.has(tableTitle) ?? false;
+    return this.uiStateService.isTableExpanded(tableTitle);
   }
 
   isYamlExpanded(yamlTitle: string): boolean {
-    return this.data?.expandedYamls?.has(yamlTitle) ?? false;
+    return this.uiStateService.isYamlExpanded(yamlTitle);
   }
 }
