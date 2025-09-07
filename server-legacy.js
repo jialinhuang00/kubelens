@@ -1,12 +1,21 @@
 const express = require('express');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const cors = require('cors');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
+const http = require('http');
+const { Server } = require('socket.io');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:4200",
+    methods: ["GET", "POST"]
+  }
+});
 const PORT = 3000;
 
 app.use(cors({
@@ -144,16 +153,16 @@ app.post('/api/execute', (req, res) => {
     });
   }
 
-  // 動態產生暫存檔路徑
+  // dynamically create tempFile
   const tempFile = path.join(os.tmpdir(), `kubectl-${uuidv4()}.txt`);
   const fullCommand = `${command} > ${tempFile} 2>&1`;
 
   console.log(`Executing: ${fullCommand}`);
 
   exec(fullCommand, { timeout: 30000 }, (error) => {
-    // 無論成功或失敗，讀取 tempFile
+    // read tempFile no matter success or fail.
     fs.readFile(tempFile, 'utf8', (readErr, data) => {
-      // 清理檔案
+      // rm temp file
       fs.unlink(tempFile, () => { });
 
       if (readErr) {
@@ -165,10 +174,13 @@ app.post('/api/execute', (req, res) => {
       }
 
       if (error) {
+        // When kubectl command fails, show the actual error message from the output
+        // instead of just the generic exec error message
+        const actualErrorMessage = data.trim() || error.message;
         return res.json({
           success: false,
-          error: error.message,
-          stdout: data,
+          error: actualErrorMessage,
+          stdout: '', // no ambiguous here, frontend only see error.
           command: command
         });
       }
@@ -232,7 +244,131 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+// 串流執行 kubectl 指令 (用於長時間運行的指令如 rollout status)
+app.post('/api/execute/stream', (req, res) => {
+  const { command, streamId } = req.body;
+
+  if (!command || !command.startsWith('kubectl')) {
+    return res.status(400).json({
+      error: 'Only kubectl commands are allowed',
+      success: false
+    });
+  }
+
+  if (!streamId) {
+    return res.status(400).json({
+      error: 'streamId is required for streaming commands',
+      success: false
+    });
+  }
+
+  console.log(`Starting stream for: ${command} (ID: ${streamId})`);
+
+  // start response, the streaming is starting.
+  res.json({
+    success: true,
+    message: 'Stream started',
+    streamId: streamId
+  });
+
+  // parse command and option
+  const args = command.split(' ').slice(1); // rm 'kubectl'
+
+  // using spawn for executing command, then getting realtime output
+  const kubectlProcess = spawn('kubectl', args);
+
+  // save process ref, for stopping later
+  global.runningProcesses = global.runningProcesses || new Map();
+  global.runningProcesses.set(streamId, kubectlProcess);
+
+  let outputBuffer = '';
+
+  // processing stdout
+  kubectlProcess.stdout.on('data', (data) => {
+    const chunk = data.toString();
+    outputBuffer += chunk;
+
+    // send realtime data to frontend
+    io.emit('stream-data', {
+      streamId: streamId,
+      type: 'stdout',
+      data: chunk,
+      timestamp: Date.now()
+    });
+  });
+
+  // processing stderr
+  kubectlProcess.stderr.on('data', (data) => {
+    const chunk = data.toString();
+    outputBuffer += chunk;
+
+    io.emit('stream-data', {
+      streamId: streamId,
+      type: 'stderr',
+      data: chunk,
+      timestamp: Date.now()
+    });
+  });
+
+  // process is over
+  kubectlProcess.on('close', (code) => {
+    console.log(`Stream ${streamId} closed with code: ${code}`);
+
+    io.emit('stream-end', {
+      streamId: streamId,
+      exitCode: code,
+      fullOutput: outputBuffer,
+      timestamp: Date.now()
+    });
+
+    // rm process ref
+    global.runningProcesses.delete(streamId);
+  });
+
+  // process has error
+  kubectlProcess.on('error', (error) => {
+    console.error(`Stream ${streamId} error:`, error);
+
+    io.emit('stream-error', {
+      streamId: streamId,
+      error: error.message,
+      timestamp: Date.now()
+    });
+
+    global.runningProcesses.delete(streamId);
+  });
+});
+
+// stop streaming
+app.post('/api/execute/stream/stop', (req, res) => {
+  const { streamId } = req.body;
+
+  if (!streamId) {
+    return res.status(400).json({ error: 'streamId is required' });
+  }
+
+  const process = global.runningProcesses?.get(streamId);
+  if (process) {
+    process.kill('SIGTERM');
+    global.runningProcesses.delete(streamId);
+    console.log(`Terminated stream: ${streamId}`);
+    res.json({ success: true, message: 'Stream terminated' });
+  } else {
+    res.status(404).json({ error: 'Stream not found' });
+  }
+});
+
+// WebSocket connection
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+
+server.listen(PORT, () => {
   console.log(`🚀 kubecmds-viz server running on http://localhost:${PORT}`);
   console.log(`📋 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`🔌 WebSocket server ready for streaming`);
 });

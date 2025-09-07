@@ -1,13 +1,22 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Observable, BehaviorSubject, merge } from 'rxjs';
 import { KubectlResponse } from '../../shared/models/kubectl.models';
+import { WebSocketService } from './websocket.service';
 
+export interface StreamingResponse {
+  isStreaming: boolean;
+  streamId?: string;
+  output$?: Observable<string>;
+  stop?: () => Promise<void>;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class KubectlService {
   private http = inject(HttpClient);
+  private websocketService = inject(WebSocketService);
   private readonly API_BASE = 'http://localhost:3000/api';
 
   async executeCommand(command: string): Promise<KubectlResponse> {
@@ -25,6 +34,108 @@ export class KubectlService {
         error: `Network error: ${error}`
       };
     }
+  }
+
+  // 串流執行 kubectl 指令 (適用於 rollout status 等長時間運行的指令)
+  async executeCommandStream(command: string): Promise<StreamingResponse> {
+    const streamId = `stream_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // 確保 WebSocket 已連線
+    if (!this.websocketService.isConnected()) {
+      this.websocketService.connect();
+      // 等待連線建立
+      await new Promise(resolve => {
+        const checkConnection = () => {
+          if (this.websocketService.isConnected()) {
+            resolve(void 0);
+          } else {
+            setTimeout(checkConnection, 100);
+          }
+        };
+        checkConnection();
+      });
+    }
+
+    try {
+      // 開始串流
+      const response = await this.http.post<any>(`${this.API_BASE}/execute/stream`, {
+        command,
+        streamId
+      }).toPromise();
+
+      if (!response?.success) {
+        throw new Error(response?.error || 'Failed to start stream');
+      }
+
+      // 建立輸出流
+      const outputSubject = new BehaviorSubject<string>('');
+      let fullOutput = '';
+
+      // 監聽串流數據
+      const dataSubscription = this.websocketService.getStreamData(streamId).subscribe(data => {
+        fullOutput += data.data;
+        outputSubject.next(fullOutput);
+      });
+
+      // 監聽串流結束
+      const endSubscription = this.websocketService.getStreamEnd(streamId).subscribe(endData => {
+        outputSubject.next(endData.fullOutput);
+        outputSubject.complete();
+        dataSubscription.unsubscribe();
+        endSubscription.unsubscribe();
+      });
+
+      // 監聽錯誤
+      const errorSubscription = this.websocketService.getStreamError(streamId).subscribe(errorData => {
+        outputSubject.error(new Error(errorData.error));
+        dataSubscription.unsubscribe();
+        endSubscription.unsubscribe();
+        errorSubscription.unsubscribe();
+      });
+
+      // 停止函數
+      const stop = async () => {
+        try {
+          await this.http.post(`${this.API_BASE}/execute/stream/stop`, {
+            streamId
+          }).toPromise();
+
+          dataSubscription.unsubscribe();
+          endSubscription.unsubscribe();
+          errorSubscription.unsubscribe();
+          outputSubject.complete();
+        } catch (error) {
+          console.error('Error stopping stream:', error);
+        }
+      };
+
+      return {
+        isStreaming: true,
+        streamId,
+        output$: outputSubject.asObservable(),
+        stop
+      };
+
+    } catch (error) {
+      return {
+        isStreaming: false,
+        streamId: undefined,
+        output$: undefined,
+        stop: undefined
+      };
+    }
+  }
+
+  // 判斷指令是否需要串流執行
+  shouldUseStream(command: string): boolean {
+    const streamingCommands = [
+      'rollout status',
+      'logs -f',
+      'get events -w',
+      'wait'
+    ];
+
+    return streamingCommands.some(cmd => command.includes(cmd));
   }
 
   async getNamespaces(): Promise<string[]> {

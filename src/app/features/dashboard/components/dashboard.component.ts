@@ -100,6 +100,12 @@ export class DashboardComponent implements OnInit {
     this.podDescribeData.set([]);
     this.multipleTables.set([]);
     this.hasEventsTable.set(false);
+
+    // if need streaming?
+    if (this.kubectlService.shouldUseStream(command)) {
+      await this.executeCommandWithStream(command);
+      return;
+    }
     this.multipleYamls.set([]);
 
     // Reset UI states through service
@@ -109,48 +115,10 @@ export class DashboardComponent implements OnInit {
       const response = await this.kubectlService.executeCommand(command);
 
       if (response.success) {
-        const parsedOutput = this.outputParserService.parseCommandOutput(response.stdout, command);
-
-        switch (parsedOutput.type) {
-          case 'multiple-tables':
-            this.multipleTables.set(parsedOutput.tables || []);
-            // Auto-expand tables through service
-            const tableNames = parsedOutput.tables?.map(t => t.title) || [];
-            this.uiStateService.autoExpandTables(tableNames);
-            this.outputType.set('multiple-tables');
-            break;
-          case 'multiple-yamls':
-            this.multipleYamls.set(parsedOutput.yamls || []);
-            this.outputType.set('multiple-yamls');
-            break;
-          case 'table':
-            this.headers.set(parsedOutput.headers || []);
-            this.results.set(parsedOutput.data || []);
-            this.outputType.set('table');
-            break;
-          case 'events':
-            this.commandOutput.set(parsedOutput.rawOutput || '');
-            this.headers.set(parsedOutput.headers || []);
-            this.results.set(parsedOutput.data || []);
-            this.hasEventsTable.set(false);
-            this.outputType.set('events');
-            break;
-          case 'multiple-pods':
-            this.podDescribeData.set(parsedOutput.podData || []);
-            this.outputType.set('multiple-pods');
-            break;
-          case 'yaml':
-            this.yamlContent.set(parsedOutput.yamlContent || '');
-            this.outputType.set('yaml');
-            break;
-          case 'raw':
-          default:
-            this.commandOutput.set(parsedOutput.rawOutput || '');
-            this.outputType.set('raw');
-            break;
-        }
+        this.parseAndSetOutput(response.stdout, command);
       } else {
-        this.commandOutput.set(`Error: ${response.error}\n${response.stderr || ''}`);
+        this.outputType.set('raw');
+        this.commandOutput.set(`Error: ${response.error}`);
       }
     } catch (error) {
       console.error('Command execution failed:', error);
@@ -263,6 +231,119 @@ export class DashboardComponent implements OnInit {
 
     const command = this.rolloutService.generateSetImageCommand(event.deployment, namespace, event.image);
     await this.executeCommand(command);
+  }
+
+  // execute streaming command
+  private async executeCommandWithStream(command: string) {
+    try {
+      console.log(`🔄 Starting stream for: ${command}`);
+
+      const streamResponse = await this.kubectlService.executeCommandStream(command);
+
+      if (!streamResponse.isStreaming || !streamResponse.output$) {
+        // fallback to normal way
+        console.log('Stream failed, falling back to normal execution');
+        await this.executeCommandNormal(command);
+        return;
+      }
+
+      // streaming mode
+      this.outputType.set('streaming');
+      this.commandOutput.set('🔄 Starting command stream...\n');
+
+      // subscribe streaming output
+      streamResponse.output$.subscribe({
+        next: (output) => {
+          this.commandOutput.set(output);
+          console.log(`📡 Stream update: ${output.length} characters`);
+        },
+        complete: () => {
+          console.log('✅ Stream completed');
+          this.isLoading.set(false);
+          // share parse function
+          this.parseAndSetOutput(this.commandOutput(), command);
+        },
+        error: (error) => {
+          console.error('❌ Stream error:', error);
+          this.commandOutput.set(`❌ Stream error: ${error.message}`);
+          this.isLoading.set(false);
+        }
+      });
+
+      // save stop function for UI usage
+      (window as any).currentStreamStop = streamResponse.stop;
+
+    } catch (error) {
+      console.error('❌ Stream setup error:', error);
+      // fallback to normal way
+      await this.executeCommandNormal(command);
+    }
+  }
+
+  private parseAndSetOutput(stdout: string, command: string) {
+    const parsedOutput = this.outputParserService.parseCommandOutput(stdout, command);
+
+    switch (parsedOutput.type) {
+      case 'multiple-tables':
+        this.multipleTables.set(parsedOutput.tables || []);
+        // Auto-expand tables through service
+        const tableNames = parsedOutput.tables?.map(t => t.title) || [];
+        this.uiStateService.autoExpandTables(tableNames);
+        this.outputType.set('multiple-tables');
+        break;
+      case 'multiple-yamls':
+        this.multipleYamls.set(parsedOutput.yamls || []);
+        this.outputType.set('multiple-yamls');
+        break;
+      case 'table':
+        this.headers.set(parsedOutput.headers || []);
+        this.results.set(parsedOutput.data || []);
+        this.outputType.set('table');
+        break;
+      case 'events':
+        this.commandOutput.set(parsedOutput.rawOutput || '');
+        this.headers.set(parsedOutput.headers || []);
+        this.results.set(parsedOutput.data || []);
+        this.hasEventsTable.set(false);
+        this.outputType.set('events');
+        break;
+      case 'multiple-pods':
+        this.podDescribeData.set(parsedOutput.podData || []);
+        this.outputType.set('multiple-pods');
+        break;
+      case 'yaml':
+        this.yamlContent.set(parsedOutput.yamlContent || '');
+        this.outputType.set('yaml');
+        break;
+      case 'raw':
+      default:
+        this.commandOutput.set(parsedOutput.rawOutput || '');
+        this.outputType.set('raw');
+        break;
+    }
+  }
+
+  private async executeCommandNormal(command: string) {
+    this.multipleYamls.set([]);
+
+    // Reset UI states through service
+    this.uiStateService.resetOutputStates();
+
+    try {
+      const response = await this.kubectlService.executeCommand(command);
+
+      if (response.success) {
+        this.parseAndSetOutput(response.stdout, command);
+      } else {
+        this.outputType.set('raw');
+        this.commandOutput.set(`Error: ${response.error}`);
+      }
+    } catch (error: any) {
+      this.outputType.set('raw');
+      this.commandOutput.set(`Network error: ${error.message || error}`);
+    } finally {
+      this.isLoading.set(false);
+    }
   }
 
   // Only delegate clipboard (still needed for business logic)
