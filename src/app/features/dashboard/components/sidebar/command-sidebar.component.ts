@@ -24,7 +24,6 @@ export class CommandSidebarComponent {
   @Output() serviceChange = new EventEmitter<string>();
   @Output() templateExecute = new EventEmitter<CommandTemplate>();
   @Output() imageUpgrade = new EventEmitter<{deployment: string, image: string}>();
-  @Output() rolloutAction = new EventEmitter<string>();
 
   // UI state now handled internally via service
   get isGeneralExpanded() { return this.uiStateService.isGeneralExpandedState; }
@@ -76,9 +75,5 @@ export class CommandSidebarComponent {
 
   onImageUpgrade(event: {deployment: string, image: string}) {
     this.imageUpgrade.emit(event);
-  }
-
-  onRolloutAction(action: string) {
-    this.rolloutAction.emit(action);
   }
 }

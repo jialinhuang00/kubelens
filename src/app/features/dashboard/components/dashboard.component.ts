@@ -11,6 +11,7 @@ import { OutputParserService } from '../services/output-parser.service';
 import { TemplateService } from '../services/template.service';
 import { UiStateService } from '../services/ui-state.service';
 import { RolloutService } from '../services/rollout.service';
+import { RolloutStateService } from '../services/rollout-state.service';
 import { KubeResource, PodDescribeData, CommandTemplate, TableData, YamlItem } from '../../../shared/models/kubectl.models';
 import { CommandSidebarComponent } from './sidebar/command-sidebar.component';
 import { OutputDisplayComponent } from './output-display/output-display.component';
@@ -35,6 +36,7 @@ export class DashboardComponent implements OnInit {
   private templateService = inject(TemplateService);
   private uiStateService = inject(UiStateService);
   private rolloutService = inject(RolloutService);
+  private rolloutStateService = inject(RolloutStateService);
 
   protected readonly title = signal('kubecmds-viz');
 
@@ -86,6 +88,11 @@ export class DashboardComponent implements OnInit {
 
   async ngOnInit() {
     await this.namespaceService.loadNamespaces();
+    
+    // Subscribe to rollout actions
+    this.rolloutStateService.rolloutAction$.subscribe(event => {
+      console.log(`📡 Dashboard received rollout action: ${event.action} for ${event.deployment} in ${event.namespace}`);
+    });
   }
 
   // High-level business logic: Command execution
@@ -255,28 +262,6 @@ export class DashboardComponent implements OnInit {
     await this.executeCommand(command);
   }
 
-  // when rollout, update immediately
-  async onRolloutAction(action: string) {
-    const deployment = this.selectedDeployment();
-    const namespace = this.selectedNamespace();
-
-    if (deployment && namespace) {
-      console.log(`🔄 Rollout action triggered: ${action}`);
-
-      // wait a second for kubectl
-      setTimeout(async () => {
-        try {
-          await Promise.all([
-            this.deploymentService.getDeploymentStatus(deployment, namespace),
-            this.deploymentService.getRolloutHistory(deployment, namespace)
-          ]);
-          console.log(`✅ Status updated after ${action}`);
-        } catch (error) {
-          console.error(`❌ Failed to update status after ${action}:`, error);
-        }
-      }, 1000);
-    }
-  }
 
   // execute streaming command
   private async executeCommandWithStream(command: string) {

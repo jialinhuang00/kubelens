@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { CommandTemplate } from '../../../../shared/models/kubectl.models';
 import { DeploymentStatus, RolloutButtonStates, RolloutHistoryItem } from '../../../k8s/services/deployment.service';
 import { ClipboardService } from '../../../../shared/services/clipboard.service';
+import { RolloutStateService } from '../../services/rollout-state.service';
 
 @Component({
   selector: 'app-rollout-console',
@@ -13,6 +14,8 @@ import { ClipboardService } from '../../../../shared/services/clipboard.service'
 })
 export class RolloutConsoleComponent {
   private clipboardService = inject(ClipboardService);
+  private rolloutStateService = inject(RolloutStateService);
+
   @Input() deploymentName: string = '';
   @Input() isExpanded: boolean = false;
   @Input() rolloutTemplates: CommandTemplate[] = [];
@@ -24,7 +27,6 @@ export class RolloutConsoleComponent {
   @Output() toggleExpanded = new EventEmitter<void>();
   @Output() templateExecute = new EventEmitter<CommandTemplate>();
   @Output() imageUpgrade = new EventEmitter<{ deployment: string, image: string }>();
-  @Output() rolloutAction = new EventEmitter<string>();
 
   // UI State
   showHistoryTable = signal<boolean>(false);
@@ -48,7 +50,7 @@ export class RolloutConsoleComponent {
         deployment: this.deploymentName,
         image: `jia0/${this.deploymentName}:${version}`
       });
-      this.rolloutAction.emit(`upgrade-${version}`);
+      this.rolloutStateService.triggerRolloutAction(`upgrade-${version}`);
     }
   }
 
@@ -57,7 +59,7 @@ export class RolloutConsoleComponent {
     const undoTemplate = this.rolloutTemplates.find(t => t.name === 'Undo Last');
     if (undoTemplate) {
       this.onTemplateExecute(undoTemplate);
-      this.rolloutAction.emit('rollback');
+      this.rolloutStateService.triggerRolloutAction('rollback');
     }
   }
 
@@ -65,7 +67,7 @@ export class RolloutConsoleComponent {
     const pauseTemplate = this.rolloutTemplates.find(t => t.name === 'Pause');
     if (pauseTemplate) {
       this.onTemplateExecute(pauseTemplate);
-      this.rolloutAction.emit('pause');
+      this.rolloutStateService.triggerRolloutAction('pause');
     }
   }
 
@@ -73,7 +75,7 @@ export class RolloutConsoleComponent {
     const resumeTemplate = this.rolloutTemplates.find(t => t.name === 'Resume');
     if (resumeTemplate) {
       this.onTemplateExecute(resumeTemplate);
-      this.rolloutAction.emit('resume');
+      this.rolloutStateService.triggerRolloutAction('resume');
     }
   }
 
@@ -81,7 +83,7 @@ export class RolloutConsoleComponent {
     const restartTemplate = this.rolloutTemplates.find(t => t.name === 'Restart');
     if (restartTemplate) {
       this.onTemplateExecute(restartTemplate);
-      this.rolloutAction.emit('restart');
+      this.rolloutStateService.triggerRolloutAction('restart');
     }
   }
 

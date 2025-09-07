@@ -33,7 +33,6 @@ export class ResourceSectionComponent {
   @Output() toggleExpanded = new EventEmitter<void>();
   @Output() rolloutConsoleToggle = new EventEmitter<void>();
   @Output() imageUpgrade = new EventEmitter<{deployment: string, image: string}>();
-  @Output() rolloutAction = new EventEmitter<string>();
 
   get accentColorClass(): string {
     const colorMap = {
@@ -118,10 +117,6 @@ export class ResourceSectionComponent {
 
   onImageUpgrade(event: {deployment: string, image: string}) {
     this.imageUpgrade.emit(event);
-  }
-
-  onRolloutAction(action: string) {
-    this.rolloutAction.emit(action);
   }
 
   get shouldShowRolloutConsole(): boolean {
