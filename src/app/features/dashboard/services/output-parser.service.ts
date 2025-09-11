@@ -377,20 +377,17 @@ export class OutputParserService {
 
       const title = titleMatch[1];
 
-      // Find the header line (should contain namespace-related headers)
+      // Find the header line (look for typical kubectl headers)
       let headerIndex = -1;
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i];
-        if (line.includes('NAMESPACE') && (
-          line.includes('POD_NAME') ||
-          line.includes('SERVICE_NAME') ||
-          line.includes('DEPLOYMENT_NAME') ||
-          line.includes('REPLICASET_NAME') ||
-          line.includes('STATEFULSET_NAME') ||
-          line.includes('DAEMONSET_NAME') ||
-          line.includes('HPA_NAME') ||
-          line.includes('CRONJOB_NAME') ||
-          line.includes('JOB_NAME'))) {
+        if (line.includes('NAME') && (
+          line.includes('READY') ||
+          line.includes('TYPE') ||
+          line.includes('CLUSTER-IP') ||
+          line.includes('DESIRED') ||
+          line.includes('CURRENT') ||
+          line.includes('AVAILABLE'))) {
           headerIndex = i;
           break;
         }

@@ -24,18 +24,21 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Function to split kubectl get all --all-namespaces output into separate tables
+// Function to split kubectl get all output into separate tables
 function splitGetAllTables(output) {
   const lines = output.split('\n');
   const tables = [];
   let currentTable = null;
+
+  // Check if this is --all-namespaces output (has NAMESPACE column)
+  const isAllNamespaces = output.includes('NAMESPACE');
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
     // Skip completely empty lines
     if (line.trim() === '') {
-      // Empty line might indicate end of current table
+      // Empty line indicates end of current table
       if (currentTable && currentTable.lines.length > 1) {
         tables.push(currentTable);
         currentTable = null;
@@ -43,8 +46,12 @@ function splitGetAllTables(output) {
       continue;
     }
 
-    // Check if this is a header line (starts with NAMESPACE)
-    if (line.startsWith('NAMESPACE')) {
+    // Check if this is a header line
+    const isHeaderLine = isAllNamespaces ?
+      line.startsWith('NAMESPACE') :
+      line.startsWith('NAME');
+
+    if (isHeaderLine) {
       // If we have a current table, save it first
       if (currentTable && currentTable.lines.length > 1) {
         tables.push(currentTable);
@@ -64,13 +71,14 @@ function splitGetAllTables(output) {
       // If this is the first data line, detect resource type
       if (!currentTable.resourceTypeDetected) {
         const parts = line.trim().split(/\s+/);
-        if (parts.length >= 2) {
-          const resourceName = parts[1]; // e.g., "replicaset.apps/dashboard-ui-85f85b8964"
+        const resourceNameIndex = isAllNamespaces ? 1 : 0; // NAMESPACE NAME vs NAME
+
+        if (parts.length > resourceNameIndex) {
+          const resourceName = parts[resourceNameIndex];
           let resourceType = 'Resources';
 
           if (resourceName.includes('/')) {
             const resourcePrefix = resourceName.split('/')[0];
-            // Map resource prefixes to friendly names (avoid spaces in names)
             switch (resourcePrefix.toLowerCase()) {
               case 'deployment.apps':
                 resourceType = 'DEPLOYMENT';
@@ -107,14 +115,6 @@ function splitGetAllTables(output) {
           }
 
           currentTable.resourceType = resourceType;
-
-          // Customize the header - ensure NAMESPACE is first, then {RESOURCE}_NAME
-          const headerLine = currentTable.lines[0];
-          // The original header format should be "NAMESPACE NAME ..." 
-          // We want to change it to "NAMESPACE {RESOURCE}_NAME ..."
-          const newHeader = headerLine.replace(/^(\w+\s+)NAME/, `$1${resourceType}_NAME`);
-          currentTable.lines[0] = newHeader;
-
           currentTable.resourceTypeDetected = true;
         }
       }
@@ -159,6 +159,7 @@ app.post('/api/execute', (req, res) => {
 
   console.log(`Executing: ${fullCommand}`);
 
+  // Simulate slow command for testing
   exec(fullCommand, { timeout: 30000 }, (error) => {
     // read tempFile no matter success or fail.
     fs.readFile(tempFile, 'utf8', (readErr, data) => {
@@ -185,9 +186,9 @@ app.post('/api/execute', (req, res) => {
         });
       }
 
-      // Check if this is "kubectl get all --all-namespaces" and split tables
+      // Check if this is "kubectl get all" and split tables  
       let processedOutput = data;
-      if (command.includes('get all --all-namespaces')) {
+      if (command.includes('get all')) {
         processedOutput = splitGetAllTables(data);
       }
 
@@ -197,7 +198,7 @@ app.post('/api/execute', (req, res) => {
         command: command
       });
     });
-  });
+  })
 });
 
 // Health check
