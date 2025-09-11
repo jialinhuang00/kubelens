@@ -3,6 +3,7 @@ import { Subject } from 'rxjs';
 import { RolloutService } from './rollout.service';
 import { DeploymentService } from '../../k8s/services/deployment.service';
 import { NamespaceService } from '../../k8s/services/namespace.service';
+import { ExecutionContextService } from '../../../core/services/execution-context.service';
 
 export interface RolloutActionEvent {
   action: string;
@@ -17,6 +18,7 @@ export class RolloutStateService {
   private rolloutService = inject(RolloutService);
   private deploymentService = inject(DeploymentService);
   private namespaceService = inject(NamespaceService);
+  private executionContext = inject(ExecutionContextService);
   
   private rolloutActionSubject = new Subject<RolloutActionEvent>();
   rolloutAction$ = this.rolloutActionSubject.asObservable();
@@ -52,10 +54,13 @@ export class RolloutStateService {
 
   private async refreshDeploymentStatus(deployment: string, namespace: string) {
     try {
-      await Promise.all([
-        this.deploymentService.getDeploymentStatus(deployment, namespace),
-        this.deploymentService.getRolloutHistory(deployment, namespace)
-      ]);
+      const refreshGroup = `refresh-status-${deployment}-${namespace}-${Date.now()}`;
+      await this.executionContext.withGroup(refreshGroup, async () => {
+        await Promise.all([
+          this.deploymentService.getDeploymentStatus(deployment, namespace),
+          this.deploymentService.getRolloutHistory(deployment, namespace)
+        ]);
+      });
       console.log(`✅ Status updated after rollout action`);
     } catch (error) {
       console.error('❌ Failed to update status after rollout action:', error);

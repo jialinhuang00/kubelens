@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { KubectlService } from '../../../core/services/kubectl.service';
 import { TemplateService } from '../../dashboard/services/template.service';
 import { CommandTemplate } from '../../../shared/models/kubectl.models';
+import { ExecutionContextService } from '../../../core/services/execution-context.service';
 
 export interface DeploymentStatus {
   name: string;
@@ -49,6 +50,7 @@ export interface RolloutHistoryItem {
 export class DeploymentService {
   private kubectlService = inject(KubectlService);
   private templateService = inject(TemplateService);
+  private executionContext = inject(ExecutionContextService);
 
   // State
   deployments = signal<string[]>([]);
@@ -225,24 +227,33 @@ export class DeploymentService {
     this.isMonitoringRollout.set(true);
 
     // Initial status and history update
-    await Promise.all([
-      this.updateRolloutStatus(deployment, namespace),
-      this.getDeploymentStatus(deployment, namespace),
-      this.getRolloutHistory(deployment, namespace)
-    ]);
+    const rolloutGroup = `rollout-init-${deployment}-${namespace}-${Date.now()}`;
+    await this.executionContext.withGroup(rolloutGroup, async () => {
+      await Promise.all([
+        this.updateRolloutStatus(deployment, namespace),
+        this.getDeploymentStatus(deployment, namespace),
+        this.getRolloutHistory(deployment, namespace)
+      ]);
+    });
 
     // Monitor every 3 seconds
     this.rolloutInterval = setInterval(async () => {
       try {
-        await Promise.all([
-          this.updateRolloutStatus(deployment, namespace),
-          this.getDeploymentStatus(deployment, namespace)
-        ]);
+        const monitorGroup = `rollout-monitor-${deployment}-${namespace}-${Date.now()}`;
+        await this.executionContext.withGroup(monitorGroup, async () => {
+          await Promise.all([
+            this.updateRolloutStatus(deployment, namespace),
+            this.getDeploymentStatus(deployment, namespace)
+          ]);
+        });
 
         // update history every 15 seconds
         const now = Date.now();
         if (!this.lastHistoryUpdate || now - this.lastHistoryUpdate > 15000) {
-          await this.getRolloutHistory(deployment, namespace);
+          const historyGroup = `rollout-history-${deployment}-${namespace}-${Date.now()}`;
+          await this.executionContext.withGroup(historyGroup, async () => {
+            await this.getRolloutHistory(deployment, namespace);
+          });
           this.lastHistoryUpdate = now;
         }
       } catch (error) {

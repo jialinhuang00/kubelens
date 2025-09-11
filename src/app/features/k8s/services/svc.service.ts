@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { KubectlService } from '../../../core/services/kubectl.service';
 import { TemplateService } from '../../dashboard/services/template.service';
 import { CommandTemplate } from '../../../shared/models/kubectl.models';
+import { ExecutionContextService } from '../../../core/services/execution-context.service';
 
 export interface ServiceStatus {
   name: string;
@@ -40,6 +41,7 @@ export interface EndpointPort {
 export class SvcService {
   private kubectlService = inject(KubectlService);
   private templateService = inject(TemplateService);
+  private executionContext = inject(ExecutionContextService);
 
   // State
   services = signal<string[]>([]);
@@ -83,14 +85,17 @@ export class SvcService {
 
   async getServiceStatus(service: string, namespace: string): Promise<ServiceStatus | null> {
     try {
-      const [serviceResponse, endpointsResponse] = await Promise.all([
-        this.kubectlService.executeCommand(
-          `kubectl get service ${service} -n ${namespace} -o json`
-        ),
-        this.kubectlService.executeCommand(
-          `kubectl get endpoints ${service} -n ${namespace} -o json`
-        ).catch(() => ({ success: false, stdout: '{}', stderr: '' }))
-      ]);
+      const serviceStatusGroup = `service-status-${service}-${namespace}-${Date.now()}`;
+      const [serviceResponse, endpointsResponse] = await this.executionContext.withGroup(serviceStatusGroup, async () => {
+        return Promise.all([
+          this.kubectlService.executeCommand(
+            `kubectl get service ${service} -n ${namespace} -o json`
+          ),
+          this.kubectlService.executeCommand(
+            `kubectl get endpoints ${service} -n ${namespace} -o json`
+          ).catch(() => ({ success: false, stdout: '{}', stderr: '' }))
+        ]);
+      });
       
       if (serviceResponse.success) {
         const serviceData = JSON.parse(serviceResponse.stdout);

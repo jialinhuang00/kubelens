@@ -157,48 +157,50 @@ app.post('/api/execute', (req, res) => {
   const tempFile = path.join(os.tmpdir(), `kubectl-${uuidv4()}.txt`);
   const fullCommand = `${command} > ${tempFile} 2>&1`;
 
-  console.log(`Executing: ${fullCommand}`);
+  console.log(`Executing: ${command}`);
 
   // Simulate slow command for testing
-  exec(fullCommand, { timeout: 30000 }, (error) => {
-    // read tempFile no matter success or fail.
-    fs.readFile(tempFile, 'utf8', (readErr, data) => {
-      // rm temp file
-      fs.unlink(tempFile, () => { });
+  setTimeout(() => {
+    exec(fullCommand, { timeout: 30000 }, (error) => {
+      // read tempFile no matter success or fail.
+      fs.readFile(tempFile, 'utf8', (readErr, data) => {
+        // rm temp file
+        fs.unlink(tempFile, () => { });
 
-      if (readErr) {
-        return res.status(500).json({
-          success: false,
-          error: 'Failed to read command output file',
-          file: tempFile
-        });
-      }
+        if (readErr) {
+          return res.status(500).json({
+            success: false,
+            error: 'Failed to read command output file',
+            file: tempFile
+          });
+        }
 
-      if (error) {
-        // When kubectl command fails, show the actual error message from the output
-        // instead of just the generic exec error message
-        const actualErrorMessage = data.trim() || error.message;
-        return res.json({
-          success: false,
-          error: actualErrorMessage,
-          stdout: '', // no ambiguous here, frontend only see error.
+        if (error) {
+          // When kubectl command fails, show the actual error message from the output
+          // instead of just the generic exec error message
+          const actualErrorMessage = data.trim() || error.message;
+          return res.json({
+            success: false,
+            error: actualErrorMessage,
+            stdout: '', // no ambiguous here, frontend only see error.
+            command: command
+          });
+        }
+
+        // Check if this is "kubectl get all" and split tables  
+        let processedOutput = data;
+        if (command.includes('get all')) {
+          processedOutput = splitGetAllTables(data);
+        }
+
+        res.json({
+          success: true,
+          stdout: processedOutput,
           command: command
         });
-      }
-
-      // Check if this is "kubectl get all" and split tables  
-      let processedOutput = data;
-      if (command.includes('get all')) {
-        processedOutput = splitGetAllTables(data);
-      }
-
-      res.json({
-        success: true,
-        stdout: processedOutput,
-        command: command
       });
-    });
-  })
+    })
+  }, 3000);
 });
 
 // Health check

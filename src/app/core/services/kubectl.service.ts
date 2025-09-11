@@ -1,8 +1,20 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, merge } from 'rxjs';
+import { Observable, BehaviorSubject, merge, Subject } from 'rxjs';
+import { takeUntil, catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 import { KubectlResponse } from '../../shared/models/kubectl.models';
 import { WebSocketService } from './websocket.service';
+import { ExecutionContextService } from './execution-context.service';
+
+export interface CommandExecution {
+  id: string;
+  command: string;
+  status: 'pending' | 'completed' | 'cancelled' | 'error';
+  timestamp: number;
+  group?: string;
+  uuid: string;
+}
 
 export interface StreamingResponse {
   isStreaming: boolean;
@@ -17,21 +29,123 @@ export interface StreamingResponse {
 export class KubectlService {
   private http = inject(HttpClient);
   private websocketService = inject(WebSocketService);
+  private executionContext = inject(ExecutionContextService);
   private readonly API_BASE = 'http://localhost:3000/api';
+  
+  // Request cancellation and tracking
+  private cancelSubjects = new Map<string, Subject<void>>();
+  private activeExecutions = new Map<string, CommandExecution>();
+  private executionHistory: CommandExecution[] = [];
 
-  async executeCommand(command: string): Promise<KubectlResponse> {
+  async executeCommand(command: string, group?: string): Promise<KubectlResponse> {
+    const uuid = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const executionId = `cmd_${uuid}`;
+    
+    // Use provided group or get from execution context
+    const effectiveGroup = group || this.executionContext.getCurrentGroup();
+    
+    // Create new execution tracking
+    const execution: CommandExecution = {
+      id: executionId,
+      command,
+      status: 'pending',
+      timestamp: Date.now(),
+      group: effectiveGroup,
+      uuid
+    };
+
+    // Cancel previous executions only if they're in different groups (or no group specified)
+    if (!effectiveGroup) {
+      // No group specified, cancel all pending executions (old behavior)
+      this.cancelSubjects.forEach((subject, key) => {
+        const activeExecution = this.activeExecutions.get(key);
+        if (activeExecution?.status === 'pending') {
+          subject.next();
+          activeExecution.status = 'cancelled';
+          console.log(`🚫 Command cancelled: ${activeExecution.command} (ID: ${activeExecution.id})`);
+        }
+      });
+      this.cancelSubjects.clear();
+      this.activeExecutions.clear();
+    } else {
+      // Cancel only executions from different groups
+      this.cancelSubjects.forEach((subject, key) => {
+        const activeExecution = this.activeExecutions.get(key);
+        if (activeExecution?.status === 'pending' && activeExecution.group !== effectiveGroup) {
+          subject.next();
+          activeExecution.status = 'cancelled';
+          console.log(`🚫 Command cancelled (different group): ${activeExecution.command} (ID: ${activeExecution.id})`);
+          this.cancelSubjects.delete(key);
+          this.activeExecutions.delete(key);
+        }
+      });
+    }
+
+    // Set up cancellation for this execution
+    const cancelSubject = new Subject<void>();
+    this.cancelSubjects.set(executionId, cancelSubject);
+    this.activeExecutions.set(executionId, execution);
+    this.executionHistory.push(execution);
+    
+    console.log(`🚀 Command started: ${command} (ID: ${execution.id}${effectiveGroup ? `, Group: ${effectiveGroup}` : ''})`);
+
     try {
       const response = await this.http.post<KubectlResponse>(`${this.API_BASE}/execute`, {
         command: command
-      }).toPromise();
+      }).pipe(
+        takeUntil(cancelSubject),
+        catchError((error: any) => {
+          console.log(`❌ Command error: ${command} (ID: ${execution.id}) - ${error.message}`);
+          return of({
+            success: false,
+            stdout: '',
+            error: `Network error: ${error.message}`
+          });
+        })
+      ).toPromise();
 
-      return response!;
-      // return { "success": true, "stdout": "apiVersion: v1\nkind: Service\nmetadata:\n  annotations:\n    kubectl.kubernetes.io/last-applied-configuration: |\n      {\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app\":\"number-service\"},\"name\":\"number-service\",\"namespace\":\"noah\"},\"spec\":{\"ports\":[{\"port\":80,\"protocol\":\"TCP\",\"targetPort\":3000}],\"selector\":{\"app\":\"number-service\"},\"type\":\"ClusterIP\"}}\n  creationTimestamp: \"2025-09-05T14:40:46Z\"\n  labels:\n    app: number-service\n  name: number-service\n  namespace: noah\n  resourceVersion: \"20129\"\n  uid: 600e2140-ea0e-4293-98a7-417bc1ab774c\nspec:\n  clusterIP: 10.96.15.216\n  clusterIPs:\n  - 10.96.15.216\n  internalTrafficPolicy: Cluster\n  ipFamilies:\n  - IPv4\n  ipFamilyPolicy: SingleStack\n  ports:\n  - port: 80\n    protocol: TCP\n    targetPort: 3000\n  selector:\n    app: number-service\n  sessionAffinity: None\n  type: ClusterIP\nstatus:\n  loadBalancer: {}\n" }
-    } catch (error) {
+      // Mark as completed and cleanup if this execution is still active
+      const activeExecution = this.activeExecutions.get(executionId);
+      if (activeExecution?.status === 'pending' && response) {
+        activeExecution.status = 'completed';
+        console.log(`✅ Command completed: ${command} (ID: ${execution.id})`);
+      }
+
+      // Cleanup
+      this.cancelSubjects.delete(executionId);
+      this.activeExecutions.delete(executionId);
+
+      if (!response) {
+        // Request was cancelled, throw special error instead of returning failed response
+        throw new Error('REQUEST_CANCELLED');
+      }
+      return response;
+    } catch (error: any) {
+      // Cleanup first
+      this.cancelSubjects.delete(executionId);
+      this.activeExecutions.delete(executionId);
+
+      // If it's a cancellation, don't treat as error and re-throw
+      if (error.message === 'REQUEST_CANCELLED') {
+        const activeExecution = this.activeExecutions.get(executionId);
+        if (activeExecution) {
+          activeExecution.status = 'cancelled';
+        }
+        // Re-throw cancellation error so UI can handle it appropriately
+        throw error;
+      }
+
+      // Handle real errors
+      const activeExecution = this.activeExecutions.get(executionId);
+      if (activeExecution?.status === 'pending') {
+        activeExecution.status = 'error';
+        console.log(`❌ Command error: ${command} (ID: ${execution.id}) - ${error.message}`);
+      }
+
       return {
         success: false,
         stdout: '',
-        error: `Network error: ${error}`
+        error: `Network error: ${error.message}`
       };
     }
   }
@@ -136,6 +250,33 @@ export class KubectlService {
     ];
 
     return streamingCommands.some(cmd => command.includes(cmd));
+  }
+
+  // Execution tracking methods
+  getCurrentExecution(): CommandExecution | undefined {
+    // Return the most recent pending execution
+    for (const [id, execution] of this.activeExecutions) {
+      if (execution.status === 'pending') {
+        return execution;
+      }
+    }
+    return undefined;
+  }
+
+  getActiveExecutions(): CommandExecution[] {
+    return Array.from(this.activeExecutions.values()).filter(exec => exec.status === 'pending');
+  }
+
+  getExecutionHistory(): CommandExecution[] {
+    return [...this.executionHistory];
+  }
+
+  clearExecutionHistory(): void {
+    this.executionHistory = [];
+  }
+
+  removeHistoryItem(id: string): void {
+    this.executionHistory = this.executionHistory.filter(cmd => cmd.id !== id);
   }
 
   async getNamespaces(): Promise<string[]> {

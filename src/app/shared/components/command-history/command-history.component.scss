@@ -1,0 +1,36 @@
+.command-history-panel {
+  .notification-container {
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 255, 255, 0.1);
+  }
+
+  .history-items::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .history-items::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .history-items::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 255, 0.3);
+    border-radius: 2px;
+  }
+
+  .history-items::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 255, 255, 0.5);
+  }
+
+  .history-item {
+    transition: all 0.2s ease;
+  }
+
+  .history-item:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .group-tag {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+}

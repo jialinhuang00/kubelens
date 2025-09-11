@@ -12,16 +12,18 @@ import { TemplateService } from '../services/template.service';
 import { UiStateService } from '../services/ui-state.service';
 import { RolloutService } from '../services/rollout.service';
 import { RolloutStateService } from '../services/rollout-state.service';
+import { ExecutionContextService } from '../../../core/services/execution-context.service';
 import { KubeResource, PodDescribeData, CommandTemplate, TableData, YamlItem } from '../../../shared/models/kubectl.models';
 import { CommandSidebarComponent } from './sidebar/command-sidebar.component';
 import { OutputDisplayComponent } from './output-display/output-display.component';
 import { CommandInputComponent } from './command-input/command-input.component';
+import { CommandHistoryComponent } from '../../../shared/components/command-history/command-history.component';
 import { OutputData } from '../../../shared/interfaces/output-data.interface';
 import { SidebarData } from '../../../shared/interfaces/sidebar-data.interface';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterOutlet, FormsModule, CommonModule, CommandSidebarComponent, OutputDisplayComponent, CommandInputComponent],
+  imports: [RouterOutlet, FormsModule, CommonModule, CommandSidebarComponent, OutputDisplayComponent, CommandInputComponent, CommandHistoryComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -37,6 +39,7 @@ export class DashboardComponent implements OnInit {
   private uiStateService = inject(UiStateService);
   private rolloutService = inject(RolloutService);
   private rolloutStateService = inject(RolloutStateService);
+  private executionContext = inject(ExecutionContextService);
 
   protected readonly title = signal('kubecmds-viz');
 
@@ -153,10 +156,13 @@ export class DashboardComponent implements OnInit {
     // if deployment change, get status and history
     if (value && this.selectedNamespace()) {
       try {
-        await Promise.all([
-          this.deploymentService.getDeploymentStatus(value, this.selectedNamespace()),
-          this.deploymentService.getRolloutHistory(value, this.selectedNamespace())
-        ]);
+        const deploymentGroup = `deployment-change-${value}-${this.selectedNamespace()}-${Date.now()}`;
+        await this.executionContext.withGroup(deploymentGroup, async () => {
+          await Promise.all([
+            this.deploymentService.getDeploymentStatus(value, this.selectedNamespace()),
+            this.deploymentService.getRolloutHistory(value, this.selectedNamespace())
+          ]);
+        });
 
         // monitor status for Version Player
         this.deploymentService.startRolloutMonitoring(value, this.selectedNamespace());
@@ -208,12 +214,18 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+
   private async loadResourcesForNamespace(namespace: string) {
-    await Promise.all([
-      this.deploymentService.loadDeployments(namespace),
-      this.podService.loadPods(namespace),
-      this.svcService.loadServices(namespace)
-    ]);
+    const resourceGroup = `namespace-${namespace}-${Date.now()}`;
+    
+    // Use execution context to group all resource loading operations
+    await this.executionContext.withGroup(resourceGroup, async () => {
+      await Promise.all([
+        this.deploymentService.loadDeployments(namespace),
+        this.podService.loadPods(namespace),
+        this.svcService.loadServices(namespace)
+      ]);
+    });
   }
 
   // Computed signals to combine all data for child components
@@ -359,6 +371,8 @@ export class DashboardComponent implements OnInit {
     // Reset UI states through service
     this.uiStateService.resetOutputStates();
 
+    let wasCancelled = false;
+
     try {
       const response = await this.kubectlService.executeCommand(command);
 
@@ -369,10 +383,21 @@ export class DashboardComponent implements OnInit {
         this.commandOutput.set(`Error: ${response.error}`);
       }
     } catch (error: any) {
+      // If request was cancelled, don't show error - just keep loading state
+      if (error.message === 'REQUEST_CANCELLED') {
+        console.log('🚫 Request was cancelled, keeping loading state');
+        wasCancelled = true;
+        return;
+      }
+      
+      // Handle real errors
       this.outputType.set('raw');
       this.commandOutput.set(`Network error: ${error.message || error}`);
     } finally {
-      this.isLoading.set(false);
+      // Only set loading to false if request wasn't cancelled
+      if (!wasCancelled) {
+        this.isLoading.set(false);
+      }
     }
   }
 

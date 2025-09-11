@@ -1,2 +1,27 @@
 // Styles are handled by global CSS in the parent components
 // This component inherits cyber-container, cyber-button, etc. from the main stylesheet
+
+.command-history {
+  max-height: 200px;
+  overflow-y: auto;
+  
+  .cancelled-command {
+    border-left: 3px solid #ff6b6b;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      opacity: 1 !important;
+      background: rgba(255, 255, 255, 0.08) !important;
+    }
+    
+    .cancel-marker {
+      font-weight: bold;
+      font-size: 10px;
+    }
+    
+    .command-text {
+      word-break: break-all;
+      line-height: 1.4;
+    }
+  }
+}
