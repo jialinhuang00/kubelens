@@ -3,6 +3,7 @@ import { KubectlService } from '../../../core/services/kubectl.service';
 import { TemplateService } from '../../dashboard/services/template.service';
 import { CommandTemplate } from '../../../shared/models/kubectl.models';
 import { ExecutionContextService } from '../../../core/services/execution-context.service';
+import { ExecutionGroupGenerator } from '../../../shared/constants/execution-groups.constants';
 
 export interface DeploymentStatus {
   name: string;
@@ -65,6 +66,8 @@ export class DeploymentService {
   isMonitoringRollout = signal<boolean>(false);
   private rolloutInterval: any = null;
   private lastHistoryUpdate: number = 0;
+  private currentMonitoredDeployment: string = '';
+  private currentMonitoredNamespace: string = '';
 
   async loadDeployments(namespace: string) {
     if (!namespace) return;
@@ -220,14 +223,16 @@ export class DeploymentService {
   }
 
   async startRolloutMonitoring(deployment: string, namespace: string) {
-    if (this.isMonitoringRollout()) {
-      this.stopRolloutMonitoring();
-    }
-
+    // Always stop any existing monitoring first
+    this.stopRolloutMonitoring();
+    
+    console.log(`🔄 Starting rollout monitoring for ${deployment} in ${namespace}`);
+    this.currentMonitoredDeployment = deployment;
+    this.currentMonitoredNamespace = namespace;
     this.isMonitoringRollout.set(true);
 
     // Initial status and history update
-    const rolloutGroup = `rollout-init-${deployment}-${namespace}-${Date.now()}`;
+    const rolloutGroup = ExecutionGroupGenerator.deploymentOperations(deployment, namespace);
     await this.executionContext.withGroup(rolloutGroup, async () => {
       await Promise.all([
         this.updateRolloutStatus(deployment, namespace),
@@ -236,10 +241,18 @@ export class DeploymentService {
       ]);
     });
 
-    // Monitor every 3 seconds
+    // Monitor every 10 seconds
     this.rolloutInterval = setInterval(async () => {
       try {
-        const monitorGroup = `rollout-monitor-${deployment}-${namespace}-${Date.now()}`;
+        // Safety check: only monitor if this is still the current deployment
+        if (this.currentMonitoredDeployment !== deployment || this.currentMonitoredNamespace !== namespace) {
+          console.log(`🛑 Stopping outdated monitoring for ${deployment} in ${namespace}`);
+          this.stopRolloutMonitoring();
+          return;
+        }
+
+        // Use consistent group name for monitoring to avoid conflicts
+        const monitorGroup = ExecutionGroupGenerator.deploymentOperations(deployment, namespace);
         await this.executionContext.withGroup(monitorGroup, async () => {
           await Promise.all([
             this.updateRolloutStatus(deployment, namespace),
@@ -250,7 +263,7 @@ export class DeploymentService {
         // update history every 15 seconds
         const now = Date.now();
         if (!this.lastHistoryUpdate || now - this.lastHistoryUpdate > 15000) {
-          const historyGroup = `rollout-history-${deployment}-${namespace}-${Date.now()}`;
+          const historyGroup = ExecutionGroupGenerator.deploymentOperations(deployment, namespace);
           await this.executionContext.withGroup(historyGroup, async () => {
             await this.getRolloutHistory(deployment, namespace);
           });
@@ -259,14 +272,20 @@ export class DeploymentService {
       } catch (error) {
         console.error('Error during rollout monitoring:', error);
       }
-    }, 3000);
+    }, 10000);
   }
 
   stopRolloutMonitoring() {
+    console.log(`⏹️ Stopping rollout monitoring for ${this.currentMonitoredDeployment}`);
+    
     if (this.rolloutInterval) {
       clearInterval(this.rolloutInterval);
       this.rolloutInterval = null;
+      console.log(`✅ Cleared rollout interval`);
     }
+    
+    this.currentMonitoredDeployment = '';
+    this.currentMonitoredNamespace = '';
     this.isMonitoringRollout.set(false);
   }
 

@@ -6,6 +6,7 @@ import { of } from 'rxjs';
 import { KubectlResponse } from '../../shared/models/kubectl.models';
 import { WebSocketService } from './websocket.service';
 import { ExecutionContextService } from './execution-context.service';
+import { ExecutionGroupUtils } from '../../shared/constants/execution-groups.constants';
 
 export interface CommandExecution {
   id: string;
@@ -54,40 +55,52 @@ export class KubectlService {
       uuid
     };
 
-    // Cancel previous executions only if they're in different groups (or no group specified)
-    if (!effectiveGroup) {
-      // No group specified, cancel all pending executions (old behavior)
-      this.cancelSubjects.forEach((subject, key) => {
-        const activeExecution = this.activeExecutions.get(key);
-        if (activeExecution?.status === 'pending') {
-          subject.next();
-          activeExecution.status = 'cancelled';
-          console.log(`🚫 Command cancelled: ${activeExecution.command} (ID: ${activeExecution.id})`);
-        }
-      });
-      this.cancelSubjects.clear();
-      this.activeExecutions.clear();
-    } else {
-      // Cancel only executions from different groups
-      this.cancelSubjects.forEach((subject, key) => {
-        const activeExecution = this.activeExecutions.get(key);
-        if (activeExecution?.status === 'pending' && activeExecution.group !== effectiveGroup) {
-          subject.next();
-          activeExecution.status = 'cancelled';
-          console.log(`🚫 Command cancelled (different group): ${activeExecution.command} (ID: ${activeExecution.id})`);
-          this.cancelSubjects.delete(key);
-          this.activeExecutions.delete(key);
-        }
-      });
-    }
-
-    // Set up cancellation for this execution
+    // Set up cancellation for this execution FIRST
     const cancelSubject = new Subject<void>();
     this.cancelSubjects.set(executionId, cancelSubject);
     this.activeExecutions.set(executionId, execution);
     this.executionHistory.push(execution);
+
+    // Cancel previous executions only if they're in different groups (or no group specified)
+    if (!effectiveGroup) {
+      // No group specified, cancel all OTHER pending executions (exclude current one)
+      this.cancelSubjects.forEach((subject, key) => {
+        if (key !== executionId) { // Don't cancel current execution
+          const activeExecution = this.activeExecutions.get(key);
+          if (activeExecution?.status === 'pending') {
+            subject.next();
+            activeExecution.status = 'cancelled';
+            console.log(`🚫 Command cancelled: ${activeExecution.command} (ID: ${activeExecution.id}) by ${executionId}`);
+            this.cancelSubjects.delete(key);
+            this.activeExecutions.delete(key);
+          }
+        }
+      });
+    } else {
+      // Cancel only executions from different groups, but respect priority
+      this.cancelSubjects.forEach((subject, key) => {
+        if (key !== executionId) { // Don't cancel current execution
+          const activeExecution = this.activeExecutions.get(key);
+          if (activeExecution?.status === 'pending' && activeExecution.group !== effectiveGroup) {
+            
+            // Priority protection: use structured group priority system
+            if (!ExecutionGroupUtils.shouldCancel(effectiveGroup, activeExecution.group)) {
+              console.log(`🛡️ Protected higher priority command from cancellation: ${activeExecution.command} (ID: ${activeExecution.id}), Current: ${effectiveGroup}, Target: ${activeExecution.group}`);
+              return; // Don't cancel higher priority command
+            }
+            
+            subject.next();
+            activeExecution.status = 'cancelled';
+            console.log(`🚫 Command cancelled (different group): ${activeExecution.command} (ID: ${activeExecution.id}) by ${executionId}`);
+            this.cancelSubjects.delete(key);
+            this.activeExecutions.delete(key);
+          }
+        }
+      });
+    }
     
     console.log(`🚀 Command started: ${command} (ID: ${execution.id}${effectiveGroup ? `, Group: ${effectiveGroup}` : ''})`);
+    console.log(`📊 Active executions: ${this.activeExecutions.size}, Current execution registered: ${this.activeExecutions.has(executionId)}`);;
 
     try {
       const response = await this.http.post<KubectlResponse>(`${this.API_BASE}/execute`, {

@@ -1,51 +1,66 @@
-<div class="command-history-panel fixed top-4 right-4 z-50 max-w-md">
+<div class="command-history-panel fixed top-4 right-4 z-50 w-96">
   @if (cancelledCommands.length > 0) {
-    <div class="notification-container bg-black border border-subtle rounded-lg p-3 shadow-lg"
-         style="border-color: var(--border-subtle); background: rgba(0, 0, 0, 0.95);">
-      
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-semibold glow-text" style="color: var(--accent-cyan)">
-          Command History ({{ cancelledCommands.length }})
-        </h3>
-        <button 
-          class="text-xs opacity-60 hover:opacity-100 transition-opacity"
-          style="color: var(--text-secondary);"
-          (click)="clearAllHistory()"
-          title="Clear all history">
-          Clear All
-        </button>
-      </div>
+  <div
+    class="notification-container bg-black border border-subtle rounded-lg p-3 shadow-lg"
+    style="border-color: var(--border-subtle); background: rgba(0, 0, 0, 0.95)"
+  >
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-sm font-semibold glow-text" style="color: var(--accent-cyan)">
+        Command History ({{ cancelledCommands.length }})
+      </h3>
+      <button
+        class="text-xs opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+        style="color: var(--text-secondary)"
+        (click)="clearAllHistory()"
+        title="Clear all history"
+      >
+        Clear All
+      </button>
+    </div>
 
-      <!-- History Items -->
-      <div class="history-items max-h-64 overflow-y-auto space-y-2">
-        @for (cmd of cancelledCommands; track cmd.id) {
-          <div class="history-item bg-subtle rounded p-2 flex items-center justify-between text-xs"
-               style="background: rgba(255, 255, 255, 0.05);">
-            <div class="flex items-center flex-1 min-w-0">
-              <span class="cancel-marker mr-2" style="color: #ff6b6b;">✕</span>
-              <span class="command-text text-mono truncate" 
-                    style="color: var(--text-secondary);"
-                    [title]="cmd.command">
-                {{ cmd.command }}
-              </span>
-              @if (cmd.group) {
-                <span class="group-tag ml-2 px-1 rounded text-xs" 
-                      style="background: rgba(0, 255, 255, 0.2); color: var(--accent-cyan);">
-                  {{ cmd.group }}
-                </span>
-              }
-            </div>
-            <button 
-              class="close-button ml-2 hover:opacity-100 transition-opacity flex-shrink-0"
-              style="color: #ff6b6b; opacity: 0.6;"
-              (click)="onRemoveHistory(cmd.id)"
-              title="Remove from history">
-              ×
-            </button>
+    <!-- History Items -->
+    <div class="history-items max-h-64 overflow-y-auto space-y-2">
+      @for (cmd of cancelledCommands; track cmd.id) {
+      <div
+        class="history-item bg-subtle rounded p-2 text-xs"
+        style="background: rgba(255, 255, 255, 0.05)"
+      >
+        <!-- Command row -->
+        <div class="flex items-center justify-between mb-1">
+          <div class="flex items-center flex-1 min-w-0">
+            <span class="cancel-marker mr-2" style="color: #ff6b6b">✕</span>
+            <span
+              class="command-text text-mono truncate"
+              style="color: var(--text-secondary)"
+              [title]="cmd.command"
+            >
+              {{ cmd.command }}
+            </span>
           </div>
+          <button
+            class="close-button ml-2 hover:opacity-100 transition-opacity flex-shrink-0 cursor-pointer"
+            style="color: #ff6b6b; opacity: 0.6"
+            (click)="onRemoveHistory(cmd.id)"
+            title="Remove from history"
+          >
+            ×
+          </button>
+        </div>
+        <!-- Group row -->
+        @if (cmd.group) {
+        <div class="flex justify-start">
+          <span
+            class="group-tag px-2 py-1 rounded text-xs"
+            style="background: rgba(0, 255, 255, 0.2); color: var(--accent-cyan)"
+          >
+            {{ cmd.group }}
+          </span>
+        </div>
         }
       </div>
+      }
     </div>
+  </div>
   }
 </div>

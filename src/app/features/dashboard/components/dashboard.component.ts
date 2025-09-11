@@ -18,6 +18,7 @@ import { CommandSidebarComponent } from './sidebar/command-sidebar.component';
 import { OutputDisplayComponent } from './output-display/output-display.component';
 import { CommandInputComponent } from './command-input/command-input.component';
 import { CommandHistoryComponent } from '../../../shared/components/command-history/command-history.component';
+import { ExecutionGroupGenerator } from '../../../shared/constants/execution-groups.constants';
 import { OutputData } from '../../../shared/interfaces/output-data.interface';
 import { SidebarData } from '../../../shared/interfaces/sidebar-data.interface';
 
@@ -91,7 +92,7 @@ export class DashboardComponent implements OnInit {
 
   async ngOnInit() {
     await this.namespaceService.loadNamespaces();
-    
+
     // Subscribe to rollout actions
     this.rolloutStateService.rolloutAction$.subscribe(event => {
       console.log(`📡 Dashboard received rollout action: ${event.action} for ${event.deployment} in ${event.namespace}`);
@@ -111,31 +112,19 @@ export class DashboardComponent implements OnInit {
     this.multipleTables.set([]);
     this.hasEventsTable.set(false);
 
+    // Create execution group for user commands to avoid canceling related background tasks
+    console.log('====', 'user commna')
+    const userCommandGroup = ExecutionGroupGenerator.userCommand();
+
     // if need streaming?
     if (this.kubectlService.shouldUseStream(command)) {
       await this.executeCommandWithStream(command);
       return;
     }
-    this.multipleYamls.set([]);
 
-    // Reset UI states through service
-    this.uiStateService.resetOutputStates();
-
-    try {
-      const response = await this.kubectlService.executeCommand(command);
-
-      if (response.success) {
-        this.parseAndSetOutput(response.stdout, command);
-      } else {
-        this.outputType.set('raw');
-        this.commandOutput.set(`Error: ${response.error}`);
-      }
-    } catch (error) {
-      console.error('Command execution failed:', error);
-      this.commandOutput.set('Error executing command');
-    } finally {
-      this.isLoading.set(false);
-    }
+    await this.executionContext.withGroup(userCommandGroup, async () => {
+      await this.executeCommandNormal(command);
+    });
   }
 
   // High-level business logic: Resource management
@@ -156,7 +145,7 @@ export class DashboardComponent implements OnInit {
     // if deployment change, get status and history
     if (value && this.selectedNamespace()) {
       try {
-        const deploymentGroup = `deployment-change-${value}-${this.selectedNamespace()}-${Date.now()}`;
+        const deploymentGroup = ExecutionGroupGenerator.deploymentOperations(value, this.selectedNamespace());
         await this.executionContext.withGroup(deploymentGroup, async () => {
           await Promise.all([
             this.deploymentService.getDeploymentStatus(value, this.selectedNamespace()),
@@ -216,8 +205,8 @@ export class DashboardComponent implements OnInit {
 
 
   private async loadResourcesForNamespace(namespace: string) {
-    const resourceGroup = `namespace-${namespace}-${Date.now()}`;
-    
+    const resourceGroup = ExecutionGroupGenerator.namespaceResourceLoading(namespace);
+
     // Use execution context to group all resource loading operations
     await this.executionContext.withGroup(resourceGroup, async () => {
       await Promise.all([
@@ -389,7 +378,7 @@ export class DashboardComponent implements OnInit {
         wasCancelled = true;
         return;
       }
-      
+
       // Handle real errors
       this.outputType.set('raw');
       this.commandOutput.set(`Network error: ${error.message || error}`);

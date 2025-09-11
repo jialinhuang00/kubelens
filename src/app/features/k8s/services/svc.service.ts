@@ -3,6 +3,7 @@ import { KubectlService } from '../../../core/services/kubectl.service';
 import { TemplateService } from '../../dashboard/services/template.service';
 import { CommandTemplate } from '../../../shared/models/kubectl.models';
 import { ExecutionContextService } from '../../../core/services/execution-context.service';
+import { ExecutionGroupGenerator } from '../../../shared/constants/execution-groups.constants';
 
 export interface ServiceStatus {
   name: string;
@@ -85,7 +86,7 @@ export class SvcService {
 
   async getServiceStatus(service: string, namespace: string): Promise<ServiceStatus | null> {
     try {
-      const serviceStatusGroup = `service-status-${service}-${namespace}-${Date.now()}`;
+      const serviceStatusGroup = ExecutionGroupGenerator.serviceStatusQuery(service, namespace);
       const [serviceResponse, endpointsResponse] = await this.executionContext.withGroup(serviceStatusGroup, async () => {
         return Promise.all([
           this.kubectlService.executeCommand(
