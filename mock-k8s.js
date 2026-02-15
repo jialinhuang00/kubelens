@@ -10,35 +10,73 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 
-const DEFAULT_DATA_PATH = path.join(
-  __dirname,
-  'mock-data'
-);
-
-const DATA_PATH = process.env.MOCK_K8S_DATA || DEFAULT_DATA_PATH;
+const BACKUP_PATH = path.join(__dirname, 'k8s-backup');
+const FALLBACK_PATH = process.env.MOCK_K8S_DATA || path.join(__dirname, 'mock-data');
 const MOCK_NAMESPACE = 'demo';
+
+// File aliases (same as graph endpoint)
+const FILE_ALIASES = {
+  'httproutes': ['httproutes.gateway.networking.k8s.io.yaml', 'httproutes.yaml'],
+  'tcproutes': ['tcproutes.gateway.networking.k8s.io.yaml', 'tcproutes.yaml'],
+  'gateways': ['gateways.gateway.networking.k8s.io.yaml', 'gateways.yaml'],
+};
 
 // --- Cache loaded YAML ---
 const cache = {};
 
-function loadYaml(filename) {
-  if (cache[filename]) return cache[filename];
-  const filePath = path.join(DATA_PATH, filename);
-  if (!fs.existsSync(filePath)) return null;
+// Resolve file path for a given namespace:
+//   1st: k8s-backup/<namespace>/<file>  (per-namespace backup)
+//   2nd: mock-data/<file>               (fallback, legacy single-namespace data)
+//   3rd: null                           (no data available)
+function resolveFilePath(filename, namespace) {
+  // Try namespace-specific directory in k8s-backup
+  if (namespace) {
+    const nsDir = path.join(BACKUP_PATH, namespace);
+    const nsPath = path.join(nsDir, filename);
+    if (fs.existsSync(nsPath)) return nsPath;
+    // Try aliases
+    const baseName = filename.replace('.yaml', '');
+    const aliases = FILE_ALIASES[baseName];
+    if (aliases) {
+      for (const alias of aliases) {
+        const aliasPath = path.join(nsDir, alias);
+        if (fs.existsSync(aliasPath)) return aliasPath;
+      }
+    }
+  }
+  // Fallback to flat mock-data
+  const fallbackFilePath = path.join(FALLBACK_PATH, filename);
+  if (fs.existsSync(fallbackFilePath)) return fallbackFilePath;
+  return null;
+}
+
+function loadYaml(filename, namespace) {
+  const cacheKey = `${namespace || '_'}:${filename}`;
+  if (cache[cacheKey]) return cache[cacheKey];
+  const filePath = resolveFilePath(filename, namespace);
+  if (!filePath) return null;
   const content = fs.readFileSync(filePath, 'utf8');
   const parsed = yaml.load(content);
-  cache[filename] = parsed;
+  cache[cacheKey] = parsed;
   return parsed;
 }
 
-function loadText(filename) {
-  const key = `text:${filename}`;
-  if (cache[key]) return cache[key];
-  const filePath = path.join(DATA_PATH, filename);
-  if (!fs.existsSync(filePath)) return null;
+function loadText(filename, namespace) {
+  const cacheKey = `text:${namespace || '_'}:${filename}`;
+  if (cache[cacheKey]) return cache[cacheKey];
+  const filePath = resolveFilePath(filename, namespace);
+  if (!filePath) return null;
   const content = fs.readFileSync(filePath, 'utf8');
-  cache[key] = content;
+  cache[cacheKey] = content;
   return content;
+}
+
+// List available namespaces from k8s-backup directories
+function listBackupNamespaces() {
+  if (!fs.existsSync(BACKUP_PATH)) return [MOCK_NAMESPACE];
+  return fs.readdirSync(BACKUP_PATH, { withFileTypes: true })
+    .filter(e => e.isDirectory() && !e.name.startsWith('.') && e.name !== '_cluster')
+    .map(e => e.name);
 }
 
 // --- Helpers ---
@@ -220,9 +258,10 @@ NewReplicaSet:        ${m.name} (${st.readyReplicas || 0}/${s.replicas} replicas
 Events:               <none>`;
 }
 
-function generatePodDescribe(podName) {
+function generatePodDescribe(podName, namespace) {
   // We don't have full pod YAML, generate a basic describe from pods-snapshot
-  const snapshot = loadText('pods-snapshot.txt');
+  const ns = namespace || MOCK_NAMESPACE;
+  const snapshot = loadText('pods-snapshot.txt', ns);
   if (!snapshot) return `Error from server (NotFound): pods "${podName}" not found`;
   const lines = snapshot.trim().split('\n');
   const podLine = lines.find(l => l.trim().startsWith(podName));
@@ -230,7 +269,7 @@ function generatePodDescribe(podName) {
   const parts = podLine.trim().split(/\s+/);
   // NAME READY STATUS RESTARTS AGE IP NODE NOMINATED READINESS
   return `Name:             ${parts[0]}
-Namespace:        ${MOCK_NAMESPACE}
+Namespace:        ${ns}
 Node:             ${parts[6] || '<unknown>'}
 Status:           ${parts[2]}
 IP:               ${parts[5] || '<none>'}
@@ -486,6 +525,8 @@ function handleCommand(command) {
 }
 
 // --- GET handler ---
+// Routes to resource-specific handlers. Generic resources use YAML files
+// from k8s-backup/<namespace>/, falling back to mock-data/.
 
 function handleGet(parsed) {
   // kubectl get all
@@ -524,7 +565,8 @@ function handleGet(parsed) {
     return { success: false, error: `[MOCK] Unknown resource type: ${parsed.resource}` };
   }
 
-  const data = loadYaml(yamlFile);
+  const ns = parsed.namespace;
+  const data = loadYaml(yamlFile, ns);
   if (!data) {
     return { success: false, error: `[MOCK] No backup data for ${parsed.resource}` };
   }
@@ -541,6 +583,23 @@ function handleGet(parsed) {
     }
     if (parsed.output === 'yaml') {
       return { success: true, stdout: yaml.dump(item) };
+    }
+    // jsonpath for single resource
+    if (parsed.output && parsed.output.startsWith('jsonpath=')) {
+      const jp = parsed.output.replace('jsonpath=', '').replace(/^"|"$/g, '');
+      // Handle {.data} — decode base64 values for secrets
+      if (jp === '{.data}' && item.data) {
+        const decoded = {};
+        for (const [k, v] of Object.entries(item.data)) {
+          try { decoded[k] = Buffer.from(v, 'base64').toString('utf-8'); }
+          catch { decoded[k] = v; }
+        }
+        return { success: true, stdout: JSON.stringify(decoded, null, 2) };
+      }
+      // Generic jsonpath: resolve simple paths like {.metadata.name}
+      const path = jp.replace(/^\{\.?/, '').replace(/\}$/, '');
+      const val = resolveJsonPath(item, path);
+      return { success: true, stdout: typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val || '') };
     }
     // Default: table with single item
     const generator = TABLE_GENERATORS[yamlFile];
@@ -590,9 +649,12 @@ function handleGet(parsed) {
   return { success: true, stdout: extractNames(data).join('\n') };
 }
 
+// Data: directory listing of k8s-backup/ subdirectories
 function handleGetNamespaces(parsed) {
+  const namespaces = listBackupNamespaces();
+
   if (parsed.output && parsed.output.startsWith('jsonpath=')) {
-    return { success: true, stdout: MOCK_NAMESPACE };
+    return { success: true, stdout: namespaces.join(' ') };
   }
   if (parsed.output === 'json') {
     return {
@@ -600,17 +662,18 @@ function handleGetNamespaces(parsed) {
       stdout: JSON.stringify({
         apiVersion: 'v1',
         kind: 'NamespaceList',
-        items: [{ metadata: { name: MOCK_NAMESPACE }, status: { phase: 'Active' } }]
+        items: namespaces.map(ns => ({ metadata: { name: ns }, status: { phase: 'Active' } }))
       }, null, 2)
     };
   }
-  const header = 'NAME     STATUS   AGE';
-  const row = `${pad(MOCK_NAMESPACE, 9)}Active   200d`;
-  let output = [header, row].join('\n');
-  if (parsed.flags.noHeaders) output = row;
+  const header = 'NAME                    STATUS   AGE';
+  const rows = namespaces.map(ns => `${pad(ns, 24)}Active   200d`);
+  let output = [header, ...rows].join('\n');
+  if (parsed.flags.noHeaders) output = rows.join('\n');
   return { success: true, stdout: output };
 }
 
+// Data: hardcoded (no node backup files)
 function handleGetNodes(parsed) {
   const node = {
     name: 'ip-10-0-1-50.ec2.internal',
@@ -653,106 +716,101 @@ function handleGetNodes(parsed) {
   return { success: true, stdout: output };
 }
 
+// Data: k8s-backup/<namespace>/pods-snapshot.txt (tabular text)
+//       k8s-backup/<namespace>/pods-images.txt   (pod→image mapping)
 function handleGetPods(parsed) {
+  const ns = parsed.namespace;
+  const snapshot = loadText('pods-snapshot.txt', ns);
+  const images = loadText('pods-images.txt', ns);
+
+  if (!snapshot) {
+    if (parsed.output && parsed.output.startsWith('jsonpath=')) return { success: true, stdout: '' };
+    return { success: true, stdout: 'No resources found in namespace.' };
+  }
+
+  const lines = snapshot.trim().split('\n');
+  const header = lines[0];
+  const dataLines = lines.slice(1);
+
   // Single pod by name
   if (parsed.resourceName) {
-    const snapshot = loadText('pods-snapshot.txt');
-    if (!snapshot) return { success: false, error: 'No pod data available' };
-    const lines = snapshot.trim().split('\n');
-    const header = lines[0];
-    const podLine = lines.find(l => l.trim().startsWith(parsed.resourceName));
+    const podLine = dataLines.find(l => l.trim().startsWith(parsed.resourceName));
     if (!podLine) return { success: false, error: `Error from server (NotFound): pods "${parsed.resourceName}" not found` };
 
     if (parsed.output === 'json') {
-      // Generate a basic pod JSON from snapshot line
-      const parts = podLine.trim().split(/\s+/);
-      const podJson = {
-        apiVersion: 'v1',
-        kind: 'Pod',
-        metadata: { name: parts[0], namespace: MOCK_NAMESPACE },
-        status: {
-          phase: parts[2],
-          podIP: parts[5] || '',
-          hostIP: parts[6] || '',
-          containerStatuses: [{
-            name: 'main',
-            ready: parts[1] === '1/1',
-            restartCount: parseInt(parts[3]) || 0,
-            state: { running: { startedAt: new Date().toISOString() } }
-          }]
-        }
-      };
-      // Enrich with image data from pods-images.txt
-      const images = loadText('pods-images.txt');
-      if (images) {
-        const imgLine = images.trim().split('\n').find(l => l.trim().startsWith(parts[0]));
-        if (imgLine) {
-          const imgParts = imgLine.trim().split(/\s+/);
-          const imageStr = imgParts.slice(1).join(' ');
-          podJson.spec = {
-            containers: imageStr.split(',').map((img, idx) => ({
-              name: idx === 0 ? 'main' : `sidecar-${idx}`,
-              image: img.trim()
-            }))
-          };
-          podJson.status.containerStatuses = imageStr.split(',').map((img, idx) => ({
-            name: idx === 0 ? 'main' : `sidecar-${idx}`,
-            image: img.trim(),
-            imageID: img.trim(),
-            ready: parts[1] === '1/1',
-            restartCount: parseInt(parts[3]) || 0,
-          }));
-        }
-      }
-      return { success: true, stdout: JSON.stringify(podJson, null, 2) };
+      return { success: true, stdout: JSON.stringify(buildPodJson(podLine, ns, images), null, 2) };
     }
-
     if (parsed.flags.noHeaders) return { success: true, stdout: podLine };
     return { success: true, stdout: [header, podLine].join('\n') };
   }
 
-  // List all pods
+  // jsonpath → return pod names
   if (parsed.output && parsed.output.startsWith('jsonpath=')) {
-    const snapshot = loadText('pods-snapshot.txt');
-    if (!snapshot) return { success: true, stdout: '' };
-    const lines = snapshot.trim().split('\n').slice(1); // skip header
-    const names = lines.map(l => l.trim().split(/\s+/)[0]).filter(Boolean);
+    const names = dataLines.map(l => l.trim().split(/\s+/)[0]).filter(Boolean);
     return { success: true, stdout: names.join(' ') };
   }
 
-  // custom-columns for pods (e.g., POD_NAME:.metadata.name,IMAGE:...)
+  // custom-columns (e.g. POD_NAME:.metadata.name,IMAGE:...)
   if (parsed.output && (parsed.output.startsWith('custom-columns=') || parsed.output.startsWith('"custom-columns='))) {
     const cleanOutput = parsed.output.replace(/^"|"$/g, '');
-    if (cleanOutput.includes('IMAGE') || cleanOutput.includes('image')) {
-      const imagesText = loadText('pods-images.txt');
-      if (imagesText) {
-        let output = imagesText;
-        if (parsed.flags.noHeaders) {
-          output = imagesText.split('\n').slice(1).join('\n');
-        }
-        return { success: true, stdout: output.trim() };
-      }
+    if ((cleanOutput.includes('IMAGE') || cleanOutput.includes('image')) && images) {
+      let output = images;
+      if (parsed.flags.noHeaders) output = images.split('\n').slice(1).join('\n');
+      return { success: true, stdout: output.trim() };
     }
-    // fallback to snapshot
-    const snapshot = loadText('pods-snapshot.txt');
-    if (snapshot) return { success: true, stdout: snapshot.trim() };
-    return { success: true, stdout: '' };
+    return { success: true, stdout: snapshot.trim() };
   }
 
   // Default table
-  const snapshot = loadText('pods-snapshot.txt');
-  if (!snapshot) return { success: true, stdout: 'No resources found in namespace.' };
-
   let output = snapshot.trim();
-  if (parsed.flags.noHeaders) {
-    output = output.split('\n').slice(1).join('\n');
-  }
+  if (parsed.flags.noHeaders) output = dataLines.join('\n');
   return { success: true, stdout: output };
 }
 
+// Build a pod JSON object from a snapshot line + optional image data
+function buildPodJson(podLine, ns, imagesText) {
+  const parts = podLine.trim().split(/\s+/);
+  const podJson = {
+    apiVersion: 'v1',
+    kind: 'Pod',
+    metadata: { name: parts[0], namespace: ns || MOCK_NAMESPACE },
+    status: {
+      phase: parts[2],
+      podIP: parts[5] || '',
+      hostIP: parts[6] || '',
+      containerStatuses: [{
+        name: 'main',
+        ready: parts[1] === '1/1',
+        restartCount: parseInt(parts[3]) || 0,
+        state: { running: { startedAt: new Date().toISOString() } }
+      }]
+    }
+  };
+  if (imagesText) {
+    const imgLine = imagesText.trim().split('\n').find(l => l.trim().startsWith(parts[0]));
+    if (imgLine) {
+      const imageStr = imgLine.trim().split(/\s+/).slice(1).join(' ');
+      podJson.spec = {
+        containers: imageStr.split(',').map((img, idx) => ({
+          name: idx === 0 ? 'main' : `sidecar-${idx}`,
+          image: img.trim()
+        }))
+      };
+      podJson.status.containerStatuses = imageStr.split(',').map((img, idx) => ({
+        name: idx === 0 ? 'main' : `sidecar-${idx}`,
+        image: img.trim(),
+        imageID: img.trim(),
+        ready: parts[1] === '1/1',
+        restartCount: parseInt(parts[3]) || 0,
+      }));
+    }
+  }
+  return podJson;
+}
+
+// Data: generated from k8s-backup/<namespace>/deployments.yaml
 function handleGetReplicasets(parsed) {
-  // Generate from deployments
-  const data = loadYaml('deployments.yaml');
+  const data = loadYaml('deployments.yaml', parsed.namespace);
   if (!data) return { success: true, stdout: 'No resources found.' };
 
   if (parsed.output && parsed.output.startsWith('jsonpath=')) {
@@ -810,12 +868,13 @@ function handleGetEvents(parsed) {
   return { success: true, stdout: events.join('\n') };
 }
 
+// Data: aggregates pods-snapshot.txt + all YAML files from k8s-backup/<namespace>/
 function handleGetAll(parsed) {
   const ns = parsed.namespace || MOCK_NAMESPACE;
   const parts = [];
 
   // Pods
-  const snapshot = loadText('pods-snapshot.txt');
+  const snapshot = loadText('pods-snapshot.txt', ns);
   if (snapshot) {
     const lines = snapshot.trim().split('\n');
     const header = lines[0];
@@ -824,31 +883,31 @@ function handleGetAll(parsed) {
   }
 
   // Deployments
-  const deployData = loadYaml('deployments.yaml');
+  const deployData = loadYaml('deployments.yaml', ns);
   if (deployData) {
     parts.push(`=== DEPLOYMENT ===\n${generateDeploymentTable(deployData.items || [])}`);
   }
 
   // Services
-  const svcData = loadYaml('services.yaml');
+  const svcData = loadYaml('services.yaml', ns);
   if (svcData) {
     parts.push(`=== SERVICE ===\n${generateServiceTable(svcData.items || [])}`);
   }
 
   // Statefulsets
-  const stsData = loadYaml('statefulsets.yaml');
+  const stsData = loadYaml('statefulsets.yaml', ns);
   if (stsData) {
     parts.push(`=== STATEFULSET ===\n${generateStatefulsetTable(stsData.items || [])}`);
   }
 
   // CronJobs
-  const cjData = loadYaml('cronjobs.yaml');
+  const cjData = loadYaml('cronjobs.yaml', ns);
   if (cjData) {
     parts.push(`=== CRONJOB ===\n${generateCronjobTable(cjData.items || [])}`);
   }
 
   // Jobs
-  const jobData = loadYaml('jobs.yaml');
+  const jobData = loadYaml('jobs.yaml', ns);
   if (jobData) {
     parts.push(`=== JOB ===\n${generateJobTable(jobData.items || [])}`);
   }
@@ -915,18 +974,18 @@ function resolveJsonPath(obj, pathStr) {
 
 // --- DESCRIBE handler ---
 
+// Data: YAML files from k8s-backup/<namespace>/, pods use pods-snapshot.txt
 function handleDescribe(parsed) {
   const resource = parsed.resource;
   const name = parsed.resourceName;
 
   if (['deployment', 'deployments', 'deploy'].includes(resource)) {
-    const data = loadYaml('deployments.yaml');
+    const data = loadYaml('deployments.yaml', parsed.namespace);
     if (!data) return { success: false, error: 'No deployment data' };
     if (name) {
       const item = findItem(data, name);
       return { success: true, stdout: generateDeploymentDescribe(item) };
     }
-    // Describe all
     return {
       success: true,
       stdout: (data.items || []).map(item => generateDeploymentDescribe(item)).join('\n\n---\n\n')
@@ -934,21 +993,22 @@ function handleDescribe(parsed) {
   }
 
   if (['pod', 'pods'].includes(resource)) {
+    const ns = parsed.namespace;
     if (name) {
-      return { success: true, stdout: generatePodDescribe(name) };
+      return { success: true, stdout: generatePodDescribe(name, ns) };
     }
     // Describe all pods
-    const snapshot = loadText('pods-snapshot.txt');
+    const snapshot = loadText('pods-snapshot.txt', ns);
     if (!snapshot) return { success: false, error: 'No pod data' };
     const names = snapshot.trim().split('\n').slice(1).map(l => l.trim().split(/\s+/)[0]).filter(Boolean);
     return {
       success: true,
-      stdout: names.map(n => generatePodDescribe(n)).join('\n\n---\n\n')
+      stdout: names.map(n => generatePodDescribe(n, ns)).join('\n\n---\n\n')
     };
   }
 
   if (['service', 'services', 'svc'].includes(resource)) {
-    const data = loadYaml('services.yaml');
+    const data = loadYaml('services.yaml', parsed.namespace);
     if (!data) return { success: false, error: 'No service data' };
     if (name) {
       const item = findItem(data, name);
@@ -960,11 +1020,53 @@ function handleDescribe(parsed) {
     };
   }
 
+  // Generic describe fallback — use RESOURCE_FILE_MAP to load YAML and format
+  const fileMap = {
+    'secret': 'secrets.yaml', 'secrets': 'secrets.yaml',
+    'configmap': 'configmaps.yaml', 'configmaps': 'configmaps.yaml', 'cm': 'configmaps.yaml',
+    'serviceaccount': 'serviceaccounts.yaml', 'serviceaccounts': 'serviceaccounts.yaml', 'sa': 'serviceaccounts.yaml',
+    'statefulset': 'statefulsets.yaml', 'statefulsets': 'statefulsets.yaml', 'sts': 'statefulsets.yaml',
+    'cronjob': 'cronjobs.yaml', 'cronjobs': 'cronjobs.yaml',
+    'job': 'jobs.yaml', 'jobs': 'jobs.yaml',
+    'persistentvolumeclaim': 'persistentvolumeclaims.yaml', 'persistentvolumeclaims': 'persistentvolumeclaims.yaml', 'pvc': 'persistentvolumeclaims.yaml',
+    'ingress': 'ingresses.yaml', 'ingresses': 'ingresses.yaml',
+    'gateway': 'gateways.yaml', 'gateways': 'gateways.yaml',
+    'httproute': 'httproutes.yaml', 'httproutes': 'httproutes.yaml',
+  };
+
+  const yamlFile = fileMap[resource];
+  if (yamlFile) {
+    const data = loadYaml(yamlFile, parsed.namespace);
+    if (!data) return { success: false, error: `No ${resource} data` };
+    const allItems = data.items || [];
+    const items = name ? allItems.filter(item => item.metadata?.name === name) : allItems;
+    if (items.length === 0) return { success: false, error: `Error from server (NotFound): ${resource} "${name}" not found` };
+    const output = items.map(item => generateGenericDescribe(item)).join('\n\n---\n\n');
+    return { success: true, stdout: output };
+  }
+
   return { success: false, error: `[MOCK] describe not implemented for: ${resource}` };
+}
+
+function generateGenericDescribe(item) {
+  if (!item) return 'Error from server (NotFound): resource not found';
+  const m = item.metadata || {};
+  const labels = Object.entries(m.labels || {}).map(([k, v]) => `${k}=${v}`).join('\n                   ') || '<none>';
+  const annotations = Object.entries(m.annotations || {}).map(([k, v]) => `${k}: ${v}`).join('\n                   ') || '<none>';
+  const dataKeys = item.data ? Object.keys(item.data).join('\n  ') : '';
+  const dataSection = dataKeys ? `\nData:\n  ${dataKeys}\n` : '';
+  return `Name:              ${m.name}
+Namespace:         ${m.namespace}
+Kind:              ${item.kind || 'Unknown'}
+Labels:            ${labels}
+Annotations:       ${annotations}
+CreationTimestamp: ${m.creationTimestamp || '<unknown>'}${item.type ? `\nType:              ${item.type}` : ''}${dataSection}
+Events:            <none>`;
 }
 
 // --- ROLLOUT handler ---
 
+// Data: k8s-backup/<namespace>/deployments.yaml
 function handleRollout(parsed) {
   const deployment = parsed.resource; // deployment name is in resource position for rollout
   const ns = parsed.namespace || MOCK_NAMESPACE;
@@ -975,7 +1077,7 @@ function handleRollout(parsed) {
     deploymentName = deployment.split('/')[1];
   }
 
-  const data = loadYaml('deployments.yaml');
+  const data = loadYaml('deployments.yaml', parsed.namespace);
 
   switch (parsed.subAction) {
     case 'status': {
@@ -1059,6 +1161,48 @@ function handleSet(parsed) {
   return { success: false, error: `[MOCK] Unsupported set action: ${parsed.subAction}` };
 }
 
+// --- Resource counts ---
+// Returns { resourceType: count } for all YAML-backed resources + pods in a namespace.
+// Used by GET /api/resource-counts?namespace=X to populate book spine badges without
+// loading full item lists.
+
+function getResourceCounts(namespace) {
+  const counts = {};
+
+  // Pods: count lines in pods-snapshot.txt (minus header)
+  const snapshot = loadText('pods-snapshot.txt', namespace);
+  if (snapshot) {
+    const lines = snapshot.trim().split('\n').slice(1).filter(l => l.trim());
+    counts.pod = lines.length;
+  } else {
+    counts.pod = 0;
+  }
+
+  // YAML-backed resources: count items array length
+  // Keys match the frontend resourceConfig keys (plural for generic, singular for builtin)
+  const yamlResources = {
+    deployment: 'deployments.yaml',
+    service: 'services.yaml',
+    statefulsets: 'statefulsets.yaml',
+    cronjobs: 'cronjobs.yaml',
+    jobs: 'jobs.yaml',
+    configmaps: 'configmaps.yaml',
+    secrets: 'secrets.yaml',
+    serviceaccounts: 'serviceaccounts.yaml',
+    persistentvolumeclaims: 'persistentvolumeclaims.yaml',
+    ingresses: 'ingresses.yaml',
+    gateways: 'gateways.yaml',
+    httproutes: 'httproutes.yaml',
+  };
+
+  for (const [key, file] of Object.entries(yamlResources)) {
+    const data = loadYaml(file, namespace);
+    counts[key] = data?.items?.length || 0;
+  }
+
+  return counts;
+}
+
 // --- Exports ---
 
-module.exports = { handleCommand, parseKubectlCommand };
+module.exports = { handleCommand, parseKubectlCommand, getResourceCounts };

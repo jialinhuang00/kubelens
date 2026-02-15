@@ -308,6 +308,33 @@ export class KubectlService {
     this.executionHistory = this.executionHistory.filter(cmd => cmd.id !== id);
   }
 
+  async getResourceCounts(namespace: string): Promise<Record<string, number>> {
+    try {
+      const response = await this.http.get<{ success: boolean; counts: Record<string, number> }>(
+        `${this.API_BASE}/resource-counts`, { params: { namespace } }
+      ).toPromise();
+      return response?.counts || {};
+    } catch (error) {
+      console.error('Failed to load resource counts:', error);
+      return {};
+    }
+  }
+
+  async getResourceNames(resourceType: string, namespace: string): Promise<string[]> {
+    try {
+      const response = await this.executeCommand(
+        `kubectl get ${resourceType} -n ${namespace} -o jsonpath="{.items[*].metadata.name}"`
+      );
+      if (response.success) {
+        return response.stdout.trim().split(' ').filter(n => n);
+      }
+      return [];
+    } catch (error) {
+      console.error(`Failed to load ${resourceType} for namespace ${namespace}:`, error);
+      return [];
+    }
+  }
+
   async getNamespaces(): Promise<string[]> {
     try {
       const response = await this.executeCommand('kubectl get namespaces -o jsonpath="{.items[*].metadata.name}"');

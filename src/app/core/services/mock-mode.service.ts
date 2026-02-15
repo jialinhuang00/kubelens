@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 export class MockModeService {
   private http = inject(HttpClient);
 
-  isMockMode = signal(false);
+  isMockMode = signal(true);
   mockAvailable = signal(false);
 
   async checkAvailability(): Promise<void> {
@@ -15,8 +15,13 @@ export class MockModeService {
         this.http.get<{ available: boolean }>('http://localhost:3000/api/mock-status')
       );
       this.mockAvailable.set(res.available);
+      // Auto-enable mock mode when available
+      if (res.available && this.isMockMode()) {
+        this.isMockMode.set(true);
+      }
     } catch {
       this.mockAvailable.set(false);
+      this.isMockMode.set(false);
     }
   }
 
