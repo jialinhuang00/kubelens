@@ -18,6 +18,15 @@ const io = new Server(server, {
 });
 const PORT = 3000;
 
+// Mock mode: use backup data instead of real kubectl
+const MOCK_MODE = process.env.MOCK_K8S === 'true';
+let mockK8s = null;
+if (MOCK_MODE) {
+  mockK8s = require('./mock-k8s');
+  console.log('🎭 MOCK MODE ENABLED - using backup data instead of real kubectl');
+  console.log(`📂 Data path: ${process.env.MOCK_K8S_DATA || 'mock-data/'}`);
+}
+
 app.use(cors({
   origin: 'http://localhost:4200',
   credentials: true
@@ -153,6 +162,18 @@ app.post('/api/execute', (req, res) => {
     });
   }
 
+  // Mock mode: intercept and return backup data
+  if (MOCK_MODE && mockK8s) {
+    console.log(`[MOCK] Intercepting: ${command}`);
+    const result = mockK8s.handleCommand(command);
+    return res.json({
+      success: result.success,
+      stdout: result.stdout || '',
+      error: result.error || undefined,
+      command: command
+    });
+  }
+
   // dynamically create tempFile
   const tempFile = path.join(os.tmpdir(), `kubectl-${uuidv4()}.txt`);
   const fullCommand = `${command} > ${tempFile} 2>&1`;
@@ -187,7 +208,7 @@ app.post('/api/execute', (req, res) => {
           });
         }
 
-        // Check if this is "kubectl get all" and split tables  
+        // Check if this is "kubectl get all" and split tables
         let processedOutput = data;
         if (command.includes('get all')) {
           processedOutput = splitGetAllTables(data);
@@ -249,6 +270,22 @@ app.get('/api/health', (req, res) => {
 
 // 串流執行 kubectl 指令 (用於長時間運行的指令如 rollout status)
 app.post('/api/execute/stream', (req, res) => {
+  // Mock mode: return result immediately via socket instead of spawning process
+  if (MOCK_MODE && mockK8s) {
+    const { command, streamId } = req.body;
+    console.log(`[MOCK] Stream intercepting: ${command}`);
+    const result = mockK8s.handleCommand(command);
+    res.json({ success: true, message: 'Stream started (mock)', streamId });
+    // Emit the result via socket after a short delay to simulate streaming
+    setTimeout(() => {
+      io.emit('stream-data', { streamId, type: 'stdout', data: result.stdout || result.error || '', timestamp: Date.now() });
+      setTimeout(() => {
+        io.emit('stream-end', { streamId, exitCode: result.success ? 0 : 1, fullOutput: result.stdout || result.error || '', timestamp: Date.now() });
+      }, 500);
+    }, 300);
+    return;
+  }
+
   const { command, streamId } = req.body;
 
   if (!command || !command.startsWith('kubectl')) {
@@ -359,6 +396,506 @@ app.post('/api/execute/stream/stop', (req, res) => {
   } else {
     res.status(404).json({ error: 'Stream not found' });
   }
+});
+
+// ============================================================
+// GET /api/graph — K8s resource graph for universe visualization
+// Supports multi-namespace: scans backup directories for namespace subdirs
+// ============================================================
+app.get('/api/graph', (req, res) => {
+  const yaml = require('js-yaml');
+
+  // File name mapping: try backup-style names first, then legacy names
+  const FILE_ALIASES = {
+    'httproutes': ['httproutes.gateway.networking.k8s.io.yaml', 'httproutes.yaml'],
+    'tcproutes': ['tcproutes.gateway.networking.k8s.io.yaml', 'tcproutes.yaml'],
+    'gateways': ['gateways.gateway.networking.k8s.io.yaml', 'gateways.yaml'],
+  };
+
+  // Discover namespace directories from one or more data paths
+  function discoverNamespaces(dataPaths) {
+    const namespaces = new Map(); // name -> dirPath
+    for (const dp of dataPaths) {
+      if (!fs.existsSync(dp)) continue;
+      // Check if this directory itself contains YAML files (flat layout, e.g. mock-data/)
+      const entries = fs.readdirSync(dp, { withFileTypes: true });
+      const hasYaml = entries.some(e => e.isFile() && e.name.endsWith('.yaml'));
+      if (hasYaml && !entries.some(e => e.isDirectory() && !e.name.startsWith('.'))) {
+        // Flat layout — treat the directory name as namespace
+        const nsName = path.basename(dp) === 'mock-data' ? 'demo' : path.basename(dp);
+        namespaces.set(nsName, dp);
+      } else {
+        // Nested layout — each subdirectory is a namespace
+        for (const entry of entries) {
+          if (!entry.isDirectory()) continue;
+          if (entry.name.startsWith('.') || entry.name === '_cluster') continue;
+          namespaces.set(entry.name, path.join(dp, entry.name));
+        }
+      }
+    }
+    return namespaces;
+  }
+
+  function loadYamlFile(nsDir, filename) {
+    const filePath = path.join(nsDir, filename);
+    if (!fs.existsSync(filePath)) return null;
+    try {
+      return yaml.load(fs.readFileSync(filePath, 'utf8'));
+    } catch (e) {
+      console.warn(`Failed to parse ${filePath}: ${e.message}`);
+      return null;
+    }
+  }
+
+  function getItems(nsDir, resourceKey) {
+    const aliases = FILE_ALIASES[resourceKey];
+    if (aliases) {
+      for (const fname of aliases) {
+        const data = loadYamlFile(nsDir, fname);
+        if (data?.items) return data.items;
+      }
+      return [];
+    }
+    const data = loadYamlFile(nsDir, `${resourceKey}.yaml`);
+    return data?.items || [];
+  }
+
+  // Determine data paths — look in sibling mammoth-garage repo for real backup data
+  const BACKUP_BASE = path.join(__dirname, '..', 'mammoth-garage', 'tooling', 'aws-scripts', 'k8s-backups');
+  const defaultPaths = [
+    path.join(BACKUP_BASE, 'k8s-backup-20260214-165937'),
+  ];
+  const fallbackPath = process.env.MOCK_K8S_DATA || path.join(__dirname, 'mock-data');
+
+  let dataPaths;
+  if (req.query.path) {
+    dataPaths = [path.resolve(req.query.path)];
+  } else if (defaultPaths.some(p => fs.existsSync(p))) {
+    dataPaths = defaultPaths.filter(p => fs.existsSync(p));
+  } else {
+    dataPaths = [fallbackPath];
+  }
+
+  const namespaceDirs = discoverNamespaces(dataPaths);
+
+  const nodes = [];
+  const edges = [];
+  const nodeIds = new Set();
+  const allNamespaces = [];
+
+  function addNode(ns, kind, name, category, metadata = {}) {
+    const id = `${ns}/${kind}/${name}`;
+    if (nodeIds.has(id)) return id;
+    nodeIds.add(id);
+    nodes.push({ id, name, kind, category, namespace: ns, metadata });
+    return id;
+  }
+
+  function addEdge(source, target, type, sourceField) {
+    edges.push({ source, target, type, ...(sourceField && { sourceField }) });
+  }
+
+  // Helper: extract configmap/secret/sa/pvc edges from a pod spec
+  function extractWorkloadEdges(ns, kind, name, podSpec) {
+    if (!podSpec) return;
+    const sourceId = `${ns}/${kind}/${name}`;
+
+    // serviceAccountName
+    const sa = podSpec.serviceAccountName;
+    if (sa && sa !== 'default') {
+      addNode(ns, 'ServiceAccount', sa, 'security');
+      addEdge(sourceId, `${ns}/ServiceAccount/${sa}`, 'uses-serviceaccount', 'spec.serviceAccountName');
+    }
+
+    // containers env / envFrom
+    for (const container of podSpec.containers || []) {
+      for (const ef of container.envFrom || []) {
+        if (ef.configMapRef?.name) {
+          addNode(ns, 'ConfigMap', ef.configMapRef.name, 'config');
+          addEdge(sourceId, `${ns}/ConfigMap/${ef.configMapRef.name}`, 'uses-configmap', 'envFrom.configMapRef');
+        }
+        if (ef.secretRef?.name) {
+          addNode(ns, 'Secret', ef.secretRef.name, 'config');
+          addEdge(sourceId, `${ns}/Secret/${ef.secretRef.name}`, 'uses-secret', 'envFrom.secretRef');
+        }
+      }
+      // Also check individual env valueFrom references
+      for (const env of container.env || []) {
+        if (env.valueFrom?.configMapKeyRef?.name) {
+          addNode(ns, 'ConfigMap', env.valueFrom.configMapKeyRef.name, 'config');
+          addEdge(sourceId, `${ns}/ConfigMap/${env.valueFrom.configMapKeyRef.name}`, 'uses-configmap', 'env.valueFrom.configMapKeyRef');
+        }
+        if (env.valueFrom?.secretKeyRef?.name) {
+          addNode(ns, 'Secret', env.valueFrom.secretKeyRef.name, 'config');
+          addEdge(sourceId, `${ns}/Secret/${env.valueFrom.secretKeyRef.name}`, 'uses-secret', 'env.valueFrom.secretKeyRef');
+        }
+      }
+    }
+
+    // init containers
+    for (const container of podSpec.initContainers || []) {
+      for (const ef of container.envFrom || []) {
+        if (ef.configMapRef?.name) {
+          addNode(ns, 'ConfigMap', ef.configMapRef.name, 'config');
+          addEdge(sourceId, `${ns}/ConfigMap/${ef.configMapRef.name}`, 'uses-configmap', 'envFrom.configMapRef');
+        }
+        if (ef.secretRef?.name) {
+          addNode(ns, 'Secret', ef.secretRef.name, 'config');
+          addEdge(sourceId, `${ns}/Secret/${ef.secretRef.name}`, 'uses-secret', 'envFrom.secretRef');
+        }
+      }
+      for (const env of container.env || []) {
+        if (env.valueFrom?.configMapKeyRef?.name) {
+          addNode(ns, 'ConfigMap', env.valueFrom.configMapKeyRef.name, 'config');
+          addEdge(sourceId, `${ns}/ConfigMap/${env.valueFrom.configMapKeyRef.name}`, 'uses-configmap', 'env.valueFrom.configMapKeyRef');
+        }
+        if (env.valueFrom?.secretKeyRef?.name) {
+          addNode(ns, 'Secret', env.valueFrom.secretKeyRef.name, 'config');
+          addEdge(sourceId, `${ns}/Secret/${env.valueFrom.secretKeyRef.name}`, 'uses-secret', 'env.valueFrom.secretKeyRef');
+        }
+      }
+    }
+
+    // volumes
+    for (const vol of podSpec.volumes || []) {
+      if (vol.persistentVolumeClaim?.claimName) {
+        const pvcName = vol.persistentVolumeClaim.claimName;
+        addNode(ns, 'PersistentVolumeClaim', pvcName, 'storage');
+        addEdge(sourceId, `${ns}/PersistentVolumeClaim/${pvcName}`, 'uses-pvc', 'volumes.persistentVolumeClaim');
+      }
+      if (vol.configMap?.name) {
+        addNode(ns, 'ConfigMap', vol.configMap.name, 'config');
+        addEdge(sourceId, `${ns}/ConfigMap/${vol.configMap.name}`, 'uses-configmap', 'volumes.configMap');
+      }
+      if (vol.secret?.secretName) {
+        addNode(ns, 'Secret', vol.secret.secretName, 'config');
+        addEdge(sourceId, `${ns}/Secret/${vol.secret.secretName}`, 'uses-secret', 'volumes.secret');
+      }
+      if (vol.projected?.sources) {
+        for (const src of vol.projected.sources) {
+          if (src.configMap?.name) {
+            addNode(ns, 'ConfigMap', src.configMap.name, 'config');
+            addEdge(sourceId, `${ns}/ConfigMap/${src.configMap.name}`, 'uses-configmap', 'volumes.projected.configMap');
+          }
+          if (src.secret?.name) {
+            addNode(ns, 'Secret', src.secret.name, 'config');
+            addEdge(sourceId, `${ns}/Secret/${src.secret.name}`, 'uses-secret', 'volumes.projected.secret');
+          }
+        }
+      }
+    }
+  }
+
+  // --- Process each namespace ---
+  for (const [ns, nsDir] of namespaceDirs) {
+    allNamespaces.push(ns);
+
+    // Workloads: Deployments
+    const deployments = getItems(nsDir, 'deployments');
+    for (const d of deployments) {
+      const name = d.metadata?.name;
+      if (!name) continue;
+      addNode(ns, 'Deployment', name, 'workload', {
+        replicas: d.spec?.replicas,
+        image: d.spec?.template?.spec?.containers?.[0]?.image,
+      });
+      extractWorkloadEdges(ns, 'Deployment', name, d.spec?.template?.spec);
+    }
+
+    // Workloads: StatefulSets
+    const statefulsets = getItems(nsDir, 'statefulsets');
+    for (const s of statefulsets) {
+      const name = s.metadata?.name;
+      if (!name) continue;
+      addNode(ns, 'StatefulSet', name, 'workload', {
+        replicas: s.spec?.replicas,
+        image: s.spec?.template?.spec?.containers?.[0]?.image,
+      });
+      extractWorkloadEdges(ns, 'StatefulSet', name, s.spec?.template?.spec);
+    }
+
+    // Workloads: DaemonSets
+    const daemonsets = getItems(nsDir, 'daemonsets');
+    for (const ds of daemonsets) {
+      const name = ds.metadata?.name;
+      if (!name) continue;
+      addNode(ns, 'DaemonSet', name, 'workload', {
+        image: ds.spec?.template?.spec?.containers?.[0]?.image,
+      });
+      extractWorkloadEdges(ns, 'DaemonSet', name, ds.spec?.template?.spec);
+    }
+
+    // Workloads: CronJobs
+    const cronjobs = getItems(nsDir, 'cronjobs');
+    for (const c of cronjobs) {
+      const name = c.metadata?.name;
+      if (!name) continue;
+      addNode(ns, 'CronJob', name, 'workload', { schedule: c.spec?.schedule });
+      extractWorkloadEdges(ns, 'CronJob', name, c.spec?.jobTemplate?.spec?.template?.spec);
+    }
+
+    // Collect all workloads for service selector matching
+    const allWorkloads = [
+      ...deployments.map(d => ({ kind: 'Deployment', item: d })),
+      ...statefulsets.map(s => ({ kind: 'StatefulSet', item: s })),
+      ...daemonsets.map(ds => ({ kind: 'DaemonSet', item: ds })),
+    ];
+
+    // Services
+    const services = getItems(nsDir, 'services');
+    for (const svc of services) {
+      const svcName = svc.metadata?.name;
+      if (!svcName) continue;
+      const selector = svc.spec?.selector;
+      if (!selector) continue;
+      addNode(ns, 'Service', svcName, 'networking', {
+        type: svc.spec?.type,
+        ports: svc.spec?.ports?.map(p => `${p.port}/${p.protocol || 'TCP'}`),
+      });
+
+      for (const w of allWorkloads) {
+        const podLabels = w.item.spec?.template?.metadata?.labels || {};
+        const matches = Object.entries(selector).every(([k, v]) => podLabels[k] === v);
+        if (matches) {
+          addEdge(`${ns}/Service/${svcName}`, `${ns}/${w.kind}/${w.item.metadata.name}`, 'exposes', 'spec.selector');
+        }
+      }
+    }
+
+    // HTTPRoutes (with cross-namespace gateway support)
+    const httproutes = getItems(nsDir, 'httproutes');
+    for (const hr of httproutes) {
+      const hrName = hr.metadata?.name;
+      if (!hrName) continue;
+      addNode(ns, 'HTTPRoute', hrName, 'networking', { hostnames: hr.spec?.hostnames });
+
+      for (const pr of hr.spec?.parentRefs || []) {
+        if (pr.name) {
+          const gwNs = pr.namespace || ns;
+          addNode(gwNs, 'Gateway', pr.name, 'networking');
+          addEdge(`${ns}/HTTPRoute/${hrName}`, `${gwNs}/Gateway/${pr.name}`, 'parent-gateway', 'spec.parentRefs');
+        }
+      }
+
+      for (const rule of hr.spec?.rules || []) {
+        for (const br of rule.backendRefs || []) {
+          if (br.name) {
+            const backendNs = br.namespace || ns;
+            const svcId = `${backendNs}/Service/${br.name}`;
+            if (nodeIds.has(svcId)) {
+              addEdge(`${ns}/HTTPRoute/${hrName}`, svcId, 'routes-to', 'spec.rules.backendRefs');
+            }
+          }
+        }
+      }
+    }
+
+    // TCPRoutes
+    const tcproutes = getItems(nsDir, 'tcproutes');
+    for (const tr of tcproutes) {
+      const trName = tr.metadata?.name;
+      if (!trName) continue;
+      addNode(ns, 'TCPRoute', trName, 'networking', {});
+
+      for (const pr of tr.spec?.parentRefs || []) {
+        if (pr.name) {
+          const gwNs = pr.namespace || ns;
+          addNode(gwNs, 'Gateway', pr.name, 'networking');
+          addEdge(`${ns}/TCPRoute/${trName}`, `${gwNs}/Gateway/${pr.name}`, 'parent-gateway', 'spec.parentRefs');
+        }
+      }
+
+      for (const rule of tr.spec?.rules || []) {
+        for (const br of rule.backendRefs || []) {
+          if (br.name) {
+            const backendNs = br.namespace || ns;
+            const svcId = `${backendNs}/Service/${br.name}`;
+            if (nodeIds.has(svcId)) {
+              addEdge(`${ns}/TCPRoute/${trName}`, svcId, 'routes-to', 'spec.rules.backendRefs');
+            }
+          }
+        }
+      }
+    }
+
+    // Gateways (add any not yet added)
+    const gateways = getItems(nsDir, 'gateways');
+    for (const gw of gateways) {
+      const gwName = gw.metadata?.name;
+      if (gwName) addNode(ns, 'Gateway', gwName, 'networking', { gatewayClassName: gw.spec?.gatewayClassName });
+    }
+
+    // Ingresses
+    const ingresses = getItems(nsDir, 'ingresses');
+    for (const ing of ingresses) {
+      const ingName = ing.metadata?.name;
+      if (!ingName) continue;
+      addNode(ns, 'Ingress', ingName, 'networking', {
+        hosts: ing.spec?.rules?.map(r => r.host).filter(Boolean),
+      });
+      // Link to backend services
+      for (const rule of ing.spec?.rules || []) {
+        for (const p of rule.http?.paths || []) {
+          const backendName = p.backend?.service?.name || p.backend?.serviceName;
+          if (backendName && nodeIds.has(`${ns}/Service/${backendName}`)) {
+            addEdge(`${ns}/Ingress/${ingName}`, `${ns}/Service/${backendName}`, 'routes-to', 'spec.rules.http.paths.backend');
+          }
+        }
+      }
+    }
+
+    // HorizontalPodAutoscalers
+    const hpas = getItems(nsDir, 'horizontalpodautoscalers');
+    for (const hpa of hpas) {
+      const hpaName = hpa.metadata?.name;
+      if (!hpaName) continue;
+      addNode(ns, 'HorizontalPodAutoscaler', hpaName, 'security', {
+        minReplicas: hpa.spec?.minReplicas,
+        maxReplicas: hpa.spec?.maxReplicas,
+      });
+      // Link to scale target
+      const targetName = hpa.spec?.scaleTargetRef?.name;
+      const targetKind = hpa.spec?.scaleTargetRef?.kind;
+      if (targetName && targetKind) {
+        const targetId = `${ns}/${targetKind}/${targetName}`;
+        if (nodeIds.has(targetId)) {
+          addEdge(`${ns}/HorizontalPodAutoscaler/${hpaName}`, targetId, 'exposes', 'spec.scaleTargetRef');
+        }
+      }
+    }
+
+    // RoleBindings
+    const rolebindings = getItems(nsDir, 'rolebindings');
+    for (const rb of rolebindings) {
+      const rbName = rb.metadata?.name;
+      if (!rbName) continue;
+      addNode(ns, 'RoleBinding', rbName, 'security');
+
+      if (rb.roleRef?.name) {
+        addNode(ns, 'Role', rb.roleRef.name, 'security');
+        addEdge(`${ns}/RoleBinding/${rbName}`, `${ns}/Role/${rb.roleRef.name}`, 'binds-role', 'roleRef');
+      }
+
+      for (const subj of rb.subjects || []) {
+        if (subj.kind === 'ServiceAccount' && subj.name) {
+          const saId = `${ns}/ServiceAccount/${subj.name}`;
+          if (nodeIds.has(saId)) {
+            addEdge(`${ns}/RoleBinding/${rbName}`, saId, 'binds-role', 'subjects');
+          }
+        }
+      }
+    }
+
+    // Orphan detection: load ALL ConfigMaps, mark unreferenced ones
+    // Skip orphan Secrets — K8s auto-generates many SA token secrets that clutter the graph
+    const allConfigMaps = getItems(nsDir, 'configmaps');
+    for (const cm of allConfigMaps) {
+      const cmName = cm.metadata?.name;
+      if (!cmName) continue;
+      const cmId = `${ns}/ConfigMap/${cmName}`;
+      if (!nodeIds.has(cmId)) {
+        addNode(ns, 'ConfigMap', cmName, 'config', { orphan: true });
+      }
+    }
+  }
+
+  // --- Parse Pods (separate from main nodes — loaded on demand by frontend) ---
+  const pods = {}; // key: parent workload node ID, value: array of pod nodes
+  for (const [ns, nsDir] of namespaceDirs) {
+    const podItems = getItems(nsDir, 'pods');
+    for (const pod of podItems) {
+      const podName = pod.metadata?.name;
+      if (!podName) continue;
+
+      const phase = pod.status?.phase || 'Unknown';
+      const containerStatuses = pod.status?.containerStatuses || [];
+      // Detect CrashLoopBackOff from container statuses
+      let displayStatus = phase;
+      for (const cs of containerStatuses) {
+        if (cs.state?.waiting?.reason === 'CrashLoopBackOff') {
+          displayStatus = 'CrashLoopBackOff';
+          break;
+        }
+      }
+
+      const image = pod.spec?.containers?.[0]?.image;
+      const nodeName = pod.spec?.nodeName;
+      const restarts = containerStatuses.reduce((sum, cs) => sum + (cs.restartCount || 0), 0);
+
+      // Resolve owner: Pod → ReplicaSet → Deployment, or Pod → StatefulSet/Job → CronJob
+      let ownerKind = null;
+      let ownerName = null;
+      const ownerRefs = pod.metadata?.ownerReferences || [];
+      for (const ref of ownerRefs) {
+        if (ref.kind === 'ReplicaSet') {
+          // ReplicaSet name = "{deployment-name}-{hash}", strip the last "-{hash}"
+          const rsName = ref.name;
+          const lastDash = rsName.lastIndexOf('-');
+          ownerName = lastDash > 0 ? rsName.substring(0, lastDash) : rsName;
+          ownerKind = 'Deployment';
+        } else if (ref.kind === 'StatefulSet') {
+          ownerKind = 'StatefulSet';
+          ownerName = ref.name;
+        } else if (ref.kind === 'Job') {
+          // Job name for CronJob = "{cronjob-name}-{timestamp}", strip last "-{timestamp}"
+          const jobName = ref.name;
+          const lastDash = jobName.lastIndexOf('-');
+          const possibleCronJob = lastDash > 0 ? jobName.substring(0, lastDash) : jobName;
+          // Check if a CronJob node exists with this name
+          if (nodeIds.has(`${ns}/CronJob/${possibleCronJob}`)) {
+            ownerKind = 'CronJob';
+            ownerName = possibleCronJob;
+          } else {
+            ownerKind = 'Job';
+            ownerName = ref.name;
+          }
+        }
+      }
+
+      if (!ownerKind || !ownerName) continue; // skip orphan pods
+
+      const parentId = `${ns}/${ownerKind}/${ownerName}`;
+      if (!nodeIds.has(parentId)) continue; // skip if parent workload not in graph
+
+      const podNode = {
+        id: `${ns}/Pod/${podName}`,
+        name: podName,
+        kind: 'Pod',
+        category: 'workload',
+        namespace: ns,
+        metadata: {
+          status: displayStatus,
+          ownerKind,
+          ownerName,
+          image,
+          node: nodeName,
+          restarts,
+        },
+      };
+
+      if (!pods[parentId]) pods[parentId] = [];
+      pods[parentId].push(podNode);
+    }
+  }
+
+  // Build stats
+  const byKind = {};
+  for (const n of nodes) {
+    byKind[n.kind] = (byKind[n.kind] || 0) + 1;
+  }
+
+  res.json({
+    nodes,
+    edges,
+    pods,
+    namespaces: allNamespaces.sort(),
+    stats: {
+      totalNodes: nodes.length,
+      totalEdges: edges.length,
+      byKind,
+      namespaceCount: allNamespaces.length,
+    },
+  });
 });
 
 // WebSocket connection

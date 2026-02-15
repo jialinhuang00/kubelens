@@ -5,6 +5,7 @@
     "ng": "ng",
     "start": "ng serve",
     "dev": "concurrently \"node server-legacy.js\" \"ng serve\"",
+    "dev:mock": "concurrently \"MOCK_K8S=true node server-legacy.js\" \"ng serve\"",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
@@ -32,6 +33,7 @@
     "@angular/material": "^20.2.2",
     "@angular/platform-browser": "^20.2.4",
     "@angular/router": "^20.2.4",
+    "@cosmograph/cosmos": "^1.6.1",
     "@ngneat/tailwind": "^7.0.3",
     "@tailwindcss/postcss": "^4.1.12",
     "cors": "^2.8.5",

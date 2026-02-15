@@ -1,0 +1,846 @@
+$sidebar-width: 320px;
+
+:host {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.universe-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  background: #050510;
+  color: #e0e0e0;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  overflow: hidden;
+}
+
+// ============================================================
+// LEFT SIDEBAR — permanent, Cosmograph-style
+// ============================================================
+.sidebar {
+  width: $sidebar-width;
+  height: 100%;
+  background: rgba(8, 8, 22, 0.95);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  z-index: 20;
+  flex-shrink: 0;
+  backdrop-filter: blur(20px);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #00d4ff;
+  text-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+  margin: 0;
+  flex: 1;
+}
+
+.nav-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #00d4ff;
+  padding: 4px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(0, 212, 255, 0.15);
+    border-color: #00d4ff;
+  }
+}
+
+.stats-badge {
+  font-size: 11px;
+  color: #555;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+// ---- Legend section (top) ----
+.sidebar-legend {
+  overflow-y: auto;
+  flex-shrink: 0;
+  max-height: 45%;
+}
+
+.sidebar-section {
+  padding: 12px 16px;
+}
+
+.section-title {
+  font-size: 10px;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin: 0 0 8px 0;
+}
+
+.active-ns-title {
+  color: #00d4ff;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  text-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+}
+
+.section-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.back-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #00d4ff;
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s;
+  white-space: nowrap;
+
+  &:hover {
+    background: rgba(0, 212, 255, 0.15);
+    border-color: #00d4ff;
+  }
+}
+
+.section-list {
+  display: flex;
+  flex-direction: column;
+}
+
+// ---- Legend group (category grouping) ----
+.legend-group {
+  margin-bottom: 4px;
+}
+
+.legend-group-label {
+  font-size: 9px;
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  padding: 6px 0 3px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+
+  .legend-group:first-child & {
+    border-top: none;
+    padding-top: 0;
+  }
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  margin: 0 -8px;
+  font-size: 12px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  width: calc(100% + 16px);
+  text-align: left;
+  color: #ccc;
+  transition: all 0.15s;
+
+  &:hover {
+    background: rgba(0, 212, 255, 0.1);
+    color: #fff;
+
+    .item-dot {
+      box-shadow: 0 0 8px currentColor;
+    }
+  }
+
+  &.active {
+    background: rgba(255, 255, 255, 0.1);
+    outline: 1px solid rgba(255, 255, 255, 0.2);
+
+    .item-dot {
+      box-shadow: 0 0 8px currentColor;
+    }
+  }
+}
+
+.item-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.1);
+  transition: box-shadow 0.15s;
+}
+
+.item-label {
+  flex: 1;
+}
+
+.item-count {
+  color: #555;
+  font-size: 11px;
+}
+
+// ---- Divider ----
+.sidebar-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 0 16px;
+  flex-shrink: 0;
+}
+
+// ---- Details section (bottom) ----
+.sidebar-details {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+}
+
+.no-selection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+
+  p {
+    color: #333;
+    font-size: 12px;
+  }
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.detail-kind-badge {
+  padding: 3px 10px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #000;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+
+  &:hover {
+    color: #fff;
+  }
+}
+
+.detail-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 12px 0;
+  word-break: break-all;
+}
+
+.detail-meta {
+  margin-bottom: 14px;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+}
+
+.meta-label {
+  color: #555;
+  flex-shrink: 0;
+}
+
+.meta-value {
+  color: #bbb;
+  text-align: right;
+  word-break: break-all;
+}
+
+// ---- Section headings in detail ----
+.section-heading {
+  font-size: 11px;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0 0 8px 0;
+}
+
+// ---- Pods list ----
+.pods-list {
+  margin-bottom: 14px;
+}
+
+.pod-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.pod-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 3px;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.pod-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pod-name {
+  display: block;
+  color: #ccc;
+  word-break: break-all;
+  font-size: 11px;
+}
+
+.pod-image {
+  display: block;
+  color: #666;
+  font-size: 9px;
+  word-break: break-all;
+  margin-top: 2px;
+}
+
+.pod-status {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+// ---- Connections ----
+.connection-group {
+  margin-bottom: 10px;
+}
+
+.group-label {
+  font-size: 10px;
+  color: #00d4ff;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+}
+
+.connected-node-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  padding: 5px 8px;
+  margin-bottom: 2px;
+  cursor: pointer;
+  text-align: left;
+  color: #ccc;
+  font-size: 11px;
+  transition: all 0.15s;
+
+  &:hover {
+    background: rgba(0, 212, 255, 0.08);
+    border-color: rgba(0, 212, 255, 0.25);
+  }
+}
+
+.conn-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.conn-kind {
+  color: #555;
+  font-size: 10px;
+}
+
+.conn-name {
+  color: #ddd;
+}
+
+// ============================================================
+// GRAPH AREA — takes remaining width
+// ============================================================
+.graph-area {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  perspective: 1200px;
+}
+
+// ============================================================
+// Perspective grid floor
+// ============================================================
+.grid-floor {
+  position: absolute;
+  left: -50%;
+  right: -50%;
+  bottom: -20%;
+  height: 80%;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    linear-gradient(rgba(0, 212, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.07) 1px, transparent 1px);
+  background-size: 50px 50px;
+  transform: perspective(500px) rotateX(55deg);
+  transform-origin: center top;
+  mask-image: radial-gradient(ellipse 80% 100% at 50% 0%, rgba(0, 0, 0, 0.6) 0%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 100% at 50% 0%, rgba(0, 0, 0, 0.6) 0%, transparent 70%);
+}
+
+// ============================================================
+// Deep space background
+// ============================================================
+.nebula-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.nebula-1 {
+  background:
+    radial-gradient(ellipse 600px 400px at 30% 40%, rgba(0, 60, 120, 0.18) 0%, transparent 70%),
+    radial-gradient(ellipse 500px 350px at 70% 60%, rgba(80, 0, 120, 0.14) 0%, transparent 70%),
+    radial-gradient(ellipse 300px 300px at 50% 50%, rgba(0, 100, 80, 0.10) 0%, transparent 60%);
+}
+
+.nebula-2 {
+  background:
+    radial-gradient(ellipse 200px 200px at 20% 70%, rgba(255, 70, 70, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 250px 180px at 80% 30%, rgba(0, 180, 255, 0.08) 0%, transparent 70%);
+  animation: nebulaDrift 30s ease-in-out infinite alternate;
+}
+
+@keyframes nebulaDrift {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(-20px, 10px) scale(1.05); }
+}
+
+// ============================================================
+// Ambient light
+// ============================================================
+.ambient-light {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle 500px at 50% 45%,
+      rgba(0, 212, 255, 0.04) 0%,
+      rgba(157, 78, 221, 0.02) 40%,
+      transparent 70%);
+  animation: lightPulse 8s ease-in-out infinite alternate;
+}
+
+@keyframes lightPulse {
+  from { opacity: 0.6; }
+  to   { opacity: 1; }
+}
+
+// ============================================================
+// Scanlines
+// ============================================================
+.scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 0, 0, 0.08) 3px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  opacity: 0.5;
+}
+
+// ============================================================
+// Vignette
+// ============================================================
+.vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  background:
+    radial-gradient(ellipse 60% 55% at 50% 48%, transparent 40%, rgba(2, 2, 10, 0.3) 70%, rgba(2, 2, 10, 0.85) 100%),
+    linear-gradient(to bottom, transparent 60%, rgba(0, 5, 15, 0.4) 100%),
+    linear-gradient(to top, transparent 70%, rgba(5, 5, 20, 0.3) 100%);
+}
+
+// ============================================================
+// Canvas
+// ============================================================
+.graph-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+// ============================================================
+// Loading
+// ============================================================
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 5, 16, 0.95);
+  z-index: 20;
+
+  p {
+    margin-top: 16px;
+    color: #00d4ff;
+    font-size: 14px;
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+  }
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(0, 212, 255, 0.15);
+  border-top-color: #00d4ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+// ============================================================
+// Error
+// ============================================================
+.error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 5, 16, 0.95);
+  z-index: 20;
+
+  p {
+    color: #ff4d4d;
+    font-size: 16px;
+  }
+
+  .error-detail {
+    color: #888;
+    font-size: 13px;
+    max-width: 400px;
+    text-align: center;
+  }
+}
+
+// ============================================================
+// Node labels
+// ============================================================
+.labels-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  overflow: hidden;
+}
+
+.node-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  pointer-events: none;
+
+  .label-text {
+    font-size: 10px;
+    opacity: 0.9;
+    text-shadow:
+      0 0 4px rgba(0, 0, 0, 0.95),
+      0 0 8px rgba(0, 0, 0, 0.6);
+  }
+
+  &[data-kind="Namespace"] {
+    .label-text {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      text-shadow:
+        0 0 4px rgba(0, 0, 0, 0.95),
+        0 0 12px var(--glow-color, #00d4ff),
+        0 0 30px color-mix(in srgb, var(--glow-color, #00d4ff) 40%, transparent);
+    }
+  }
+
+  &[data-kind="Deployment"],
+  &[data-kind="StatefulSet"],
+  &[data-kind="CronJob"] {
+    .label-text { font-size: 11px; font-weight: 500; }
+  }
+
+  &[data-kind="Service"],
+  &[data-kind="HTTPRoute"],
+  &[data-kind="TCPRoute"],
+  &[data-kind="Gateway"] {
+    .label-text { font-size: 10px; opacity: 0.85; }
+  }
+
+  &[data-kind="Pod"] {
+    .label-text { font-size: 9px; opacity: 0.8; }
+  }
+
+  &[data-kind="ConfigMap"],
+  &[data-kind="Secret"],
+  &[data-kind="ServiceAccount"],
+  &[data-kind="Role"],
+  &[data-kind="RoleBinding"],
+  &[data-kind="PersistentVolumeClaim"] {
+    .label-text { font-size: 9px; opacity: 0.55; }
+  }
+
+  &.dimmed {
+    opacity: 0.08;
+    transition: opacity 0.3s ease;
+  }
+
+  &:not(.dimmed) {
+    transition: opacity 0.3s ease;
+  }
+
+  &.orphan {
+    opacity: 0.35;
+    .label-text { font-style: italic; }
+  }
+
+  &.dimmed.orphan {
+    opacity: 0.05;
+  }
+}
+
+// ============================================================
+// Namespace boundaries
+// ============================================================
+.boundaries-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.ns-boundary {
+  position: absolute;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--ns-color, #00d4ff) 25%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--ns-color, #00d4ff) 5%, transparent) 0%,
+    color-mix(in srgb, var(--ns-color, #00d4ff) 2%, transparent) 50%,
+    transparent 100%
+  );
+  box-shadow:
+    0 0 30px color-mix(in srgb, var(--ns-color, #00d4ff) 8%, transparent),
+    0 0 60px color-mix(in srgb, var(--ns-color, #00d4ff) 4%, transparent),
+    inset 0 0 40px color-mix(in srgb, var(--ns-color, #00d4ff) 3%, transparent);
+  animation: boundaryPulse 4s ease-in-out infinite alternate;
+
+  &.clickable {
+    pointer-events: auto;
+    cursor: pointer;
+
+    &:hover {
+      border-color: color-mix(in srgb, var(--ns-color, #00d4ff) 60%, transparent);
+      box-shadow:
+        0 0 40px color-mix(in srgb, var(--ns-color, #00d4ff) 15%, transparent),
+        0 0 80px color-mix(in srgb, var(--ns-color, #00d4ff) 8%, transparent),
+        inset 0 0 60px color-mix(in srgb, var(--ns-color, #00d4ff) 6%, transparent);
+    }
+  }
+
+  &.other-ns {
+    opacity: 0.35;
+    transition: opacity 0.3s ease;
+    &:hover { opacity: 0.7; }
+  }
+
+  &.active-ns {
+    border-width: 2px;
+  }
+}
+
+.ns-boundary-label {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ns-color, #00d4ff) 50%, transparent);
+  text-shadow: 0 0 10px var(--ns-color, #00d4ff);
+  white-space: nowrap;
+}
+
+@keyframes boundaryPulse {
+  from { border-color: color-mix(in srgb, var(--ns-color, #00d4ff) 20%, transparent); }
+  to   { border-color: color-mix(in srgb, var(--ns-color, #00d4ff) 35%, transparent); }
+}
+
+.has-selection .ns-boundary {
+  opacity: 0.15;
+  transition: opacity 0.3s ease;
+}
+
+// ============================================================
+// Graph top-right actions
+// ============================================================
+.graph-actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+}
+
+.action-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ccc;
+  padding: 5px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+  }
+}
+
+// ============================================================
+// Zoom indicator
+// ============================================================
+.zoom-indicator {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #555;
+  z-index: 10;
+}
+
+// ============================================================
+// Tooltip
+// ============================================================
+.tooltip {
+  position: absolute;
+  z-index: 30;
+  background: rgba(10, 10, 25, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  white-space: nowrap;
+  font-size: 12px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+}
+
+.tooltip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tooltip-kind {
+  color: #888;
+  font-size: 11px;
+}
+
+.tooltip-name {
+  color: #fff;
+  font-weight: 500;
+}
+
+// ============================================================
+// Keyboard hints
+// ============================================================
+.keyboard-hints {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  gap: 12px;
+  z-index: 10;
+
+  span {
+    font-size: 11px;
+    color: #333;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 3px 8px;
+    border-radius: 3px;
+  }
+}

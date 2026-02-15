@@ -1,0 +1,256 @@
+<!-- Full-page universe visualization -->
+<div class="universe-container" [class.has-selection]="!!activeNodeIds()">
+
+  <!-- ============ LEFT SIDEBAR (always visible) ============ -->
+  <div class="sidebar">
+    <!-- Sidebar header -->
+    <div class="sidebar-header">
+      <button class="nav-btn" (click)="goBack()">
+        <span class="arrow">&larr;</span>
+      </button>
+      <h1 class="sidebar-title">K8s Universe</h1>
+      @if (stats(); as s) {
+        <span class="stats-badge">{{ s.totalNodes }}</span>
+      }
+    </div>
+
+    <!-- Top section: Legend / Filters -->
+    <div class="sidebar-legend">
+      <!-- Namespace selector -->
+      @if (!focusedNamespace()) {
+        <div class="sidebar-section">
+          <h3 class="section-title">Namespaces</h3>
+          <div class="section-list">
+            @for (ns of namespaceList(); track ns.name) {
+              <button class="sidebar-item" (click)="focusNamespace(ns.name)">
+                <span class="item-dot" style="background: #00d4ff"></span>
+                <span class="item-label">{{ ns.name }}</span>
+                <span class="item-count">{{ ns.count }}</span>
+              </button>
+            }
+          </div>
+        </div>
+        <!-- Legend grouped by category -->
+        @for (group of legendGroups(); track group.category) {
+          <div class="sidebar-section legend-group">
+            <div class="legend-group-label">{{ group.label }}</div>
+            <div class="section-list">
+              @for (item of group.items; track item.kind) {
+                <button class="sidebar-item"
+                        [class.active]="selectedKind() === item.kind"
+                        (click)="selectKind(item.kind)">
+                  <span class="item-dot" [style.background]="item.color"></span>
+                  <span class="item-label">{{ item.kind }}</span>
+                  <span class="item-count">{{ item.count }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+      } @else {
+        <!-- Focused namespace: kind legend grouped by category -->
+        <div class="sidebar-section">
+          <div class="section-header-row">
+            <button class="back-btn" (click)="clearNamespaceFocus()">&larr; All</button>
+            <h3 class="section-title active-ns-title">{{ focusedNamespace() }}</h3>
+          </div>
+          @for (group of legendGroups(); track group.category) {
+            <div class="legend-group">
+              <div class="legend-group-label">{{ group.label }}</div>
+              <div class="section-list">
+                @for (item of group.items; track item.kind) {
+                  <button class="sidebar-item"
+                          [class.active]="selectedKind() === item.kind"
+                          (click)="selectKind(item.kind)">
+                    <span class="item-dot" [style.background]="item.color"></span>
+                    <span class="item-label">{{ item.kind }}</span>
+                    <span class="item-count">{{ item.count }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Divider -->
+    <div class="sidebar-divider"></div>
+
+    <!-- Bottom section: Node details -->
+    <div class="sidebar-details">
+      @if (selectedNode(); as node) {
+        <!-- Selected node info -->
+        <div class="detail-header">
+          <div class="detail-kind-badge" [style.background]="getKindColor(node.kind)">
+            {{ node.kind }}
+          </div>
+          <button class="close-btn" (click)="clearSelection()">&times;</button>
+        </div>
+        <h2 class="detail-name">{{ node.name }}</h2>
+
+        <!-- Metadata -->
+        <div class="detail-meta">
+          <div class="meta-row">
+            <span class="meta-label">Namespace</span>
+            <span class="meta-value">{{ node.namespace }}</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Category</span>
+            <span class="meta-value">{{ node.category }}</span>
+          </div>
+          @for (entry of (node.metadata | keyvalue); track entry.key) {
+            @if (entry.value) {
+              <div class="meta-row">
+                <span class="meta-label">{{ entry.key }}</span>
+                <span class="meta-value">{{ entry.value }}</span>
+              </div>
+            }
+          }
+        </div>
+
+        <!-- Pods section (for workloads) -->
+        @if (expandedPods().length > 0) {
+          <h3 class="section-heading">Pods ({{ expandedPods().length }})</h3>
+          <div class="pods-list">
+            @for (pod of expandedPods(); track pod.id) {
+              <div class="pod-item">
+                <span class="pod-status-dot" [style.background]="getPodStatusColor(pod)"></span>
+                <div class="pod-info">
+                  <span class="pod-name">{{ pod.name }}</span>
+                  @if (pod.metadata['image']) {
+                    <span class="pod-image">{{ pod.metadata['image'] }}</span>
+                  }
+                </div>
+                <span class="pod-status" [style.color]="getPodStatusColor(pod)">{{ pod.metadata['status'] }}</span>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Connected resources -->
+        @if (groupedConnections().length > 0) {
+          <h3 class="section-heading">Connections</h3>
+          @for (group of groupedConnections(); track group.type) {
+            <div class="connection-group">
+              <div class="group-label">{{ group.type }}</div>
+              @for (item of group.items; track item.node.id) {
+                <button class="connected-node-btn" (click)="onConnectedNodeClick(item.node)">
+                  <span class="conn-dot" [style.background]="getKindColor(item.node.kind)"></span>
+                  <span class="conn-kind">{{ item.node.kind }}/</span>
+                  <span class="conn-name">{{ item.node.name }}</span>
+                </button>
+              }
+            </div>
+          }
+        }
+      } @else {
+        <div class="no-selection">
+          <p>Select a node to view details</p>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- ============ MAIN GRAPH AREA ============ -->
+  <div class="graph-area">
+    <!-- Loading spinner -->
+    @if (loading()) {
+      <div class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Loading K8s resources...</p>
+      </div>
+    }
+
+    <!-- Error -->
+    @if (error(); as err) {
+      <div class="error-overlay">
+        <p>Failed to load graph</p>
+        <p class="error-detail">{{ err }}</p>
+      </div>
+    }
+
+    <!-- Perspective grid floor -->
+    <div class="grid-floor"></div>
+
+    <!-- Nebula background layers -->
+    <div class="nebula-layer nebula-1"></div>
+    <div class="nebula-layer nebula-2"></div>
+
+    <!-- Ambient light source -->
+    <div class="ambient-light"></div>
+
+    <!-- Graph canvas -->
+    <canvas #graphCanvas class="graph-canvas"></canvas>
+
+    <!-- Scanlines overlay -->
+    <div class="scanlines"></div>
+
+    <!-- Namespace boundaries overlay -->
+    <div class="boundaries-overlay">
+      @for (b of filteredBoundaries(); track b.namespace) {
+        <div class="ns-boundary"
+             [class.clickable]="focusedNamespace() !== b.namespace"
+             [class.active-ns]="focusedNamespace() === b.namespace"
+             [class.other-ns]="!!focusedNamespace() && focusedNamespace() !== b.namespace"
+             (click)="focusedNamespace() !== b.namespace && focusNamespace(b.namespace)"
+             [style.left.px]="b.cx - b.rx"
+             [style.top.px]="b.cy - b.ry"
+             [style.width.px]="b.rx * 2"
+             [style.height.px]="b.ry * 2"
+             [style.--ns-color]="b.color">
+          <span class="ns-boundary-label">{{ b.namespace }}</span>
+        </div>
+      }
+    </div>
+
+    <!-- Node labels overlay -->
+    <div class="labels-overlay">
+      @for (label of filteredLabels(); track label.id) {
+        <div class="node-label"
+             [attr.data-kind]="label.kind"
+             [class.dimmed]="activeNodeIds() !== null && !activeNodeIds()!.has(label.id)"
+             [class.orphan]="label.orphan"
+             [style.left.px]="label.x"
+             [style.top.px]="label.y"
+             [style.color]="label.color"
+             [style.--glow-color]="label.color">
+          <span class="label-text">{{ label.text }}</span>
+        </div>
+      }
+    </div>
+
+    <!-- Vignette overlay -->
+    <div class="vignette"></div>
+
+    <!-- Top-right actions -->
+    <div class="graph-actions">
+      <button class="action-btn" (click)="fitView()" title="Fit view (F)">
+        <span>&#x26F6;</span> Fit
+      </button>
+    </div>
+
+    <!-- Zoom indicator -->
+    <div class="zoom-indicator">
+      {{ zoomLevel() | number:'1.1-1' }}x
+    </div>
+
+    <!-- Tooltip -->
+    @if (hoveredNode(); as node) {
+      @if (tooltipPosition(); as pos) {
+        <div class="tooltip" [style.left.px]="pos.x + 12" [style.top.px]="pos.y - 8">
+          <span class="tooltip-dot" [style.background]="getKindColor(node.kind)"></span>
+          <span class="tooltip-kind">{{ node.kind }}</span>
+          <span class="tooltip-name">{{ node.name }}</span>
+        </div>
+      }
+    }
+
+    <!-- Keyboard hints -->
+    <div class="keyboard-hints">
+      <span>Esc: Deselect</span>
+      <span>F: Fit view</span>
+      <span>Scroll: Zoom</span>
+    </div>
+  </div>
+</div>
