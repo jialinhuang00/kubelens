@@ -28,6 +28,7 @@ const { router: executeRouter, mountStream } = require('./routes/execute');
 const graphRouter = require('./routes/graph');
 const statusRouter = require('./routes/status');
 const resourceCountsRouter = require('./routes/resource-counts');
+const ecrRouter = require('./routes/ecr');
 
 // Stream routes need io reference, mount them onto the router before app.use
 mountStream(executeRouter, io);
@@ -36,6 +37,7 @@ app.use('/api', executeRouter);
 app.use('/api', graphRouter);
 app.use('/api', statusRouter);
 app.use('/api', resourceCountsRouter);
+app.use('/api', ecrRouter);
 
 // WebSocket connection
 io.on('connection', (socket) => {

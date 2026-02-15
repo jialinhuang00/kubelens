@@ -1,0 +1,86 @@
+<div class="context-bar" [class.is-disabled]="disabled">
+  <!-- Section header with collapse toggle -->
+  <div class="section-header" (click)="toggleCollapse()">
+    <span class="section-title">
+      Context
+      @if (activeResourceCount() > 0) {
+        <span class="section-badge">{{ activeResourceCount() }}</span>
+      }
+    </span>
+    <span class="chevron" [class.collapsed]="isCollapsed()">&#9662;</span>
+  </div>
+
+  <!-- Collapsible content: column-view panels -->
+  <div class="section-body" [class.collapsed]="isCollapsed()">
+    <div class="column-view">
+      <!-- Panel 1: Namespace (always expanded, scrollable list) -->
+      <div class="column-panel ns-panel">
+        <div class="panel-header">
+          <span class="panel-label">Namespace</span>
+          <input
+            type="text"
+            class="panel-search"
+            placeholder="Filter..."
+            [value]="filterText()"
+            (input)="onFilterInput($event)"
+          />
+        </div>
+        <div class="panel-list">
+          @if (isLoading) {
+            <span class="panel-item disabled">Loading...</span>
+          } @else if (filteredNamespaces().length === 0) {
+            <span class="panel-item disabled">No matches</span>
+          } @else {
+            @for (ns of filteredNamespaces(); track ns) {
+              <button class="panel-item"
+                      [class.active]="ns === selectedNamespace"
+                      (click)="onNamespaceSelect(ns)">
+                {{ ns }}
+              </button>
+            }
+          }
+        </div>
+      </div>
+
+      <!-- Resource book spines: vertical tabs, click to expand -->
+      @for (res of resources; track res.key) {
+        <div class="resource-spine-wrapper" [class.expanded]="expandedResource() === res.key">
+          <!-- Spine tab (vertical label) -->
+          <button class="resource-spine"
+                  [class.has-data]="getSpineCount(res) > 0"
+                  [class.has-selection]="res.selected !== ''"
+                  (click)="toggleResource(res.key)">
+            <span class="spine-label">{{ res.label }}</span>
+            @if (getSpineCount(res) > 0) {
+              <span class="spine-count">{{ getSpineCount(res) }}</span>
+            }
+          </button>
+
+          <!-- Expanded panel (item list) -->
+          @if (expandedResource() === res.key) {
+            <div class="resource-panel">
+              @if (res.isLoading) {
+                <span class="panel-item disabled">Loading...</span>
+              } @else if (res.items.length === 0) {
+                <span class="panel-item disabled">No data</span>
+              } @else {
+                <button class="panel-item"
+                        [class.active]="res.selected === ''"
+                        (click)="onResourceDeselect(res.key)">
+                  <span class="item-none">— none —</span>
+                </button>
+                @for (item of res.items; track item) {
+                  <button class="panel-item"
+                          [class.active]="item === res.selected"
+                          (click)="onResourceItemSelect(res.key, item)">
+                    {{ item }}
+                  </button>
+                }
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>

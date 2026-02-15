@@ -1,6 +1,7 @@
-<div class="min-h-screen p-3">
-  <div class="max-w-7xl mx-auto">
-    <header class="mb-4 flex items-center justify-between">
+<div class="min-h-screen px-8 py-4">
+  <div class="mx-auto" style="max-width: 1400px">
+    <!-- Header -->
+    <header class="mb-3 flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-bold glow-text mb-1" style="color: var(--accent-cyan)">{{ title() }}</h1>
         <p class="text-xs" style="color: var(--text-secondary)">Kubectl Commands Visualized</p>
@@ -23,38 +24,65 @@
       </div>
     </header>
 
-    <div class="grid grid-cols-[350px_1fr] gap-4">
-      <!-- Sidebar: Commands -->
-      <app-command-sidebar
-        [data]="sidebarData()"
-        (namespaceChange)="onNamespaceChange($event)"
-        (deploymentChange)="onDeploymentChange($event)"
-        (podChange)="onPodChange($event)"
-        (serviceChange)="onServiceChange($event)"
+    <div class="space-y-3">
+      <!-- Global Commands -->
+      <app-command-chips
+        [groups]="globalChipGroup()"
+        [disabled]="isBusy()"
         (templateExecute)="executeTemplate($event)"
-        (imageUpgrade)="onImageUpgrade($event)">
-      </app-command-sidebar>
+      />
 
-      <!-- Main Content Area -->
-      <div class="space-y-3 overflow-x-auto">
-        <!-- Custom Command Input -->
-        <app-command-input
-          [command]="customCommand()"
-          [isLoading]="isLoading()"
-          (commandChange)="onCustomCommandChange($event)"
-          (commandExecute)="executeCustomCommand()"
-          (keyDown)="onCommandInputKeyDown($event)">
-        </app-command-input>
+      <!-- Context Bar -->
+      <app-context-bar
+        [namespaces]="namespaces()"
+        [selectedNamespace]="selectedNamespace()"
+        [isLoading]="isInitializing()"
+        [resources]="resourceDropdowns()"
+        [resourceCounts]="resourceCounts()"
+        [disabled]="isBusy()"
+        (namespaceChange)="onNamespaceChange($event)"
+        (resourceChange)="onResourceChange($event)"
+        (resourceExpand)="onResourceExpand($event)"
+      />
 
-        <!-- Command Output & Visualization -->
-        <app-output-display
-          [data]="outputData()">
-        </app-output-display>
-      </div>
+      <!-- Resource Command Chips (includes inline Rollout Console + ECR Tag Picker) -->
+      <app-command-chips
+        [groups]="resourceChipGroups()"
+        [disabled]="isBusy()"
+        [ecrTags]="ecrService.tags()"
+        [ecrIsLoading]="ecrService.isLoading()"
+        [ecrError]="ecrService.error()"
+        [deploymentImage]="deploymentImage()"
+        [deploymentName]="selectedDeployment()"
+        [isRolloutExpanded]="isRolloutConsoleExpanded()"
+        [rolloutTemplates]="rolloutTemplates"
+        [deploymentStatus]="deploymentStatus()"
+        [buttonStates]="buttonStates()"
+        [rolloutHistory]="rolloutHistory()"
+        (templateExecute)="executeTemplate($event)"
+        (loadEcrTags)="onLoadEcrTags()"
+        (ecrTagSelect)="onEcrTagSelect($event)"
+        (toggleRolloutExpanded)="onToggleRolloutConsole()"
+        (imageUpgrade)="onImageUpgrade($event)"
+      />
+
+      <!-- Command Input -->
+      <app-command-input
+        [command]="customCommand()"
+        [isLoading]="isBusy()"
+        (commandChange)="onCustomCommandChange($event)"
+        (commandExecute)="executeCustomCommand()"
+        (keyDown)="onCommandInputKeyDown($event)"
+      />
+
+      <!-- Output Display (full width) -->
+      <app-output-display
+        [data]="outputData()"
+      />
     </div>
   </div>
-  
-  <!-- Execution Dialog (Modal Overlay) -->
+
+  <!-- Execution Toast (top-right) -->
   <app-execution-dialog></app-execution-dialog>
 </div>
 

@@ -198,9 +198,15 @@
   flex-shrink: 0;
   height: 100%;
   border-right: 1px solid var(--border-subtle);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
   &:last-child {
     border-right: none;
+  }
+
+  &.expanded {
+    border: 2px solid #e8b866;
+    z-index: 1;
   }
 }
 

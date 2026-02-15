@@ -17,7 +17,6 @@ import { ExecutionContextService } from '../../../core/services/execution-contex
 import { KubeResource, PodDescribeData, CommandTemplate, TableData, YamlItem } from '../../../shared/models/kubectl.models';
 import { ContextBarComponent, ResourceDropdown } from './context-bar/context-bar.component';
 import { CommandChipsComponent, ChipGroup } from './command-chips/command-chips.component';
-import { RolloutConsoleComponent } from './sidebar/rollout-console.component';
 import { OutputDisplayComponent } from './output-display/output-display.component';
 import { CommandInputComponent } from './command-input/command-input.component';
 import { ExecutionDialogComponent } from '../../../shared/components/execution-dialog/execution-dialog.component';
@@ -25,6 +24,7 @@ import { ExecutionDialogService } from '../../../core/services/execution-dialog.
 import { ExecutionGroupGenerator } from '../../../shared/constants/execution-groups.constants';
 import { OutputData } from '../../../shared/interfaces/output-data.interface';
 import { MockModeService } from '../../../core/services/mock-mode.service';
+import { EcrService } from '../../k8s/services/ecr.service';
 
 // Resource config: defines all resource types, their labels, colors, and template generators
 interface ResourceConfig {
@@ -38,7 +38,7 @@ interface ResourceConfig {
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterOutlet, FormsModule, CommonModule, ContextBarComponent, CommandChipsComponent, RolloutConsoleComponent, OutputDisplayComponent, CommandInputComponent, ExecutionDialogComponent],
+  imports: [RouterOutlet, FormsModule, CommonModule, ContextBarComponent, CommandChipsComponent, OutputDisplayComponent, CommandInputComponent, ExecutionDialogComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -57,6 +57,7 @@ export class DashboardComponent implements OnInit {
   private executionContext = inject(ExecutionContextService);
   private dialogService = inject(ExecutionDialogService);
   protected mockModeService = inject(MockModeService);
+  protected ecrService = inject(EcrService);
 
   protected readonly title = signal('kubecmds-viz');
 
@@ -86,6 +87,9 @@ export class DashboardComponent implements OnInit {
   // Resource counts (from /api/resource-counts — lightweight, no full item lists)
   resourceCounts = signal<Record<string, number>>({});
 
+  // ECR: current deployment's container image (derived from deployment status)
+  deploymentImage = computed(() => this.deploymentService.deploymentStatus()?.containerImage || '');
+
   // Service signal accessors
   get namespaces() { return this.namespaceService.namespaces; }
   get isInitializing() { return this.namespaceService.isLoading; }
@@ -102,32 +106,58 @@ export class DashboardComponent implements OnInit {
 
   // All resource configs — single source of truth
   readonly resourceConfigs: ResourceConfig[] = [
-    { key: 'deployment', label: 'Deployment', color: '#e8b866', type: 'builtin',
-      templateGenerator: (s) => this.templateService.generateDeploymentTemplates(s) },
-    { key: 'pod', label: 'Pod', color: '#f0d080', type: 'builtin',
-      templateGenerator: (s) => this.templateService.generatePodTemplates(s) },
-    { key: 'service', label: 'Service', color: '#d4956a', type: 'builtin',
-      templateGenerator: (s) => this.templateService.generateServiceTemplates(s) },
-    { key: 'statefulsets', label: 'StatefulSet', color: '#e0a050', type: 'generic', genericType: 'statefulsets',
-      templateGenerator: (s) => this.templateService.generateStatefulSetTemplates(s) },
-    { key: 'cronjobs', label: 'CronJob', color: '#c8a060', type: 'generic', genericType: 'cronjobs',
-      templateGenerator: (s) => this.templateService.generateCronJobTemplates(s) },
-    { key: 'jobs', label: 'Job', color: '#b89860', type: 'generic', genericType: 'jobs',
-      templateGenerator: (s) => this.templateService.generateJobTemplates(s) },
-    { key: 'configmaps', label: 'ConfigMap', color: '#a0b880', type: 'generic', genericType: 'configmaps',
-      templateGenerator: (s) => this.templateService.generateConfigMapTemplates(s) },
-    { key: 'secrets', label: 'Secret', color: '#c0a8a0', type: 'generic', genericType: 'secrets',
-      templateGenerator: (s) => this.templateService.generateSecretTemplates(s) },
-    { key: 'persistentvolumeclaims', label: 'PVC', color: '#90b0c8', type: 'generic', genericType: 'persistentvolumeclaims',
-      templateGenerator: (s) => this.templateService.generatePVCTemplates(s) },
-    { key: 'serviceaccounts', label: 'ServiceAccount', color: '#a8a0c0', type: 'generic', genericType: 'serviceaccounts',
-      templateGenerator: (s) => this.templateService.generateServiceAccountTemplates(s) },
-    { key: 'ingresses', label: 'Ingress', color: '#80c0b0', type: 'generic', genericType: 'ingresses',
-      templateGenerator: (s) => this.templateService.generateIngressTemplates(s) },
-    { key: 'gateways', label: 'Gateway', color: '#70b8a8', type: 'generic', genericType: 'gateways',
-      templateGenerator: (s) => this.templateService.generateGatewayTemplates(s) },
-    { key: 'httproutes', label: 'HTTPRoute', color: '#68b0a0', type: 'generic', genericType: 'httproutes',
-      templateGenerator: (s) => this.templateService.generateHTTPRouteTemplates(s) },
+    {
+      key: 'deployment', label: 'Deployment', color: '#e8b866', type: 'builtin',
+      templateGenerator: (s) => this.templateService.generateDeploymentTemplates(s)
+    },
+    {
+      key: 'pod', label: 'Pod', color: '#f0d080', type: 'builtin',
+      templateGenerator: (s) => this.templateService.generatePodTemplates(s)
+    },
+    {
+      key: 'service', label: 'Service', color: '#d4956a', type: 'builtin',
+      templateGenerator: (s) => this.templateService.generateServiceTemplates(s)
+    },
+    {
+      key: 'statefulsets', label: 'StatefulSet', color: '#e0a050', type: 'generic', genericType: 'statefulsets',
+      templateGenerator: (s) => this.templateService.generateStatefulSetTemplates(s)
+    },
+    {
+      key: 'cronjobs', label: 'CronJob', color: '#c8a060', type: 'generic', genericType: 'cronjobs',
+      templateGenerator: (s) => this.templateService.generateCronJobTemplates(s)
+    },
+    {
+      key: 'jobs', label: 'Job', color: '#b89860', type: 'generic', genericType: 'jobs',
+      templateGenerator: (s) => this.templateService.generateJobTemplates(s)
+    },
+    {
+      key: 'configmaps', label: 'ConfigMap', color: '#a0b880', type: 'generic', genericType: 'configmaps',
+      templateGenerator: (s) => this.templateService.generateConfigMapTemplates(s)
+    },
+    {
+      key: 'secrets', label: 'Secret', color: '#c0a8a0', type: 'generic', genericType: 'secrets',
+      templateGenerator: (s) => this.templateService.generateSecretTemplates(s)
+    },
+    {
+      key: 'persistentvolumeclaims', label: 'PVC', color: '#90b0c8', type: 'generic', genericType: 'persistentvolumeclaims',
+      templateGenerator: (s) => this.templateService.generatePVCTemplates(s)
+    },
+    {
+      key: 'serviceaccounts', label: 'ServiceAccount', color: '#a8a0c0', type: 'generic', genericType: 'serviceaccounts',
+      templateGenerator: (s) => this.templateService.generateServiceAccountTemplates(s)
+    },
+    {
+      key: 'ingresses', label: 'Ingress', color: '#80c0b0', type: 'generic', genericType: 'ingresses',
+      templateGenerator: (s) => this.templateService.generateIngressTemplates(s)
+    },
+    {
+      key: 'gateways', label: 'Gateway', color: '#70b8a8', type: 'generic', genericType: 'gateways',
+      templateGenerator: (s) => this.templateService.generateGatewayTemplates(s)
+    },
+    {
+      key: 'httproutes', label: 'HTTPRoute', color: '#68b0a0', type: 'generic', genericType: 'httproutes',
+      templateGenerator: (s) => this.templateService.generateHTTPRouteTemplates(s)
+    },
   ];
 
   // Computed: resource dropdowns for context bar
@@ -143,16 +173,20 @@ export class DashboardComponent implements OnInit {
 
   // Global commands (above context bar — no namespace dependency)
   globalChipGroup = computed<ChipGroup[]>(() => [
-    { key: 'global', label: 'Global', resourceName: '', color: '#6dca82',
-      templates: this.templateService.getGlobalTemplates() },
+    {
+      key: 'global', label: 'Global', resourceName: '', color: '#6dca82',
+      templates: this.templateService.getGlobalTemplates()
+    },
   ]);
 
   // Resource-specific commands (below context bar)
   // Only show namespace group (always) + resource groups that have an active selection
   resourceChipGroups = computed<ChipGroup[]>(() => {
     const groups: ChipGroup[] = [
-      { key: 'namespace', label: 'Namespace', resourceName: this.selectedNamespace(), color: '#6dca82',
-        templates: this.templateService.getNamespaceTemplates() },
+      {
+        key: 'namespace', label: 'Namespace', resourceName: this.selectedNamespace(), color: '#6dca82',
+        templates: this.templateService.getNamespaceTemplates()
+      },
     ];
     for (const cfg of this.resourceConfigs) {
       const selected = this.getResourceSelected(cfg);
@@ -256,26 +290,71 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  async onDeploymentChange(deployment: string | Event) {
+  onDeploymentChange(deployment: string | Event) {
     const value = typeof deployment === 'string' ? deployment : (deployment.target as HTMLSelectElement).value;
     this.selectedDeployment.set(value);
     this.deploymentService.setSelectedDeployment(value);
+    this.ecrService.clear();
 
-    if (value && this.selectedNamespace()) {
-      try {
-        const deploymentGroup = ExecutionGroupGenerator.deploymentOperations(value, this.selectedNamespace());
-        await this.executionContext.withGroup(deploymentGroup, async () => {
-          await Promise.all([
-            this.deploymentService.getDeploymentStatus(value, this.selectedNamespace()),
-            this.deploymentService.getRolloutHistory(value, this.selectedNamespace())
-          ]);
-        });
-      } catch (error) {
-        console.error('Failed to load deployment data:', error);
-      }
-    } else {
+    if (!value) {
       this.deploymentService.stopRolloutMonitoring();
+      return;
     }
+
+    // Auto-select matching pod and service if none selected
+    this.autoSelectRelatedResources(value);
+
+    // Fetch deployment status (startRolloutMonitoring handles status + history)
+    const namespace = this.selectedNamespace();
+    if (namespace) {
+      this.deploymentService.startRolloutMonitoring(value, namespace);
+    }
+
+    // deploymentImage is now a computed signal derived from deploymentStatus
+  }
+
+  private autoSelectRelatedResources(deployment: string) {
+    // Auto-select first matching pod (pod names typically start with deployment name)
+    if (!this.selectedPod()) {
+      const matchingPod = this.podService.pods().find(p => p.startsWith(deployment));
+      if (matchingPod) {
+        this.selectedPod.set(matchingPod);
+        this.podService.setSelectedPod(matchingPod);
+      }
+    }
+
+    // Auto-select first matching service (often same name as deployment)
+    if (!this.selectedService()) {
+      const services = this.svcService.services();
+      const exactMatch = services.find(s => s === deployment);
+      const prefixMatch = services.find(s => s.startsWith(deployment) || deployment.startsWith(s));
+      const match = exactMatch || prefixMatch;
+      if (match) {
+        this.selectedService.set(match);
+        this.svcService.setSelectedService(match);
+      }
+    }
+  }
+
+
+  async onLoadEcrTags() {
+    const image = this.deploymentImage();
+    console.log(image)
+    if (!image) return;
+    await this.ecrService.fetchTags(image);
+  }
+
+  async onEcrTagSelect(tag: string) {
+    const image = this.deploymentImage();
+    const deployment = this.selectedDeployment();
+    const namespace = this.selectedNamespace();
+    if (!image || !deployment || !namespace) return;
+
+    // Build full image URL with new tag
+    const imageBase = image.replace(/:.*$/, '');
+    const fullImage = `${imageBase}:${tag}`;
+    const command = this.rolloutService.generateSetImageCommand(deployment, namespace, fullImage);
+    await this.executeCommand(command);
   }
 
   onToggleRolloutConsole() {

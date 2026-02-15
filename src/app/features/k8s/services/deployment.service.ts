@@ -18,6 +18,7 @@ export interface DeploymentStatus {
   conditions: any[];
   isPaused: boolean;
   progressingReason?: string; // DeploymentPaused, ReplicaSetUpdated, NewReplicaSetAvailable, etc.
+  containerImage?: string; // first container image URL
 }
 
 export interface RolloutStatus {
@@ -127,7 +128,8 @@ export class DeploymentService {
           status: this.determineDeploymentStatus(data.status.conditions || []),
           conditions: data.status.conditions || [],
           isPaused: data.spec.paused === true,
-          progressingReason: progressingCondition?.reason
+          progressingReason: progressingCondition?.reason,
+          containerImage: data.spec?.template?.spec?.containers?.[0]?.image || ''
         };
 
         this.deploymentStatus.set(status);
@@ -231,44 +233,24 @@ export class DeploymentService {
     this.currentMonitoredNamespace = namespace;
     this.isMonitoringRollout.set(true);
 
-    // Initial status and history update
+    // Initial status fetch only (history is fetched on-demand when user expands)
     const rolloutGroup = ExecutionGroupGenerator.deploymentOperations(deployment, namespace);
     await this.executionContext.withGroup(rolloutGroup, async () => {
-      await Promise.all([
-        this.updateRolloutStatus(deployment, namespace),
-        this.getDeploymentStatus(deployment, namespace),
-        this.getRolloutHistory(deployment, namespace)
-      ]);
+      await this.getDeploymentStatus(deployment, namespace);
     });
 
-    // Monitor every 10 seconds
+    // Monitor status every 10 seconds (lightweight — no history polling)
     this.rolloutInterval = setInterval(async () => {
       try {
-        // Safety check: only monitor if this is still the current deployment
         if (this.currentMonitoredDeployment !== deployment || this.currentMonitoredNamespace !== namespace) {
-          console.log(`🛑 Stopping outdated monitoring for ${deployment} in ${namespace}`);
           this.stopRolloutMonitoring();
           return;
         }
 
-        // Use consistent group name for monitoring to avoid conflicts
         const monitorGroup = ExecutionGroupGenerator.deploymentOperations(deployment, namespace);
         await this.executionContext.withGroup(monitorGroup, async () => {
-          await Promise.all([
-            this.updateRolloutStatus(deployment, namespace),
-            this.getDeploymentStatus(deployment, namespace)
-          ]);
+          await this.getDeploymentStatus(deployment, namespace);
         });
-
-        // update history every 15 seconds
-        const now = Date.now();
-        if (!this.lastHistoryUpdate || now - this.lastHistoryUpdate > 15000) {
-          const historyGroup = ExecutionGroupGenerator.deploymentOperations(deployment, namespace);
-          await this.executionContext.withGroup(historyGroup, async () => {
-            await this.getRolloutHistory(deployment, namespace);
-          });
-          this.lastHistoryUpdate = now;
-        }
       } catch (error) {
         console.error('Error during rollout monitoring:', error);
       }

@@ -58,10 +58,10 @@
 // Collapsible body
 .section-body {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 0.5rem;
   padding: 0 1rem 0.6rem;
-  max-height: 500px;
+  max-height: 1200px;
   overflow: hidden;
   transition: max-height 0.25s ease, padding 0.25s ease, opacity 0.2s ease;
   opacity: 1;
@@ -77,36 +77,53 @@
 .chip-group {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-left: 2px solid;
+  padding-left: 8px;
+
+  &.has-rollout {
+    flex-wrap: wrap;
+
+    > app-rollout-console {
+      flex-basis: 100%;
+      margin-left: 8px;
+    }
+  }
 }
 
 .group-label {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  min-width: 260px;
+  flex-shrink: 0;
+  opacity: 0.7;
+  line-height: 1.3;
+}
+
+.label-type {
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 3px 0 3px 8px;
-  border-left: 2px solid;
-  border-radius: 0;
-  background: none !important;
-  white-space: nowrap;
-  opacity: 0.7;
+}
 
-  .resource-name {
-    font-weight: 400;
-    text-transform: none;
-    opacity: 0.7;
-    margin-left: 4px;
-    font-size: 10px;
-  }
+.resource-name {
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chips-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
+  align-items: center;
 }
+
 
 .cmd-chip {
   padding: 3px 10px;
@@ -130,11 +147,20 @@
   &:active {
     transform: scale(0.95);
   }
+}
 
-  // Sticky (list-type) chips: outlined instead of filled
-  &.sticky {
-    background: transparent;
-    border: 1px dashed var(--chip-color);
-    color: var(--chip-color);
+.show-more-btn {
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 500;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+
+  &:hover {
+    opacity: 1;
   }
 }

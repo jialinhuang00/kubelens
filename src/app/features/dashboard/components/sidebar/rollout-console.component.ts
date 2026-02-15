@@ -24,9 +24,17 @@ export class RolloutConsoleComponent {
   @Input() deploymentStatus: DeploymentStatus | null = null;
   @Input() buttonStates: RolloutButtonStates | null = null;
 
+  // ECR tag picker
+  @Input() ecrTags: string[] = [];
+  @Input() ecrIsLoading = false;
+  @Input() ecrError = '';
+  @Input() deploymentImage = '';
+
   @Output() toggleExpanded = new EventEmitter<void>();
   @Output() templateExecute = new EventEmitter<CommandTemplate>();
   @Output() imageUpgrade = new EventEmitter<{ deployment: string, image: string }>();
+  @Output() loadEcrTags = new EventEmitter<void>();
+  @Output() ecrTagSelect = new EventEmitter<string>();
 
   // UI State
   showHistoryTable = signal<boolean>(false);
@@ -219,6 +227,18 @@ export class RolloutConsoleComponent {
     } else {
       return 'Rollback to previous deployment version';
     }
+  }
+
+  isEcrImage(): boolean {
+    return /\.dkr\.ecr\.[^.]+\.amazonaws\.com\//.test(this.deploymentImage);
+  }
+
+  onLoadTags() {
+    this.loadEcrTags.emit();
+  }
+
+  onSelectTag(tag: string) {
+    this.ecrTagSelect.emit(tag);
   }
 
   async onCopyToClipboard(text: string, event?: Event): Promise<void> {

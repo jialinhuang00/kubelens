@@ -1,183 +1,328 @@
+// Rollout console — sits under the deployment chip-group,
+// shares the deployment gold left-border visual language.
+
 .rollout-console {
-  .accordion-header {
-    transition: all 0.3s ease;
-    
-    &.expanded .accordion-arrow {
-      transform: rotate(90deg);
-    }
+  // margin-left handled by parent .has-rollout
+}
+
+// Toggle row — compact, no background block
+.rollout-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 2px 0;
+  user-select: none;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.rollout-toggle-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #e8b866;
+}
+
+.status-text {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.6;
+  margin-left: 4px;
+  font-size: 10px;
+}
+
+.rollout-toggle-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-lights {
+  display: flex;
+  gap: 3px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.toggle-arrow {
+  font-size: 9px;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+
+  &.expanded {
+    transform: rotate(0deg);
   }
 
-  .accordion-content {
-    max-height: 0;
-    overflow: hidden;
-    transition: all 0.3s ease;
-    
-    &.expanded {
-      max-height: 800px; // Generous max-height for rollout console
-    }
+  &:not(.expanded) {
+    transform: rotate(-90deg);
+  }
+}
+
+// Expandable body
+.rollout-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+  opacity: 0;
+
+  &.expanded {
+    max-height: 800px;
+    opacity: 1;
+  }
+}
+
+// Player controls row
+.player-row {
+  display: flex;
+  gap: 4px;
+  padding: 6px 0;
+}
+
+.player-btn {
+  background: rgba(232, 184, 102, 0.08);
+  border: 1px solid rgba(232, 184, 102, 0.2);
+  color: var(--text-primary);
+  min-width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
   }
 
-  .player-controls {
-    .player-btn {
-      background: rgba(0, 255, 255, 0.1);
-      border: 1px solid rgba(0, 255, 255, 0.2);
+  &:hover {
+    background: rgba(232, 184, 102, 0.15);
+    border-color: rgba(232, 184, 102, 0.4);
+  }
+
+  &.rollback-btn:hover {
+    background: rgba(255, 165, 0, 0.12);
+    border-color: rgba(255, 165, 0, 0.35);
+    mat-icon { color: #ff9500; }
+  }
+
+  &.pause-btn:hover {
+    background: rgba(255, 193, 7, 0.12);
+    border-color: rgba(255, 193, 7, 0.35);
+    mat-icon { color: #ffc107; }
+  }
+
+  &.play-btn:hover {
+    background: rgba(76, 175, 80, 0.12);
+    border-color: rgba(76, 175, 80, 0.35);
+    mat-icon { color: #4caf50; }
+  }
+
+  &.restart-btn:hover {
+    background: rgba(244, 67, 54, 0.12);
+    border-color: rgba(244, 67, 54, 0.35);
+    mat-icon { color: #f44336; }
+  }
+
+  &.disabled,
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    background: rgba(128, 128, 128, 0.06) !important;
+    border-color: rgba(128, 128, 128, 0.15) !important;
+
+    &:hover {
+      background: rgba(128, 128, 128, 0.06) !important;
+      transform: none !important;
+      mat-icon { color: var(--text-secondary) !important; }
+    }
+  }
+}
+
+// ECR section
+.ecr-row {
+  padding: 4px 0;
+}
+
+.ecr-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #e8b866;
+  margin-bottom: 4px;
+}
+
+.ecr-image-url {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 9px;
+  opacity: 0.4;
+  margin-left: 4px;
+}
+
+.ecr-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.ecr-btn {
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 3px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid rgba(232, 184, 102, 0.3);
+  color: #e8b866;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(232, 184, 102, 0.1);
+    border-color: rgba(232, 184, 102, 0.5);
+  }
+}
+
+.ecr-tag {
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  background: rgba(232, 184, 102, 0.08);
+  border: 1px solid rgba(232, 184, 102, 0.3);
+  color: #e8b866;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(232, 184, 102, 0.2);
+    border-color: #e8b866;
+    box-shadow: 0 0 6px rgba(232, 184, 102, 0.3);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.ecr-loading {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.ecr-error {
+  font-size: 10px;
+  color: #e07070;
+  cursor: help;
+}
+
+// Version History
+.history-row {
+  padding: 4px 0;
+}
+
+.history-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #e8b866;
+  opacity: 0.7;
+  padding: 0;
+  transition: opacity 0.15s;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.history-table {
+  margin-top: 4px;
+
+  table {
+    width: 100%;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 10px;
+    border-collapse: collapse;
+
+    th {
+      text-align: left;
+      padding: 2px 6px;
+      font-weight: 600;
+      color: #e8b866;
+      opacity: 0.7;
+      border-bottom: 1px solid rgba(232, 184, 102, 0.2);
+    }
+
+    td {
+      padding: 2px 6px;
       color: var(--text-primary);
-      min-width: 36px;
-      height: 36px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      
-      mat-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
-      }
-      
-      span {
-        font-size: 11px;
-        font-weight: 500;
-        letter-spacing: 0.5px;
-      }
-      
-      &:hover {
-        background: rgba(0, 255, 255, 0.15);
-        border-color: rgba(0, 255, 255, 0.4);
-        transform: translateY(-1px);
-      }
-      
-      &.rollback-btn:hover {
-        background: rgba(255, 165, 0, 0.15);
-        border-color: rgba(255, 165, 0, 0.4);
-        
-        mat-icon {
-          color: #ff9500;
-        }
-      }
-      
-      &.pause-btn:hover {
-        background: rgba(255, 193, 7, 0.15);
-        border-color: rgba(255, 193, 7, 0.4);
-        
-        mat-icon {
-          color: #ffc107;
-        }
-      }
-      
-      &.play-btn:hover {
-        background: rgba(76, 175, 80, 0.15);
-        border-color: rgba(76, 175, 80, 0.4);
-        
-        mat-icon {
-          color: #4caf50;
-        }
-      }
-      
-      &.restart-btn:hover {
-        background: rgba(244, 67, 54, 0.15);
-        border-color: rgba(244, 67, 54, 0.4);
-        
-        mat-icon {
-          color: #f44336;
-        }
-      }
-      
-      &.upgrade-btn:hover {
-        background: rgba(0, 255, 255, 0.15);
-        border-color: rgba(0, 255, 255, 0.4);
-        
-        span {
-          color: var(--accent-cyan);
-        }
-      }
-      
-      // Disabled button styles
-      &.disabled,
-      &:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-        background: rgba(128, 128, 128, 0.1) !important;
-        border-color: rgba(128, 128, 128, 0.2) !important;
-        color: var(--text-secondary) !important;
-        
-        &:hover {
-          background: rgba(128, 128, 128, 0.1) !important;
-          border-color: rgba(128, 128, 128, 0.2) !important;
-          transform: none !important;
-          
-          mat-icon,
-          span {
-            color: var(--text-secondary) !important;
-          }
-        }
-        
-        mat-icon,
-        span {
-          color: var(--text-secondary) !important;
-        }
-      }
+      border-bottom: 1px solid rgba(232, 184, 102, 0.06);
     }
-    
-    .version-separator {
-      width: 1px;
-      height: 24px;
-      background: rgba(255, 255, 255, 0.1);
-      margin: 0 8px;
+
+    tr:hover td {
+      background: rgba(232, 184, 102, 0.04);
     }
   }
 
-  .history-table {
-    table {
-      font-family: 'JetBrains Mono', 'Fira Code', monospace;
-      
-      th, td {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 120px;
-      }
-      
-      tr:hover {
-        background: rgba(0, 255, 255, 0.05);
-      }
-    }
+  .image-cell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 180px;
 
-    .copy-btn {
-      background: rgba(0, 255, 255, 0.1);
-      border: 1px solid rgba(0, 255, 255, 0.2);
-      color: var(--text-secondary);
-      
-      &:hover {
-        background: rgba(0, 255, 255, 0.2);
-        border-color: rgba(0, 255, 255, 0.4);
-        color: var(--accent-cyan);
-      }
-      
-      &.copy-success {
-        background: rgba(76, 175, 80, 0.2);
-        border-color: rgba(76, 175, 80, 0.4);
-        color: #4caf50;
-      }
-    }
-
-    [data-copy-tooltip]:hover::after {
-      content: attr(data-copy-tooltip);
-      position: absolute;
-      bottom: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.9);
-      color: white;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 10px;
+    .truncate {
+      overflow: hidden;
+      text-overflow: ellipsis;
       white-space: nowrap;
-      z-index: 1000;
-      pointer-events: none;
     }
   }
 
-  .glow-text {
-    text-shadow: 0 0 5px currentColor;
+  .date-cell {
+    color: var(--text-secondary) !important;
+  }
+
+  .copy-btn {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 1px;
+    border-radius: 2px;
+    transition: all 0.15s;
+
+    &:hover {
+      color: #e8b866;
+    }
+  }
+
+  .no-history {
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 4px 0;
   }
 }
