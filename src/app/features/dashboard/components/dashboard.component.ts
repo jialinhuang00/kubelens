@@ -6,6 +6,7 @@ import { NamespaceService } from '../../k8s/services/namespace.service';
 import { DeploymentService } from '../../k8s/services/deployment.service';
 import { PodService } from '../../k8s/services/pod.service';
 import { SvcService } from '../../k8s/services/svc.service';
+import { GenericResourceService, ResourceType } from '../../k8s/services/generic-resource.service';
 import { KubectlService } from '../../../core/services/kubectl.service';
 import { OutputParserService } from '../services/output-parser.service';
 import { TemplateService } from '../services/template.service';
@@ -14,27 +15,39 @@ import { RolloutService } from '../services/rollout.service';
 import { RolloutStateService } from '../services/rollout-state.service';
 import { ExecutionContextService } from '../../../core/services/execution-context.service';
 import { KubeResource, PodDescribeData, CommandTemplate, TableData, YamlItem } from '../../../shared/models/kubectl.models';
-import { CommandSidebarComponent } from './sidebar/command-sidebar.component';
+import { ContextBarComponent, ResourceDropdown } from './context-bar/context-bar.component';
+import { CommandChipsComponent, ChipGroup } from './command-chips/command-chips.component';
+import { RolloutConsoleComponent } from './sidebar/rollout-console.component';
 import { OutputDisplayComponent } from './output-display/output-display.component';
 import { CommandInputComponent } from './command-input/command-input.component';
 import { ExecutionDialogComponent } from '../../../shared/components/execution-dialog/execution-dialog.component';
+import { ExecutionDialogService } from '../../../core/services/execution-dialog.service';
 import { ExecutionGroupGenerator } from '../../../shared/constants/execution-groups.constants';
 import { OutputData } from '../../../shared/interfaces/output-data.interface';
-import { SidebarData } from '../../../shared/interfaces/sidebar-data.interface';
 import { MockModeService } from '../../../core/services/mock-mode.service';
+
+// Resource config: defines all resource types, their labels, colors, and template generators
+interface ResourceConfig {
+  key: string;
+  label: string;
+  color: string;
+  type: 'builtin' | 'generic';
+  genericType?: ResourceType;
+  templateGenerator: (selected: string) => CommandTemplate[];
+}
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterOutlet, FormsModule, CommonModule, CommandSidebarComponent, OutputDisplayComponent, CommandInputComponent, ExecutionDialogComponent],
+  imports: [RouterOutlet, FormsModule, CommonModule, ContextBarComponent, CommandChipsComponent, RolloutConsoleComponent, OutputDisplayComponent, CommandInputComponent, ExecutionDialogComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit {
-  // Service injection - high-level business logic
   private namespaceService = inject(NamespaceService);
   private deploymentService = inject(DeploymentService);
   private podService = inject(PodService);
   private svcService = inject(SvcService);
+  private genericResourceService = inject(GenericResourceService);
   private kubectlService = inject(KubectlService);
   private outputParserService = inject(OutputParserService);
   private templateService = inject(TemplateService);
@@ -42,15 +55,18 @@ export class DashboardComponent implements OnInit {
   private rolloutService = inject(RolloutService);
   private rolloutStateService = inject(RolloutStateService);
   private executionContext = inject(ExecutionContextService);
+  private dialogService = inject(ExecutionDialogService);
   protected mockModeService = inject(MockModeService);
 
   protected readonly title = signal('kubecmds-viz');
 
-  // High-level business state only
   customCommand = signal<string>('kubectl get pods');
   isLoading = signal<boolean>(false);
 
-  // Command execution results (business data)
+  // True when any execution is in-flight (user commands OR background resource loading)
+  isBusy = computed(() => this.isLoading() || this.dialogService.activeExecutions().length > 0);
+
+  // Command execution results
   commandOutput = signal<string>('');
   results = signal<KubeResource[]>([]);
   headers = signal<string[]>([]);
@@ -61,27 +77,129 @@ export class DashboardComponent implements OnInit {
   multipleTables = signal<TableData[]>([]);
   multipleYamls = signal<YamlItem[]>([]);
 
-  // Resource selection (high-level business logic)
+  // Resource selection
   selectedNamespace = signal<string>('');
   selectedDeployment = signal<string>('');
   selectedPod = signal<string>('');
   selectedService = signal<string>('');
 
-  // Expose service signals to template
+  // Resource counts (from /api/resource-counts — lightweight, no full item lists)
+  resourceCounts = signal<Record<string, number>>({});
+
+  // Service signal accessors
   get namespaces() { return this.namespaceService.namespaces; }
-  get deployments() { return this.deploymentService.deployments; }
-  get pods() { return this.podService.pods; }
-  get services() { return this.svcService.services; }
-  get generalTemplates() { return this.templateService.getGeneralTemplates(); }
-  get deploymentTemplates() { return this.templateService.generateDeploymentTemplates(this.selectedDeployment()); }
-  get rolloutTemplates() { return this.templateService.generateRolloutTemplates(this.selectedDeployment()); }
-  get podTemplates() { return this.templateService.generatePodTemplates(this.selectedPod()); }
-  get serviceTemplates() { return this.templateService.generateServiceTemplates(this.selectedService()); }
   get isInitializing() { return this.namespaceService.isLoading; }
-  get isLoadingNamespaces() { return this.namespaceService.isLoading; }
+  get rolloutTemplates() { return this.templateService.generateRolloutTemplates(this.selectedDeployment()); }
+
+  // Rollout-related computed signals
+  deploymentStatus = computed(() => this.deploymentService.deploymentStatus());
+  buttonStates = computed(() => {
+    const status = this.deploymentService.deploymentStatus();
+    return status ? this.deploymentService.getButtonStates(status) : null;
+  });
+  rolloutHistory = computed(() => this.deploymentService.rolloutHistory());
+  isRolloutConsoleExpanded = computed(() => this.uiStateService.isRolloutConsoleExpandedState());
+
+  // All resource configs — single source of truth
+  readonly resourceConfigs: ResourceConfig[] = [
+    { key: 'deployment', label: 'Deployment', color: '#e8b866', type: 'builtin',
+      templateGenerator: (s) => this.templateService.generateDeploymentTemplates(s) },
+    { key: 'pod', label: 'Pod', color: '#f0d080', type: 'builtin',
+      templateGenerator: (s) => this.templateService.generatePodTemplates(s) },
+    { key: 'service', label: 'Service', color: '#d4956a', type: 'builtin',
+      templateGenerator: (s) => this.templateService.generateServiceTemplates(s) },
+    { key: 'statefulsets', label: 'StatefulSet', color: '#e0a050', type: 'generic', genericType: 'statefulsets',
+      templateGenerator: (s) => this.templateService.generateStatefulSetTemplates(s) },
+    { key: 'cronjobs', label: 'CronJob', color: '#c8a060', type: 'generic', genericType: 'cronjobs',
+      templateGenerator: (s) => this.templateService.generateCronJobTemplates(s) },
+    { key: 'jobs', label: 'Job', color: '#b89860', type: 'generic', genericType: 'jobs',
+      templateGenerator: (s) => this.templateService.generateJobTemplates(s) },
+    { key: 'configmaps', label: 'ConfigMap', color: '#a0b880', type: 'generic', genericType: 'configmaps',
+      templateGenerator: (s) => this.templateService.generateConfigMapTemplates(s) },
+    { key: 'secrets', label: 'Secret', color: '#c0a8a0', type: 'generic', genericType: 'secrets',
+      templateGenerator: (s) => this.templateService.generateSecretTemplates(s) },
+    { key: 'persistentvolumeclaims', label: 'PVC', color: '#90b0c8', type: 'generic', genericType: 'persistentvolumeclaims',
+      templateGenerator: (s) => this.templateService.generatePVCTemplates(s) },
+    { key: 'serviceaccounts', label: 'ServiceAccount', color: '#a8a0c0', type: 'generic', genericType: 'serviceaccounts',
+      templateGenerator: (s) => this.templateService.generateServiceAccountTemplates(s) },
+    { key: 'ingresses', label: 'Ingress', color: '#80c0b0', type: 'generic', genericType: 'ingresses',
+      templateGenerator: (s) => this.templateService.generateIngressTemplates(s) },
+    { key: 'gateways', label: 'Gateway', color: '#70b8a8', type: 'generic', genericType: 'gateways',
+      templateGenerator: (s) => this.templateService.generateGatewayTemplates(s) },
+    { key: 'httproutes', label: 'HTTPRoute', color: '#68b0a0', type: 'generic', genericType: 'httproutes',
+      templateGenerator: (s) => this.templateService.generateHTTPRouteTemplates(s) },
+  ];
+
+  // Computed: resource dropdowns for context bar
+  resourceDropdowns = computed<ResourceDropdown[]>(() => {
+    return this.resourceConfigs.map(cfg => ({
+      key: cfg.key,
+      label: cfg.label,
+      items: this.getResourceItems(cfg),
+      selected: this.getResourceSelected(cfg),
+      isLoading: this.getResourceIsLoading(cfg),
+    }));
+  });
+
+  // Global commands (above context bar — no namespace dependency)
+  globalChipGroup = computed<ChipGroup[]>(() => [
+    { key: 'global', label: 'Global', resourceName: '', color: '#6dca82',
+      templates: this.templateService.getGlobalTemplates() },
+  ]);
+
+  // Resource-specific commands (below context bar)
+  // Only show namespace group (always) + resource groups that have an active selection
+  resourceChipGroups = computed<ChipGroup[]>(() => {
+    const groups: ChipGroup[] = [
+      { key: 'namespace', label: 'Namespace', resourceName: this.selectedNamespace(), color: '#6dca82',
+        templates: this.templateService.getNamespaceTemplates() },
+    ];
+    for (const cfg of this.resourceConfigs) {
+      const selected = this.getResourceSelected(cfg);
+      // Only include if user has selected a specific resource from the dropdown
+      if (!selected) continue;
+      const templates = cfg.templateGenerator(selected);
+      if (templates.length > 0) {
+        groups.push({
+          key: cfg.key,
+          label: cfg.label,
+          resourceName: selected,
+          color: cfg.color,
+          templates,
+        });
+      }
+    }
+    return groups;
+  });
+
+  private getResourceItems(cfg: ResourceConfig): string[] {
+    if (cfg.type === 'builtin') {
+      switch (cfg.key) {
+        case 'deployment': return this.deploymentService.deployments();
+        case 'pod': return this.podService.pods();
+        case 'service': return this.svcService.services();
+      }
+    }
+    return cfg.genericType ? this.genericResourceService.getItems(cfg.genericType)() : [];
+  }
+
+  private getResourceSelected(cfg: ResourceConfig): string {
+    if (cfg.type === 'builtin') {
+      switch (cfg.key) {
+        case 'deployment': return this.selectedDeployment();
+        case 'pod': return this.selectedPod();
+        case 'service': return this.selectedService();
+      }
+    }
+    return cfg.genericType ? this.genericResourceService.getSelected(cfg.genericType)() : '';
+  }
+
+  private getResourceIsLoading(cfg: ResourceConfig): boolean {
+    if (cfg.type === 'builtin') return false; // builtin resources load eagerly
+    return cfg.genericType ? this.genericResourceService.getIsLoading(cfg.genericType)() : false;
+  }
 
   constructor() {
-    // Auto-select first namespace when namespaces load
     effect(() => {
       const namespaces = this.namespaceService.namespaces();
       if (namespaces.length > 0 && !this.selectedNamespace()) {
@@ -96,48 +214,46 @@ export class DashboardComponent implements OnInit {
     this.mockModeService.checkAvailability();
     await this.namespaceService.loadNamespaces();
 
-    // Subscribe to rollout actions
     this.rolloutStateService.rolloutAction$.subscribe(event => {
-      console.log(`📡 Dashboard received rollout action: ${event.action} for ${event.deployment} in ${event.namespace}`);
+      console.log(`Dashboard received rollout action: ${event.action} for ${event.deployment} in ${event.namespace}`);
     });
   }
 
-  // High-level business logic: Command execution
-  async executeCommand(command: string) {
-    this.isLoading.set(true);
-
-    // Reset previous data states
-    this.results.set([]);
-    this.headers.set([]);
-    this.commandOutput.set('');
-    this.yamlContent.set('');
-    this.podDescribeData.set([]);
-    this.multipleTables.set([]);
-    this.hasEventsTable.set(false);
-
-    // Create execution group for user commands to avoid canceling related background tasks
-    console.log('====', 'user commna')
-    const userCommandGroup = ExecutionGroupGenerator.userCommand();
-
-    // if need streaming?
-    if (this.kubectlService.shouldUseStream(command)) {
-      await this.executeCommandWithStream(command);
-      return;
-    }
-
-    await this.executionContext.withGroup(userCommandGroup, async () => {
-      await this.executeCommandNormal(command);
-    });
-  }
-
-  // High-level business logic: Resource management
+  // Resource change handlers
   onNamespaceChange(namespace: string | Event) {
     const value = typeof namespace === 'string' ? namespace : (namespace.target as HTMLSelectElement).value;
     this.selectedNamespace.set(value);
-    this.selectedDeployment.set(''); // Reset deployment selection when namespace changes
-    this.selectedPod.set(''); // Reset pod selection when namespace changes
+    this.selectedDeployment.set('');
+    this.selectedPod.set('');
+    this.selectedService.set('');
+    this.genericResourceService.resetAllSelections();
     this.namespaceService.setCurrentNamespace(value);
     this.loadResourcesForNamespace(value);
+  }
+
+  onResourceChange(event: { key: string; value: string }) {
+    const { key, value } = event;
+
+    switch (key) {
+      case 'deployment':
+        this.onDeploymentChange(value);
+        break;
+      case 'pod':
+        this.selectedPod.set(value);
+        this.podService.setSelectedPod(value);
+        break;
+      case 'service':
+        this.selectedService.set(value);
+        this.svcService.setSelectedService(value);
+        break;
+      default:
+        // Generic resource
+        const cfg = this.resourceConfigs.find(c => c.key === key);
+        if (cfg?.genericType) {
+          this.genericResourceService.setSelected(cfg.genericType, value);
+        }
+        break;
+    }
   }
 
   async onDeploymentChange(deployment: string | Event) {
@@ -145,7 +261,6 @@ export class DashboardComponent implements OnInit {
     this.selectedDeployment.set(value);
     this.deploymentService.setSelectedDeployment(value);
 
-    // if deployment change, get status and history
     if (value && this.selectedNamespace()) {
       try {
         const deploymentGroup = ExecutionGroupGenerator.deploymentOperations(value, this.selectedNamespace());
@@ -155,28 +270,39 @@ export class DashboardComponent implements OnInit {
             this.deploymentService.getRolloutHistory(value, this.selectedNamespace())
           ]);
         });
-
-        // monitor status for Version Player
-        this.deploymentService.startRolloutMonitoring(value, this.selectedNamespace());
       } catch (error) {
         console.error('Failed to load deployment data:', error);
       }
     } else {
-      // no deployment, no listening
       this.deploymentService.stopRolloutMonitoring();
     }
   }
 
-  onPodChange(pod: string | Event) {
-    const value = typeof pod === 'string' ? pod : (pod.target as HTMLSelectElement).value;
-    this.selectedPod.set(value);
-    this.podService.setSelectedPod(value);
+  onToggleRolloutConsole() {
+    this.uiStateService.toggleRolloutConsole();
   }
 
-  onServiceChange(service: string | Event) {
-    const value = typeof service === 'string' ? service : (service.target as HTMLSelectElement).value;
-    this.selectedService.set(value);
-    this.svcService.setSelectedService(value);
+  // Command execution
+  async executeCommand(command: string) {
+    this.isLoading.set(true);
+    this.results.set([]);
+    this.headers.set([]);
+    this.commandOutput.set('');
+    this.yamlContent.set('');
+    this.podDescribeData.set([]);
+    this.multipleTables.set([]);
+    this.hasEventsTable.set(false);
+
+    const userCommandGroup = ExecutionGroupGenerator.userCommand();
+
+    if (this.kubectlService.shouldUseStream(command)) {
+      await this.executeCommandWithStream(command);
+      return;
+    }
+
+    await this.executionContext.withGroup(userCommandGroup, async () => {
+      await this.executeCommandNormal(command);
+    });
   }
 
   executeCustomCommand() {
@@ -206,21 +332,53 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  async onImageUpgrade(event: { deployment: string, image: string }) {
+    const namespace = this.selectedNamespace();
+    if (!namespace) return;
+    const command = this.rolloutService.generateSetImageCommand(event.deployment, namespace, event.image);
+    await this.executeCommand(command);
+  }
 
   private async loadResourcesForNamespace(namespace: string) {
     const resourceGroup = ExecutionGroupGenerator.namespaceResourceLoading(namespace);
 
-    // Use execution context to group all resource loading operations
+    // Fetch resource counts immediately (lightweight, single request)
+    this.kubectlService.getResourceCounts(namespace).then(counts => {
+      this.resourceCounts.set(counts);
+    });
+
+    // Only load builtin resources eagerly; generic resources load lazily on expand
+    this.genericResourceService.resetAll();
     await this.executionContext.withGroup(resourceGroup, async () => {
       await Promise.all([
         this.deploymentService.loadDeployments(namespace),
         this.podService.loadPods(namespace),
-        this.svcService.loadServices(namespace)
+        this.svcService.loadServices(namespace),
       ]);
     });
   }
 
-  // Computed signals to combine all data for child components
+  // Lazy load: triggered when user expands a resource panel in context-bar
+  async onResourceExpand(key: string) {
+    const namespace = this.selectedNamespace();
+    if (!namespace) return;
+
+    const cfg = this.resourceConfigs.find(c => c.key === key);
+    if (!cfg) return;
+
+    // Builtin resources are already loaded eagerly
+    if (cfg.type === 'builtin') return;
+
+    // Generic: load if not already loaded
+    if (cfg.genericType) {
+      const items = this.genericResourceService.getItems(cfg.genericType)();
+      const isLoading = this.genericResourceService.getIsLoading(cfg.genericType)();
+      if (items.length === 0 && !isLoading) {
+        await this.genericResourceService.loadResource(cfg.genericType, namespace);
+      }
+    }
+  }
+
   outputData = computed<OutputData>(() => ({
     outputType: this.outputType() as any,
     isLoading: this.isLoading(),
@@ -235,81 +393,32 @@ export class DashboardComponent implements OnInit {
     hasEventsTable: this.hasEventsTable()
   }));
 
-  sidebarData = computed<SidebarData>(() => ({
-    namespaces: this.namespaces(),
-    selectedNamespace: this.selectedNamespace(),
-    deployments: this.deployments(),
-    selectedDeployment: this.selectedDeployment(),
-    pods: this.pods(),
-    selectedPod: this.selectedPod(),
-    services: this.services(),
-    selectedService: this.selectedService(),
-    isInitializing: this.isInitializing(),
-    isLoadingNamespaces: this.isLoadingNamespaces(),
-    generalTemplates: this.generalTemplates,
-    deploymentTemplates: this.deploymentTemplates,
-    rolloutTemplates: this.rolloutTemplates,
-    podTemplates: this.podTemplates,
-    serviceTemplates: this.serviceTemplates,
-    deploymentStatus: this.deploymentService.deploymentStatus(),
-    buttonStates: this.deploymentService.deploymentStatus() ?
-      this.deploymentService.getButtonStates(this.deploymentService.deploymentStatus()) : null,
-    rolloutHistory: this.deploymentService.rolloutHistory()
-  }));
-
-  // Rollout event handlers
-  async onImageUpgrade(event: { deployment: string, image: string }) {
-    const namespace = this.selectedNamespace();
-    if (!namespace) return;
-
-    const command = this.rolloutService.generateSetImageCommand(event.deployment, namespace, event.image);
-    await this.executeCommand(command);
-  }
-
-
-  // execute streaming command
   private async executeCommandWithStream(command: string) {
     try {
-      console.log(`🔄 Starting stream for: ${command}`);
-
       const streamResponse = await this.kubectlService.executeCommandStream(command);
 
       if (!streamResponse.isStreaming || !streamResponse.output$) {
-        // fallback to normal way
-        console.log('Stream failed, falling back to normal execution');
         await this.executeCommandNormal(command);
         return;
       }
 
-      // streaming mode
       this.outputType.set('streaming');
-      this.commandOutput.set('🔄 Starting command stream...\n');
+      this.commandOutput.set('Starting command stream...\n');
 
-      // subscribe streaming output
       streamResponse.output$.subscribe({
-        next: (output) => {
-          this.commandOutput.set(output);
-          console.log(`📡 Stream update: ${output.length} characters`);
-        },
+        next: (output) => this.commandOutput.set(output),
         complete: () => {
-          console.log('✅ Stream completed');
           this.isLoading.set(false);
-          // share parse function
           this.parseAndSetOutput(this.commandOutput(), command);
         },
         error: (error) => {
-          console.error('❌ Stream error:', error);
-          this.commandOutput.set(`❌ Stream error: ${error.message}`);
+          this.commandOutput.set(`Stream error: ${error.message}`);
           this.isLoading.set(false);
         }
       });
 
-      // save stop function for UI usage
       (window as any).currentStreamStop = streamResponse.stop;
-
     } catch (error) {
-      console.error('❌ Stream setup error:', error);
-      // fallback to normal way
       await this.executeCommandNormal(command);
     }
   }
@@ -320,7 +429,6 @@ export class DashboardComponent implements OnInit {
     switch (parsedOutput.type) {
       case 'multiple-tables':
         this.multipleTables.set(parsedOutput.tables || []);
-        // Auto-expand tables through service
         const tableNames = parsedOutput.tables?.map(t => t.title) || [];
         this.uiStateService.autoExpandTables(tableNames);
         this.outputType.set('multiple-tables');
@@ -359,8 +467,6 @@ export class DashboardComponent implements OnInit {
 
   private async executeCommandNormal(command: string) {
     this.multipleYamls.set([]);
-
-    // Reset UI states through service
     this.uiStateService.resetOutputStates();
 
     let wasCancelled = false;
@@ -375,22 +481,16 @@ export class DashboardComponent implements OnInit {
         this.commandOutput.set(`Error: ${response.error}`);
       }
     } catch (error: any) {
-      // If request was cancelled, don't show error - just keep loading state
       if (error.message === 'REQUEST_CANCELLED') {
-        console.log('🚫 Request was cancelled, keeping loading state');
         wasCancelled = true;
         return;
       }
-
-      // Handle real errors
       this.outputType.set('raw');
       this.commandOutput.set(`Network error: ${error.message || error}`);
     } finally {
-      // Only set loading to false if request wasn't cancelled
       if (!wasCancelled) {
         this.isLoading.set(false);
       }
     }
   }
-
 }

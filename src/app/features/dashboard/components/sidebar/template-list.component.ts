@@ -21,7 +21,7 @@ export class TemplateListComponent {
     const colorMap = {
       'cyan': 'var(--accent-cyan)',
       'purple': 'var(--accent-purple)',
-      'orange': 'var(--accent-orange, #ff9500)',
+      'orange': 'var(--accent-orange, #d4956a)',
       'green': 'var(--accent-green)'
     };
     return colorMap[this.accentColor];
@@ -29,9 +29,9 @@ export class TemplateListComponent {
 
   get templateBackgroundColor(): string {
     const colorMap = {
-      'cyan': 'rgba(0, 212, 255, 0.08)',
-      'purple': 'rgba(157, 78, 221, 0.08)',
-      'orange': 'rgba(255, 149, 0, 0.08)',
+      'cyan': 'rgba(232, 184, 102, 0.08)',
+      'purple': 'rgba(240, 208, 128, 0.08)',
+      'orange': 'rgba(212, 149, 106, 0.08)',
       'green': 'rgba(255, 255, 255, 0.03)'
     };
     return colorMap[this.accentColor];
@@ -39,9 +39,9 @@ export class TemplateListComponent {
 
   get templateBorderColor(): string {
     const colorMap = {
-      'cyan': 'rgba(0, 212, 255, 0.2)',
-      'purple': 'rgba(157, 78, 221, 0.2)',
-      'orange': 'rgba(255, 149, 0, 0.2)',
+      'cyan': 'rgba(232, 184, 102, 0.2)',
+      'purple': 'rgba(240, 208, 128, 0.2)',
+      'orange': 'rgba(212, 149, 106, 0.2)',
       'green': 'rgba(255, 255, 255, 0.08)'
     };
     return colorMap[this.accentColor];
@@ -49,9 +49,9 @@ export class TemplateListComponent {
 
   get templateBoxShadow(): string {
     const colorMap = {
-      'cyan': '0 1px 3px rgba(0, 212, 255, 0.1)',
-      'purple': '0 1px 3px rgba(157, 78, 221, 0.1)',
-      'orange': '0 1px 3px rgba(255, 149, 0, 0.1)',
+      'cyan': '0 1px 3px rgba(232, 184, 102, 0.1)',
+      'purple': '0 1px 3px rgba(240, 208, 128, 0.1)',
+      'orange': '0 1px 3px rgba(212, 149, 106, 0.1)',
       'green': 'none'
     };
     return colorMap[this.accentColor];

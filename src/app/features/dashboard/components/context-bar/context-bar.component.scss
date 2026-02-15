@@ -1,0 +1,280 @@
+.context-bar {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+
+  &.is-disabled {
+    pointer-events: none;
+    opacity: 0.5;
+  }
+}
+
+// Section header (collapsible toggle)
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba(232, 184, 102, 0.06);
+  }
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.section-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(232, 184, 102, 0.15);
+  color: #e8b866;
+}
+
+.chevron {
+  font-size: 10px;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+
+  &.collapsed {
+    transform: rotate(-90deg);
+  }
+}
+
+// Collapsible body
+.section-body {
+  max-height: 260px;
+  overflow: hidden;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+  opacity: 1;
+
+  &.collapsed {
+    max-height: 0;
+    opacity: 0;
+  }
+}
+
+// Column view — namespace panel + resource book spines
+.column-view {
+  display: flex;
+  overflow-x: auto;
+  border-top: 1px solid var(--border-subtle);
+  height: 220px;
+
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(232, 184, 102, 0.3);
+    border-radius: 2px;
+  }
+}
+
+// Namespace panel (always expanded)
+.column-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  max-width: 220px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-subtle);
+}
+
+.ns-panel {
+  min-width: 180px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.panel-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.panel-search {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 2px 4px;
+
+  &::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.5;
+  }
+}
+
+.panel-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+
+  &::-webkit-scrollbar {
+    width: 3px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(232, 184, 102, 0.25);
+    border-radius: 2px;
+  }
+}
+
+.panel-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  line-height: 1.4;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.1s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+
+  &:hover:not(.disabled) {
+    background: rgba(232, 184, 102, 0.08);
+  }
+
+  &.active {
+    background: rgba(232, 184, 102, 0.18);
+    color: #e8b866;
+    font-weight: 500;
+  }
+
+  &.disabled {
+    color: var(--text-secondary);
+    cursor: default;
+    font-style: italic;
+    padding: 12px 10px;
+  }
+}
+
+.item-none {
+  opacity: 0.5;
+  font-size: 11px;
+}
+
+// --- Resource book spines ---
+
+.resource-spine-wrapper {
+  display: flex;
+  flex-shrink: 0;
+  height: 100%;
+  border-right: 1px solid var(--border-subtle);
+
+  &:last-child {
+    border-right: none;
+  }
+}
+
+// Vertical spine tab (the "book spine")
+.resource-spine {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 36px;
+  height: 100%;
+  padding: 8px 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+
+  &:hover {
+    background: rgba(232, 184, 102, 0.08);
+  }
+
+  // Has data → brighter text
+  &.has-data {
+    .spine-label {
+      color: var(--text-primary);
+    }
+  }
+
+  // Has active selection → accent highlight
+  &.has-selection {
+    background: rgba(232, 184, 102, 0.1);
+
+    .spine-label {
+      color: #e8b866;
+    }
+  }
+}
+
+// Vertical text on spine
+.spine-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.spine-count {
+  font-size: 9px;
+  font-family: inherit;
+  color: #e8b866;
+  opacity: 0.8;
+}
+
+// Expanded resource item panel (appears next to spine when open)
+.resource-panel {
+  display: flex;
+  flex-direction: column;
+  width: 180px;
+  overflow-y: auto;
+  border-left: 1px solid var(--border-subtle);
+
+  &::-webkit-scrollbar {
+    width: 3px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(232, 184, 102, 0.25);
+    border-radius: 2px;
+  }
+}

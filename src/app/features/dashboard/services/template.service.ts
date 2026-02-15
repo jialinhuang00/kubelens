@@ -6,51 +6,30 @@ import { CommandTemplate } from '../../../shared/models/kubectl.models';
 })
 export class TemplateService {
 
-  getGeneralTemplates(): CommandTemplate[] {
+  // Global commands (no namespace dependency)
+  getGlobalTemplates(): CommandTemplate[] {
     return [
-      {
-        id: 'config-5',
-        name: 'All Resources All Namespaces',
-        command: 'kubectl get all --all-namespaces',
-      },
-      {
-        id: 'config-4',
-        name: 'All Namespaces Pods',
-        command: 'kubectl get pods --all-namespaces',
-      },
-      {
-        id: 'view-1',
-        name: 'Pod Details + SHA',
-        command: 'kubectl get pods -n {namespace} -o "custom-columns=POD_NAME:.metadata.name,DEPLOYMENT:.metadata.ownerReferences[0].name,CONTAINER_NAME:.spec.containers[*].name,IMAGE_SHA:.status.containerStatuses[*].imageID"',
-      },
-      {
-        id: 'view-3',
-        name: 'ReplicaSets Details',
-        command: 'kubectl get replicasets -n {namespace} -o "custom-columns=REPLICASET:.metadata.name,DEPLOYMENT:.metadata.ownerReferences[0].name,DESIRED:.spec.replicas,CURRENT:.status.replicas,READY:.status.readyReplicas"',
-      },
-      {
-        id: 'view-6',
-        name: 'Events Timeline',
-        command: 'kubectl get events -n {namespace} --sort-by=.metadata.creationTimestamp',
-      },
-      // {
-      //   id: 'config-1',
-      //   name: 'Current Context',
-      //   command: 'kubectl config current-context',
-      // },
-      // {
-      //   id: 'config-2',
-      //   name: 'All Contexts',
-      //   command: 'kubectl config get-contexts',
-      // },
-      {
-        id: 'config-3',
-        name: 'Node Status',
-        command: 'kubectl get nodes -o wide',
-      },
-
-
+      { id: 'config-5', name: 'All Resources All Namespaces', command: 'kubectl get all --all-namespaces' },
+      { id: 'config-4', name: 'All Namespaces Pods', command: 'kubectl get pods --all-namespaces' },
+      { id: 'config-3', name: 'Node Status', command: 'kubectl get nodes -o wide' },
     ];
+  }
+
+  // Namespace-scoped general commands
+  getNamespaceTemplates(): CommandTemplate[] {
+    return [
+      { id: 'view-1', name: 'Pod Details + SHA',
+        command: 'kubectl get pods -n {namespace} -o "custom-columns=POD_NAME:.metadata.name,DEPLOYMENT:.metadata.ownerReferences[0].name,CONTAINER_NAME:.spec.containers[*].name,IMAGE_SHA:.status.containerStatuses[*].imageID"' },
+      { id: 'view-3', name: 'ReplicaSets Details',
+        command: 'kubectl get replicasets -n {namespace} -o "custom-columns=REPLICASET:.metadata.name,DEPLOYMENT:.metadata.ownerReferences[0].name,DESIRED:.spec.replicas,CURRENT:.status.replicas,READY:.status.readyReplicas"' },
+      { id: 'view-6', name: 'Events Timeline',
+        command: 'kubectl get events -n {namespace} --sort-by=.metadata.creationTimestamp' },
+    ];
+  }
+
+  // Combined (kept for backward compat)
+  getGeneralTemplates(): CommandTemplate[] {
+    return [...this.getGlobalTemplates(), ...this.getNamespaceTemplates()];
   }
 
   generateDeploymentTemplates(selectedDeployment: string): CommandTemplate[] {
@@ -213,6 +192,115 @@ export class TemplateService {
         name: 'Set Image (v3)',
         command: `kubectl set image deployment/${deploymentName} ${deploymentName}=jia0/${deploymentName}:v3 -n {namespace}`,
       }
+    ];
+  }
+
+  generateCronJobTemplates(selected: string): CommandTemplate[] {
+    const sticky = [{ id: 'cronjob-list', name: 'CronJobs', command: 'kubectl get cronjobs -n {namespace}', top: true }];
+    if (!selected) return sticky;
+    return [
+      ...sticky,
+      { id: `cj-${selected}-describe`, name: 'Details', command: `kubectl describe cronjob ${selected} -n {namespace}` },
+      { id: `cj-${selected}-yaml`, name: 'YAML', command: `kubectl get cronjob ${selected} -n {namespace} -o yaml` },
+      { id: `cj-${selected}-suspend`, name: 'Suspend', command: `kubectl patch cronjob ${selected} -n {namespace} -p '{"spec":{"suspend":true}}'` },
+      { id: `cj-${selected}-resume`, name: 'Resume', command: `kubectl patch cronjob ${selected} -n {namespace} -p '{"spec":{"suspend":false}}'` },
+      { id: `cj-${selected}-trigger`, name: 'Trigger Now', command: `kubectl create job ${selected}-manual --from=cronjob/${selected} -n {namespace}` },
+    ];
+  }
+
+  generateStatefulSetTemplates(selected: string): CommandTemplate[] {
+    const sticky = [{ id: 'sts-list', name: 'StatefulSets', command: 'kubectl get statefulsets -n {namespace}', top: true }];
+    if (!selected) return sticky;
+    return [
+      ...sticky,
+      { id: `sts-${selected}-describe`, name: 'Details', command: `kubectl describe statefulset ${selected} -n {namespace}` },
+      { id: `sts-${selected}-yaml`, name: 'YAML', command: `kubectl get statefulset ${selected} -n {namespace} -o yaml` },
+      { id: `sts-${selected}-rollout`, name: 'Rollout Status', command: `kubectl rollout status statefulset/${selected} -n {namespace}` },
+      { id: `sts-${selected}-restart`, name: 'Restart', command: `kubectl rollout restart statefulset/${selected} -n {namespace}` },
+      { id: `sts-${selected}-scale`, name: 'Scale', command: `kubectl scale statefulset ${selected} --replicas=3 -n {namespace}` },
+    ];
+  }
+
+  generateJobTemplates(selected: string): CommandTemplate[] {
+    const sticky = [{ id: 'job-list', name: 'Jobs', command: 'kubectl get jobs -n {namespace}', top: true }];
+    if (!selected) return sticky;
+    return [
+      ...sticky,
+      { id: `job-${selected}-describe`, name: 'Details', command: `kubectl describe job ${selected} -n {namespace}` },
+      { id: `job-${selected}-logs`, name: 'Logs', command: `kubectl logs job/${selected} -n {namespace} --tail=50` },
+      { id: `job-${selected}-yaml`, name: 'YAML', command: `kubectl get job ${selected} -n {namespace} -o yaml` },
+      { id: `job-${selected}-delete`, name: 'Delete', command: `kubectl delete job ${selected} -n {namespace}` },
+    ];
+  }
+
+  generateConfigMapTemplates(selected: string): CommandTemplate[] {
+    const sticky = [{ id: 'cm-list', name: 'ConfigMaps', command: 'kubectl get configmaps -n {namespace}', top: true }];
+    if (!selected) return sticky;
+    return [
+      ...sticky,
+      { id: `cm-${selected}-describe`, name: 'Details', command: `kubectl describe configmap ${selected} -n {namespace}` },
+      { id: `cm-${selected}-yaml`, name: 'YAML', command: `kubectl get configmap ${selected} -n {namespace} -o yaml` },
+    ];
+  }
+
+  generateSecretTemplates(selected: string): CommandTemplate[] {
+    const sticky = [{ id: 'secret-list', name: 'Secrets', command: 'kubectl get secrets -n {namespace}', top: true }];
+    if (!selected) return sticky;
+    return [
+      ...sticky,
+      { id: `secret-${selected}-describe`, name: 'Details', command: `kubectl describe secret ${selected} -n {namespace}` },
+      { id: `secret-${selected}-yaml`, name: 'YAML', command: `kubectl get secret ${selected} -n {namespace} -o yaml` },
+      { id: `secret-${selected}-decode`, name: 'Decode', command: `kubectl get secret ${selected} -n {namespace} -o jsonpath="{.data}" | jq 'to_entries[] | {key: .key, value: (.value | @base64d)}'` },
+    ];
+  }
+
+  generatePVCTemplates(selected: string): CommandTemplate[] {
+    const sticky = [{ id: 'pvc-list', name: 'PVCs', command: 'kubectl get pvc -n {namespace}', top: true }];
+    if (!selected) return sticky;
+    return [
+      ...sticky,
+      { id: `pvc-${selected}-describe`, name: 'Details', command: `kubectl describe pvc ${selected} -n {namespace}` },
+      { id: `pvc-${selected}-yaml`, name: 'YAML', command: `kubectl get pvc ${selected} -n {namespace} -o yaml` },
+    ];
+  }
+
+  generateServiceAccountTemplates(selected: string): CommandTemplate[] {
+    const sticky = [{ id: 'sa-list', name: 'ServiceAccounts', command: 'kubectl get serviceaccounts -n {namespace}', top: true }];
+    if (!selected) return sticky;
+    return [
+      ...sticky,
+      { id: `sa-${selected}-describe`, name: 'Details', command: `kubectl describe serviceaccount ${selected} -n {namespace}` },
+      { id: `sa-${selected}-yaml`, name: 'YAML', command: `kubectl get serviceaccount ${selected} -n {namespace} -o yaml` },
+    ];
+  }
+
+  generateIngressTemplates(selected: string): CommandTemplate[] {
+    const sticky = [{ id: 'ing-list', name: 'Ingresses', command: 'kubectl get ingress -n {namespace}', top: true }];
+    if (!selected) return sticky;
+    return [
+      ...sticky,
+      { id: `ing-${selected}-describe`, name: 'Details', command: `kubectl describe ingress ${selected} -n {namespace}` },
+      { id: `ing-${selected}-yaml`, name: 'YAML', command: `kubectl get ingress ${selected} -n {namespace} -o yaml` },
+    ];
+  }
+
+  generateGatewayTemplates(selected: string): CommandTemplate[] {
+    const sticky = [{ id: 'gw-list', name: 'Gateways', command: 'kubectl get gateways -n {namespace}', top: true }];
+    if (!selected) return sticky;
+    return [
+      ...sticky,
+      { id: `gw-${selected}-describe`, name: 'Details', command: `kubectl describe gateway ${selected} -n {namespace}` },
+      { id: `gw-${selected}-yaml`, name: 'YAML', command: `kubectl get gateway ${selected} -n {namespace} -o yaml` },
+    ];
+  }
+
+  generateHTTPRouteTemplates(selected: string): CommandTemplate[] {
+    const sticky = [{ id: 'hr-list', name: 'HTTPRoutes', command: 'kubectl get httproutes -n {namespace}', top: true }];
+    if (!selected) return sticky;
+    return [
+      ...sticky,
+      { id: `hr-${selected}-describe`, name: 'Details', command: `kubectl describe httproute ${selected} -n {namespace}` },
+      { id: `hr-${selected}-yaml`, name: 'YAML', command: `kubectl get httproute ${selected} -n {namespace} -o yaml` },
     ];
   }
 

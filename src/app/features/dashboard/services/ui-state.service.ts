@@ -10,11 +10,7 @@ export class UiStateService {
   private expandedYamls = signal<Set<string>>(new Set());
   private isResourceDetailsExpanded = signal<boolean>(false);
 
-  // Sidebar accordion states
-  private isGeneralExpanded = signal<boolean>(false);
-  private isDeploymentExpanded = signal<boolean>(false);
-  private isPodSectionExpanded = signal<boolean>(false);
-  private isServiceSectionExpanded = signal<boolean>(false);
+  // Rollout console state (kept for collapsible rollout console)
   private isRolloutConsoleExpanded = signal<boolean>(false);
 
   // Public readonly signals
@@ -22,10 +18,6 @@ export class UiStateService {
   readonly expandedTablesState = this.expandedTables.asReadonly();
   readonly expandedYamlsState = this.expandedYamls.asReadonly();
   readonly isResourceDetailsExpandedState = this.isResourceDetailsExpanded.asReadonly();
-  readonly isGeneralExpandedState = this.isGeneralExpanded.asReadonly();
-  readonly isDeploymentExpandedState = this.isDeploymentExpanded.asReadonly();
-  readonly isPodSectionExpandedState = this.isPodSectionExpanded.asReadonly();
-  readonly isServiceSectionExpandedState = this.isServiceSectionExpanded.asReadonly();
   readonly isRolloutConsoleExpandedState = this.isRolloutConsoleExpanded.asReadonly();
 
   // Output display methods
@@ -64,23 +56,6 @@ export class UiStateService {
       newExpanded.add(yamlTitle);
     }
     this.expandedYamls.set(newExpanded);
-  }
-
-  // Sidebar methods
-  toggleGeneralSection() {
-    this.isGeneralExpanded.set(!this.isGeneralExpanded());
-  }
-
-  toggleDeploymentSection() {
-    this.isDeploymentExpanded.set(!this.isDeploymentExpanded());
-  }
-
-  togglePodSection() {
-    this.isPodSectionExpanded.set(!this.isPodSectionExpanded());
-  }
-
-  toggleServiceSection() {
-    this.isServiceSectionExpanded.set(!this.isServiceSectionExpanded());
   }
 
   toggleRolloutConsole() {

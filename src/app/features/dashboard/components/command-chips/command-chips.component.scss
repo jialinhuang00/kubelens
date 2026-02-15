@@ -1,0 +1,140 @@
+.command-chips {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+
+  &.is-disabled {
+    pointer-events: none;
+    opacity: 0.5;
+  }
+}
+
+// Section header (collapsible toggle)
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba(232, 184, 102, 0.06);
+  }
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.section-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(232, 184, 102, 0.15);
+  color: #e8b866;
+}
+
+.chevron {
+  font-size: 10px;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+
+  &.collapsed {
+    transform: rotate(-90deg);
+  }
+}
+
+// Collapsible body
+.section-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0 1rem 0.6rem;
+  max-height: 500px;
+  overflow: hidden;
+  transition: max-height 0.25s ease, padding 0.25s ease, opacity 0.2s ease;
+  opacity: 1;
+
+  &.collapsed {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+  }
+}
+
+.chip-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.group-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 0 3px 8px;
+  border-left: 2px solid;
+  border-radius: 0;
+  background: none !important;
+  white-space: nowrap;
+  opacity: 0.7;
+
+  .resource-name {
+    font-weight: 400;
+    text-transform: none;
+    opacity: 0.7;
+    margin-left: 4px;
+    font-size: 10px;
+  }
+}
+
+.chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.cmd-chip {
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+
+  // Filled: colored background, dark text
+  background-color: var(--chip-color);
+  border: 1px solid var(--chip-color);
+  color: #0e0b08;
+
+  &:hover {
+    filter: brightness(1.2);
+    box-shadow: 0 0 8px var(--chip-color);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  // Sticky (list-type) chips: outlined instead of filled
+  &.sticky {
+    background: transparent;
+    border: 1px dashed var(--chip-color);
+    color: var(--chip-color);
+  }
+}
