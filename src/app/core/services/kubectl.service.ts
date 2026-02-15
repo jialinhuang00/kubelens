@@ -7,6 +7,7 @@ import { KubectlResponse } from '../../shared/models/kubectl.models';
 import { WebSocketService } from './websocket.service';
 import { ExecutionContextService } from './execution-context.service';
 import { ExecutionGroupUtils } from '../../shared/constants/execution-groups.constants';
+import { ExecutionDialogService } from './execution-dialog.service';
 
 export interface CommandExecution {
   id: string;
@@ -31,6 +32,7 @@ export class KubectlService {
   private http = inject(HttpClient);
   private websocketService = inject(WebSocketService);
   private executionContext = inject(ExecutionContextService);
+  private executionDialog = inject(ExecutionDialogService);
   private readonly API_BASE = 'http://localhost:3000/api';
   
   // Request cancellation and tracking
@@ -61,6 +63,15 @@ export class KubectlService {
     this.activeExecutions.set(executionId, execution);
     this.executionHistory.push(execution);
 
+    // Notify dialog
+    this.executionDialog.addExecution({
+      id: executionId,
+      command,
+      status: 'pending',
+      group: effectiveGroup,
+      timestamp: execution.timestamp
+    });
+
     // Cancel previous executions only if they're in different groups (or no group specified)
     if (!effectiveGroup) {
       // No group specified, cancel all OTHER pending executions (exclude current one)
@@ -70,6 +81,7 @@ export class KubectlService {
           if (activeExecution?.status === 'pending') {
             subject.next();
             activeExecution.status = 'cancelled';
+            this.executionDialog.updateExecution(key, 'cancelled');
             console.log(`🚫 Command cancelled: ${activeExecution.command} (ID: ${activeExecution.id}) by ${executionId}`);
             this.cancelSubjects.delete(key);
             this.activeExecutions.delete(key);
@@ -91,6 +103,7 @@ export class KubectlService {
             
             subject.next();
             activeExecution.status = 'cancelled';
+            this.executionDialog.updateExecution(key, 'cancelled');
             console.log(`🚫 Command cancelled (different group): ${activeExecution.command} (ID: ${activeExecution.id}) by ${executionId}`);
             this.cancelSubjects.delete(key);
             this.activeExecutions.delete(key);
@@ -121,6 +134,7 @@ export class KubectlService {
       const activeExecution = this.activeExecutions.get(executionId);
       if (activeExecution?.status === 'pending' && response) {
         activeExecution.status = 'completed';
+        this.executionDialog.updateExecution(executionId, 'completed');
         console.log(`✅ Command completed: ${command} (ID: ${execution.id})`);
       }
 
@@ -144,6 +158,7 @@ export class KubectlService {
         if (activeExecution) {
           activeExecution.status = 'cancelled';
         }
+        this.executionDialog.updateExecution(executionId, 'cancelled');
         // Re-throw cancellation error so UI can handle it appropriately
         throw error;
       }
@@ -152,6 +167,7 @@ export class KubectlService {
       const activeExecution = this.activeExecutions.get(executionId);
       if (activeExecution?.status === 'pending') {
         activeExecution.status = 'error';
+        this.executionDialog.updateExecution(executionId, 'error');
         console.log(`❌ Command error: ${command} (ID: ${execution.id}) - ${error.message}`);
       }
 

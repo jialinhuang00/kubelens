@@ -1,8 +1,26 @@
 <div class="min-h-screen p-3">
   <div class="max-w-7xl mx-auto">
-    <header class="mb-4">
-      <h1 class="text-2xl font-bold glow-text mb-1" style="color: var(--accent-cyan)">{{ title() }}</h1>
-      <p class="text-xs" style="color: var(--text-secondary)">Kubectl Commands Visualized</p>
+    <header class="mb-4 flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold glow-text mb-1" style="color: var(--accent-cyan)">{{ title() }}</h1>
+        <p class="text-xs" style="color: var(--text-secondary)">Kubectl Commands Visualized</p>
+      </div>
+      <div class="mode-toggle flex rounded-md overflow-hidden border" style="border-color: var(--border-subtle)">
+        <button
+          class="mode-btn px-3 py-1.5 text-xs font-medium transition-all"
+          [class.mode-active]="!mockModeService.isMockMode()"
+          (click)="mockModeService.setMockMode(false)">
+          Realtime
+        </button>
+        <button
+          class="mode-btn px-3 py-1.5 text-xs font-medium transition-all"
+          [class.mode-active]="mockModeService.isMockMode()"
+          [disabled]="!mockModeService.mockAvailable()"
+          [title]="mockModeService.mockAvailable() ? 'Use mock backup data' : 'No mock data available'"
+          (click)="mockModeService.setMockMode(true)">
+          Mock Data
+        </button>
+      </div>
     </header>
 
     <div class="grid grid-cols-[350px_1fr] gap-4">
@@ -36,8 +54,8 @@
     </div>
   </div>
   
-  <!-- Command History Panel (Fixed Position) -->
-  <app-command-history></app-command-history>
+  <!-- Execution Dialog (Modal Overlay) -->
+  <app-execution-dialog></app-execution-dialog>
 </div>
 
 <router-outlet />

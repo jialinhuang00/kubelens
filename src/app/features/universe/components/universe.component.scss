@@ -73,6 +73,44 @@ $sidebar-width: 320px;
   border-radius: 4px;
 }
 
+// ---- Mode toggle ----
+.sidebar-mode-toggle {
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.mode-toggle {
+  display: flex;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 5px 0;
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 500;
+  color: #555;
+  background: transparent;
+  border: none;
+  cursor: default;
+  transition: all 0.2s;
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  &.mode-active {
+    color: #050510;
+    background: #00d4ff;
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
+  }
+}
+
 // ---- Legend section (top) ----
 .sidebar-legend {
   overflow-y: auto;

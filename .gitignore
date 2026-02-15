@@ -75,6 +75,7 @@ Icon?
 kubeconfig*
 *.kubeconfig
 /mock-data
+/k8s-backup
 /k8s-backup-*
 
 # Git specific

@@ -17,14 +17,15 @@ import { KubeResource, PodDescribeData, CommandTemplate, TableData, YamlItem } f
 import { CommandSidebarComponent } from './sidebar/command-sidebar.component';
 import { OutputDisplayComponent } from './output-display/output-display.component';
 import { CommandInputComponent } from './command-input/command-input.component';
-import { CommandHistoryComponent } from '../../../shared/components/command-history/command-history.component';
+import { ExecutionDialogComponent } from '../../../shared/components/execution-dialog/execution-dialog.component';
 import { ExecutionGroupGenerator } from '../../../shared/constants/execution-groups.constants';
 import { OutputData } from '../../../shared/interfaces/output-data.interface';
 import { SidebarData } from '../../../shared/interfaces/sidebar-data.interface';
+import { MockModeService } from '../../../core/services/mock-mode.service';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterOutlet, FormsModule, CommonModule, CommandSidebarComponent, OutputDisplayComponent, CommandInputComponent, CommandHistoryComponent],
+  imports: [RouterOutlet, FormsModule, CommonModule, CommandSidebarComponent, OutputDisplayComponent, CommandInputComponent, ExecutionDialogComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -41,6 +42,7 @@ export class DashboardComponent implements OnInit {
   private rolloutService = inject(RolloutService);
   private rolloutStateService = inject(RolloutStateService);
   private executionContext = inject(ExecutionContextService);
+  protected mockModeService = inject(MockModeService);
 
   protected readonly title = signal('kubecmds-viz');
 
@@ -91,6 +93,7 @@ export class DashboardComponent implements OnInit {
   }
 
   async ngOnInit() {
+    this.mockModeService.checkAvailability();
     await this.namespaceService.loadNamespaces();
 
     // Subscribe to rollout actions
