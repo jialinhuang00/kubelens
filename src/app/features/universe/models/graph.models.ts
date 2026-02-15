@@ -63,42 +63,42 @@ export interface GraphDataResponse {
 }
 
 export const KIND_COLORS: Record<K8sResourceKind, string> = {
-  // Namespace — cyan anchor
-  Namespace: '#00d4ff',
-  // Workload — green family (runs containers)
-  Deployment: '#39e060',
-  StatefulSet: '#50e680',
-  DaemonSet: '#2db84d',
-  CronJob: '#66b333',
+  // Namespace — soft amber anchor
+  Namespace: '#e8b866',
+  // Workload — muted jade family (runs containers)
+  Deployment: '#6dca82',
+  StatefulSet: '#7dd492',
+  DaemonSet: '#5ab86d',
+  CronJob: '#8cb866',
   Pod: '#88cc88',
-  // Abstract — grayscale (routes traffic, config, policy — not a workload)
-  Service: '#d0d0d0',
-  Gateway: '#b0b0b0',
-  HTTPRoute: '#a0a0a0',
-  TCPRoute: '#a0a0a0',
-  Ingress: '#c0c0c0',
-  NetworkPolicy: '#909090',
-  ConfigMap: '#b8b8b8',
-  Secret: '#cccccc',
-  HorizontalPodAutoscaler: '#999999',
-  PodDisruptionBudget: '#888888',
-  // Storage — amber/gold
-  PersistentVolumeClaim: '#e6a817',
-  // RBAC — blue-violet scale
-  ServiceAccount: '#7c6aef',
-  Role: '#9b7aff',
-  RoleBinding: '#6a5acd',
+  // Abstract — warm grayscale (routes traffic, config, policy — not a workload)
+  Service: '#d0c8b8',
+  Gateway: '#b0a898',
+  HTTPRoute: '#a09888',
+  TCPRoute: '#a09888',
+  Ingress: '#c0b8a8',
+  NetworkPolicy: '#908878',
+  ConfigMap: '#b8b0a0',
+  Secret: '#ccc4b4',
+  HorizontalPodAutoscaler: '#998878',
+  PodDisruptionBudget: '#888070',
+  // Storage — sand coral
+  PersistentVolumeClaim: '#d4956a',
+  // RBAC — warm gold scale
+  ServiceAccount: '#c8a060',
+  Role: '#f0d080',
+  RoleBinding: '#b89050',
 };
 
 export const EDGE_COLORS: Record<RelationshipType, string> = {
-  'uses-configmap': '#b8b8b8',
-  'uses-secret': '#cccccc',
-  'uses-pvc': '#e6a817',
-  'uses-serviceaccount': '#7c6aef',
-  'exposes': '#d0d0d0',
-  'routes-to': '#a0a0a0',
-  'binds-role': '#9b7aff',
-  'parent-gateway': '#b0b0b0',
+  'uses-configmap': '#b8b0a0',
+  'uses-secret': '#ccc4b4',
+  'uses-pvc': '#d4956a',
+  'uses-serviceaccount': '#c8a060',
+  'exposes': '#d0c8b8',
+  'routes-to': '#a09888',
+  'binds-role': '#f0d080',
+  'parent-gateway': '#b0a898',
   'owns': '#88cc88',
 };
 

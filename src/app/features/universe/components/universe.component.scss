@@ -11,8 +11,8 @@ $sidebar-width: 320px;
   display: flex;
   width: 100%;
   height: 100%;
-  background: #050510;
-  color: #e0e0e0;
+  background: #0a0804;
+  color: #e0d8c8;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   overflow: hidden;
 }
@@ -23,7 +23,7 @@ $sidebar-width: 320px;
 .sidebar {
   width: $sidebar-width;
   height: 100%;
-  background: rgba(8, 8, 22, 0.95);
+  background: rgba(14, 11, 8, 0.95);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
@@ -43,8 +43,8 @@ $sidebar-width: 320px;
 .sidebar-title {
   font-size: 15px;
   font-weight: 600;
-  color: #00d4ff;
-  text-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+  color: #e8b866;
+  text-shadow: 0 0 20px rgba(232, 184, 102, 0.4);
   margin: 0;
   flex: 1;
 }
@@ -52,7 +52,7 @@ $sidebar-width: 320px;
 .nav-btn {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #00d4ff;
+  color: #e8b866;
   padding: 4px 10px;
   border-radius: 5px;
   cursor: pointer;
@@ -60,14 +60,14 @@ $sidebar-width: 320px;
   transition: all 0.2s;
 
   &:hover {
-    background: rgba(0, 212, 255, 0.15);
-    border-color: #00d4ff;
+    background: rgba(232, 184, 102, 0.15);
+    border-color: #e8b866;
   }
 }
 
 .stats-badge {
   font-size: 11px;
-  color: #555;
+  color: #5a5040;
   background: rgba(255, 255, 255, 0.04);
   padding: 3px 8px;
   border-radius: 4px;
@@ -93,7 +93,7 @@ $sidebar-width: 320px;
   font-size: 11px;
   font-family: inherit;
   font-weight: 500;
-  color: #555;
+  color: #5a5040;
   background: transparent;
   border: none;
   cursor: default;
@@ -105,9 +105,9 @@ $sidebar-width: 320px;
   }
 
   &.mode-active {
-    color: #050510;
-    background: #00d4ff;
-    box-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
+    color: #0a0804;
+    background: #e8b866;
+    box-shadow: 0 0 12px rgba(232, 184, 102, 0.4);
   }
 }
 
@@ -124,18 +124,18 @@ $sidebar-width: 320px;
 
 .section-title {
   font-size: 10px;
-  color: #555;
+  color: #5a5040;
   text-transform: uppercase;
   letter-spacing: 1.5px;
   margin: 0 0 8px 0;
 }
 
 .active-ns-title {
-  color: #00d4ff;
+  color: #e8b866;
   font-size: 13px;
   text-transform: none;
   letter-spacing: 0;
-  text-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+  text-shadow: 0 0 10px rgba(232, 184, 102, 0.3);
 }
 
 .section-header-row {
@@ -148,7 +148,7 @@ $sidebar-width: 320px;
 .back-btn {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #00d4ff;
+  color: #e8b866;
   padding: 3px 10px;
   border-radius: 4px;
   cursor: pointer;
@@ -157,8 +157,8 @@ $sidebar-width: 320px;
   white-space: nowrap;
 
   &:hover {
-    background: rgba(0, 212, 255, 0.15);
-    border-color: #00d4ff;
+    background: rgba(232, 184, 102, 0.15);
+    border-color: #e8b866;
   }
 }
 
@@ -174,7 +174,7 @@ $sidebar-width: 320px;
 
 .legend-group-label {
   font-size: 9px;
-  color: #444;
+  color: #4a4030;
   text-transform: uppercase;
   letter-spacing: 1.5px;
   padding: 6px 0 3px 0;
@@ -199,11 +199,11 @@ $sidebar-width: 320px;
   cursor: pointer;
   width: calc(100% + 16px);
   text-align: left;
-  color: #ccc;
+  color: #ccc4b4;
   transition: all 0.15s;
 
   &:hover {
-    background: rgba(0, 212, 255, 0.1);
+    background: rgba(232, 184, 102, 0.1);
     color: #fff;
 
     .item-dot {
@@ -235,7 +235,7 @@ $sidebar-width: 320px;
 }
 
 .item-count {
-  color: #555;
+  color: #5a5040;
   font-size: 11px;
 }
 
@@ -261,7 +261,7 @@ $sidebar-width: 320px;
   height: 100%;
 
   p {
-    color: #333;
+    color: #3a3020;
     font-size: 12px;
   }
 }
@@ -278,7 +278,7 @@ $sidebar-width: 320px;
   border-radius: 5px;
   font-size: 10px;
   font-weight: 600;
-  color: #000;
+  color: #0a0804;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -286,7 +286,7 @@ $sidebar-width: 320px;
 .close-btn {
   background: none;
   border: none;
-  color: #555;
+  color: #5a5040;
   font-size: 20px;
   cursor: pointer;
   padding: 0 4px;
@@ -319,12 +319,12 @@ $sidebar-width: 320px;
 }
 
 .meta-label {
-  color: #555;
+  color: #5a5040;
   flex-shrink: 0;
 }
 
 .meta-value {
-  color: #bbb;
+  color: #b8b0a0;
   text-align: right;
   word-break: break-all;
 }
@@ -332,7 +332,7 @@ $sidebar-width: 320px;
 // ---- Section headings in detail ----
 .section-heading {
   font-size: 11px;
-  color: #555;
+  color: #5a5040;
   text-transform: uppercase;
   letter-spacing: 1px;
   margin: 0 0 8px 0;
@@ -368,14 +368,14 @@ $sidebar-width: 320px;
 
 .pod-name {
   display: block;
-  color: #ccc;
+  color: #ccc4b4;
   word-break: break-all;
   font-size: 11px;
 }
 
 .pod-image {
   display: block;
-  color: #666;
+  color: #6a6050;
   font-size: 9px;
   word-break: break-all;
   margin-top: 2px;
@@ -396,11 +396,11 @@ $sidebar-width: 320px;
 
 .group-label {
   font-size: 10px;
-  color: #00d4ff;
+  color: #e8b866;
   margin-bottom: 4px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  text-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+  text-shadow: 0 0 8px rgba(232, 184, 102, 0.3);
 }
 
 .connected-node-btn {
@@ -415,13 +415,13 @@ $sidebar-width: 320px;
   margin-bottom: 2px;
   cursor: pointer;
   text-align: left;
-  color: #ccc;
+  color: #ccc4b4;
   font-size: 11px;
   transition: all 0.15s;
 
   &:hover {
-    background: rgba(0, 212, 255, 0.08);
-    border-color: rgba(0, 212, 255, 0.25);
+    background: rgba(232, 184, 102, 0.08);
+    border-color: rgba(232, 184, 102, 0.25);
   }
 }
 
@@ -433,12 +433,12 @@ $sidebar-width: 320px;
 }
 
 .conn-kind {
-  color: #555;
+  color: #5a5040;
   font-size: 10px;
 }
 
 .conn-name {
-  color: #ddd;
+  color: #ddd8c8;
 }
 
 // ============================================================
@@ -463,8 +463,8 @@ $sidebar-width: 320px;
   pointer-events: none;
   z-index: 0;
   background:
-    linear-gradient(rgba(0, 212, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 212, 255, 0.07) 1px, transparent 1px);
+    linear-gradient(rgba(232, 184, 102, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232, 184, 102, 0.05) 1px, transparent 1px);
   background-size: 50px 50px;
   transform: perspective(500px) rotateX(55deg);
   transform-origin: center top;
@@ -484,15 +484,15 @@ $sidebar-width: 320px;
 
 .nebula-1 {
   background:
-    radial-gradient(ellipse 600px 400px at 30% 40%, rgba(0, 60, 120, 0.18) 0%, transparent 70%),
-    radial-gradient(ellipse 500px 350px at 70% 60%, rgba(80, 0, 120, 0.14) 0%, transparent 70%),
-    radial-gradient(ellipse 300px 300px at 50% 50%, rgba(0, 100, 80, 0.10) 0%, transparent 60%);
+    radial-gradient(ellipse 600px 400px at 30% 40%, rgba(120, 80, 20, 0.14) 0%, transparent 70%),
+    radial-gradient(ellipse 500px 350px at 70% 60%, rgba(100, 60, 10, 0.10) 0%, transparent 70%),
+    radial-gradient(ellipse 300px 300px at 50% 50%, rgba(80, 100, 40, 0.08) 0%, transparent 60%);
 }
 
 .nebula-2 {
   background:
-    radial-gradient(ellipse 200px 200px at 20% 70%, rgba(255, 70, 70, 0.06) 0%, transparent 70%),
-    radial-gradient(ellipse 250px 180px at 80% 30%, rgba(0, 180, 255, 0.08) 0%, transparent 70%);
+    radial-gradient(ellipse 200px 200px at 20% 70%, rgba(224, 112, 112, 0.05) 0%, transparent 70%),
+    radial-gradient(ellipse 250px 180px at 80% 30%, rgba(232, 184, 102, 0.06) 0%, transparent 70%);
   animation: nebulaDrift 30s ease-in-out infinite alternate;
 }
 
@@ -511,8 +511,8 @@ $sidebar-width: 320px;
   z-index: 0;
   background:
     radial-gradient(circle 500px at 50% 45%,
-      rgba(0, 212, 255, 0.04) 0%,
-      rgba(157, 78, 221, 0.02) 40%,
+      rgba(232, 184, 102, 0.04) 0%,
+      rgba(240, 208, 128, 0.02) 40%,
       transparent 70%);
   animation: lightPulse 8s ease-in-out infinite alternate;
 }
@@ -549,9 +549,9 @@ $sidebar-width: 320px;
   pointer-events: none;
   z-index: 6;
   background:
-    radial-gradient(ellipse 60% 55% at 50% 48%, transparent 40%, rgba(2, 2, 10, 0.3) 70%, rgba(2, 2, 10, 0.85) 100%),
-    linear-gradient(to bottom, transparent 60%, rgba(0, 5, 15, 0.4) 100%),
-    linear-gradient(to top, transparent 70%, rgba(5, 5, 20, 0.3) 100%);
+    radial-gradient(ellipse 60% 55% at 50% 48%, transparent 40%, rgba(10, 8, 4, 0.3) 70%, rgba(10, 8, 4, 0.85) 100%),
+    linear-gradient(to bottom, transparent 60%, rgba(10, 6, 2, 0.4) 100%),
+    linear-gradient(to top, transparent 70%, rgba(12, 8, 4, 0.3) 100%);
 }
 
 // ============================================================
@@ -575,25 +575,25 @@ $sidebar-width: 320px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(5, 5, 16, 0.95);
+  background: rgba(10, 8, 4, 0.95);
   z-index: 20;
 
   p {
     margin-top: 16px;
-    color: #00d4ff;
+    color: #e8b866;
     font-size: 14px;
-    text-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+    text-shadow: 0 0 10px rgba(232, 184, 102, 0.3);
   }
 }
 
 .spinner {
   width: 48px;
   height: 48px;
-  border: 3px solid rgba(0, 212, 255, 0.15);
-  border-top-color: #00d4ff;
+  border: 3px solid rgba(232, 184, 102, 0.15);
+  border-top-color: #e8b866;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+  box-shadow: 0 0 20px rgba(232, 184, 102, 0.2);
 }
 
 @keyframes spin {
@@ -610,16 +610,16 @@ $sidebar-width: 320px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(5, 5, 16, 0.95);
+  background: rgba(10, 8, 4, 0.95);
   z-index: 20;
 
   p {
-    color: #ff4d4d;
+    color: #e07070;
     font-size: 16px;
   }
 
   .error-detail {
-    color: #888;
+    color: #8a7d68;
     font-size: 13px;
     max-width: 400px;
     text-align: center;
@@ -661,8 +661,8 @@ $sidebar-width: 320px;
       text-transform: uppercase;
       text-shadow:
         0 0 4px rgba(0, 0, 0, 0.95),
-        0 0 12px var(--glow-color, #00d4ff),
-        0 0 30px color-mix(in srgb, var(--glow-color, #00d4ff) 40%, transparent);
+        0 0 12px var(--glow-color, #e8b866),
+        0 0 30px color-mix(in srgb, var(--glow-color, #e8b866) 40%, transparent);
     }
   }
 
@@ -725,17 +725,17 @@ $sidebar-width: 320px;
 .ns-boundary {
   position: absolute;
   border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--ns-color, #00d4ff) 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ns-color, #e8b866) 25%, transparent);
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--ns-color, #00d4ff) 5%, transparent) 0%,
-    color-mix(in srgb, var(--ns-color, #00d4ff) 2%, transparent) 50%,
+    color-mix(in srgb, var(--ns-color, #e8b866) 5%, transparent) 0%,
+    color-mix(in srgb, var(--ns-color, #e8b866) 2%, transparent) 50%,
     transparent 100%
   );
   box-shadow:
-    0 0 30px color-mix(in srgb, var(--ns-color, #00d4ff) 8%, transparent),
-    0 0 60px color-mix(in srgb, var(--ns-color, #00d4ff) 4%, transparent),
-    inset 0 0 40px color-mix(in srgb, var(--ns-color, #00d4ff) 3%, transparent);
+    0 0 30px color-mix(in srgb, var(--ns-color, #e8b866) 8%, transparent),
+    0 0 60px color-mix(in srgb, var(--ns-color, #e8b866) 4%, transparent),
+    inset 0 0 40px color-mix(in srgb, var(--ns-color, #e8b866) 3%, transparent);
   animation: boundaryPulse 4s ease-in-out infinite alternate;
 
   &.clickable {
@@ -743,11 +743,11 @@ $sidebar-width: 320px;
     cursor: pointer;
 
     &:hover {
-      border-color: color-mix(in srgb, var(--ns-color, #00d4ff) 60%, transparent);
+      border-color: color-mix(in srgb, var(--ns-color, #e8b866) 60%, transparent);
       box-shadow:
-        0 0 40px color-mix(in srgb, var(--ns-color, #00d4ff) 15%, transparent),
-        0 0 80px color-mix(in srgb, var(--ns-color, #00d4ff) 8%, transparent),
-        inset 0 0 60px color-mix(in srgb, var(--ns-color, #00d4ff) 6%, transparent);
+        0 0 40px color-mix(in srgb, var(--ns-color, #e8b866) 15%, transparent),
+        0 0 80px color-mix(in srgb, var(--ns-color, #e8b866) 8%, transparent),
+        inset 0 0 60px color-mix(in srgb, var(--ns-color, #e8b866) 6%, transparent);
     }
   }
 
@@ -770,14 +770,14 @@ $sidebar-width: 320px;
   font-size: 10px;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--ns-color, #00d4ff) 50%, transparent);
-  text-shadow: 0 0 10px var(--ns-color, #00d4ff);
+  color: color-mix(in srgb, var(--ns-color, #e8b866) 50%, transparent);
+  text-shadow: 0 0 10px var(--ns-color, #e8b866);
   white-space: nowrap;
 }
 
 @keyframes boundaryPulse {
-  from { border-color: color-mix(in srgb, var(--ns-color, #00d4ff) 20%, transparent); }
-  to   { border-color: color-mix(in srgb, var(--ns-color, #00d4ff) 35%, transparent); }
+  from { border-color: color-mix(in srgb, var(--ns-color, #e8b866) 20%, transparent); }
+  to   { border-color: color-mix(in srgb, var(--ns-color, #e8b866) 35%, transparent); }
 }
 
 .has-selection .ns-boundary {
@@ -798,7 +798,7 @@ $sidebar-width: 320px;
 .action-btn {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #ccc;
+  color: #ccc4b4;
   padding: 5px 12px;
   border-radius: 5px;
   cursor: pointer;
@@ -822,7 +822,7 @@ $sidebar-width: 320px;
   padding: 4px 10px;
   border-radius: 4px;
   font-size: 12px;
-  color: #555;
+  color: #5a5040;
   z-index: 10;
 }
 
@@ -832,7 +832,7 @@ $sidebar-width: 320px;
 .tooltip {
   position: absolute;
   z-index: 30;
-  background: rgba(10, 10, 25, 0.88);
+  background: rgba(14, 11, 8, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   padding: 6px 12px;
@@ -854,7 +854,7 @@ $sidebar-width: 320px;
 }
 
 .tooltip-kind {
-  color: #888;
+  color: #8a7d68;
   font-size: 11px;
 }
 
@@ -876,7 +876,7 @@ $sidebar-width: 320px;
 
   span {
     font-size: 11px;
-    color: #333;
+    color: #3a3020;
     background: rgba(255, 255, 255, 0.03);
     padding: 3px 8px;
     border-radius: 3px;

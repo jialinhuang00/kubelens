@@ -100,7 +100,7 @@ export class GraphLayoutService {
         nodeGreyoutOpacity: 0.1,
         linkGreyoutOpacity: 0.1,
         hoveredNodeRingColor: '#ffffff',
-        focusedNodeRingColor: '#00d4ff',
+        focusedNodeRingColor: '#e8b866',
         randomSeed: 42,
         disableSimulation: isLarge,
         simulation: {

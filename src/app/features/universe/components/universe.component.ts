@@ -345,9 +345,9 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getPodStatusColor(pod: GraphNode): string {
     const status = (pod.metadata?.['status'] as string) ?? '';
-    if (status === 'Running' || status === 'Succeeded') return '#39e060';
-    if (status === 'Pending') return '#ffa600';
-    return '#ff4d4d'; // Failed, CrashLoopBackOff, etc.
+    if (status === 'Running' || status === 'Succeeded') return '#6dca82';
+    if (status === 'Pending') return '#d4956a';
+    return '#e07070'; // Failed, CrashLoopBackOff, etc.
   }
 
   @HostListener('window:keydown', ['$event'])
