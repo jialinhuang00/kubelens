@@ -127,3 +127,15 @@
   text-align: center;
   line-height: 1.4;
 }
+
+.card.disabled {
+  opacity: 0.35;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.card-hint {
+  font-size: 10px;
+  color: #d4956a;
+  font-style: italic;
+}
