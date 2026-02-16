@@ -18,10 +18,6 @@ export class NamespaceService {
       const namespaces = await this.kubectlService.getNamespaces();
       this.namespaces.set(namespaces);
       
-      // Auto-select first namespace if none selected
-      if (namespaces.length > 0 && !this.currentNamespace()) {
-        this.setCurrentNamespace(namespaces[0]);
-      }
     } catch (error) {
       console.error('Failed to load namespaces:', error);
       this.namespaces.set([]);

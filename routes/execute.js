@@ -116,42 +116,40 @@ router.post('/execute', (req, res) => {
 
   console.log(`Executing: ${command}`);
 
-  setTimeout(() => {
-    exec(fullCommand, { timeout: 30000 }, (error) => {
-      fs.readFile(tempFile, 'utf8', (readErr, data) => {
-        fs.unlink(tempFile, () => { });
+  exec(fullCommand, { timeout: 30000 }, (error) => {
+    fs.readFile(tempFile, 'utf8', (readErr, data) => {
+      fs.unlink(tempFile, () => { });
 
-        if (readErr) {
-          return res.status(500).json({
-            success: false,
-            error: 'Failed to read command output file',
-            file: tempFile
-          });
-        }
+      if (readErr) {
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to read command output file',
+          file: tempFile
+        });
+      }
 
-        if (error) {
-          const actualErrorMessage = data.trim() || error.message;
-          return res.json({
-            success: false,
-            error: actualErrorMessage,
-            stdout: '',
-            command: command
-          });
-        }
-
-        let processedOutput = data;
-        if (command.includes('get all')) {
-          processedOutput = splitGetAllTables(data);
-        }
-
-        res.json({
-          success: true,
-          stdout: processedOutput,
+      if (error) {
+        const actualErrorMessage = data.trim() || error.message;
+        return res.json({
+          success: false,
+          error: actualErrorMessage,
+          stdout: '',
           command: command
         });
+      }
+
+      let processedOutput = data;
+      if (command.includes('get all')) {
+        processedOutput = splitGetAllTables(data);
+      }
+
+      res.json({
+        success: true,
+        stdout: processedOutput,
+        command: command
       });
     });
-  }, 3000);
+  });
 });
 
 // POST /api/execute/stream — needs io passed in

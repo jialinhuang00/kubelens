@@ -1,10 +1,54 @@
-// Toast container — fixed top-right
+// Toast container — fixed top-right, single element that morphs
 .toast-container {
   position: fixed;
   top: 16px;
   right: 16px;
   z-index: 100;
+  width: 120px;
+  max-height: 36px;
+  border-radius: 20px;
+  background: rgba(14, 11, 8, 0.95);
+  border: 1px solid rgba(232, 184, 102, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(232, 184, 102, 0.1);
+  overflow: hidden;
+  cursor: pointer;
+  transition: width 0.3s ease, max-height 0.3s ease, border-radius 0.3s ease, box-shadow 0.3s ease;
   animation: slideIn 0.25s ease-out;
+
+  &:hover:not(.expanded) {
+    border-color: rgba(232, 184, 102, 0.5);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 16px rgba(232, 184, 102, 0.15);
+  }
+
+  &.has-errors:not(.expanded) {
+    border-color: rgba(224, 112, 112, 0.4);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(224, 112, 112, 0.15);
+  }
+
+  // Expanded state
+  &.expanded {
+    width: 360px;
+    max-height: 50vh;
+    border-radius: 10px;
+    cursor: default;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(232, 184, 102, 0.1);
+
+    &.has-errors {
+      border-color: rgba(224, 112, 112, 0.3);
+    }
+
+    .pill-content {
+      opacity: 0;
+      visibility: hidden;
+      height: 0;
+      padding: 0;
+    }
+
+    .panel-content {
+      opacity: 1;
+      visibility: visible;
+    }
+  }
 }
 
 @keyframes slideIn {
@@ -18,29 +62,13 @@
   }
 }
 
-// --- Collapsed pill ---
-.toast-pill {
+// --- Pill content (collapsed) ---
+.pill-content {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  min-width: 100px;
-  background: rgba(14, 11, 8, 0.95);
-  border: 1px solid rgba(232, 184, 102, 0.3);
-  border-radius: 20px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(232, 184, 102, 0.1);
-
-  &:hover {
-    border-color: rgba(232, 184, 102, 0.5);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 16px rgba(232, 184, 102, 0.15);
-  }
-
-  .has-errors & {
-    border-color: rgba(224, 112, 112, 0.4);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(224, 112, 112, 0.15);
-  }
+  transition: opacity 0.2s ease, visibility 0.2s ease, height 0.2s ease, padding 0.2s ease;
 }
 
 .pill-icon {
@@ -73,33 +101,13 @@
   }
 }
 
-// --- Expanded panel ---
-.toast-panel {
-  width: 360px;
-  max-height: 50vh;
+// --- Panel content (expanded) ---
+.panel-content {
   display: flex;
   flex-direction: column;
-  background: rgba(14, 11, 8, 0.98);
-  border: 1px solid rgba(232, 184, 102, 0.3);
-  border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(232, 184, 102, 0.1);
-  overflow: hidden;
-  animation: expandIn 0.2s ease-out;
-
-  .has-errors & {
-    border-color: rgba(224, 112, 112, 0.3);
-  }
-}
-
-@keyframes expandIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease 0.1s, visibility 0.2s ease 0.1s;
 }
 
 .panel-header {

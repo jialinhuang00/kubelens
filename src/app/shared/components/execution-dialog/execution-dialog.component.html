@@ -1,102 +1,102 @@
 @if (dialogService.isOpen()) {
-<div class="toast-container" [class.expanded]="isExpanded()" [class.has-errors]="dialogService.hasErrors()">
-  <!-- Collapsed pill: spinner/check + progress count -->
-  @if (!isExpanded()) {
-    <div class="toast-pill" (click)="toggleExpand()">
-      <span class="pill-icon">
-        @if (!dialogService.allDone()) {
-          <span class="spinner"></span>
-        } @else if (dialogService.hasErrors()) {
-          <span class="error-icon">!</span>
-        } @else {
-          <span class="check">&#10003;</span>
-        }
-      </span>
-      <span class="pill-text">
+<div class="toast-container"
+     [class.expanded]="isExpanded()"
+     [class.has-errors]="dialogService.hasErrors()"
+     (click)="!isExpanded() && toggleExpand()">
+
+  <!-- Pill content (collapsed) -->
+  <div class="pill-content">
+    <span class="pill-icon">
+      @if (!dialogService.allDone()) {
+        <span class="spinner"></span>
+      } @else if (dialogService.hasErrors()) {
+        <span class="error-icon">!</span>
+      } @else {
+        <span class="check">&#10003;</span>
+      }
+    </span>
+    <span class="pill-text">
+      {{ dialogService.progress().completed }}/{{ dialogService.progress().total }}
+    </span>
+    <button class="pill-dismiss" (click)="onDismiss(); $event.stopPropagation()" title="Dismiss">&times;</button>
+  </div>
+
+  <!-- Panel content (expanded) -->
+  <div class="panel-content">
+    <!-- Header -->
+    <div class="panel-header">
+      <h3 class="panel-title glow-text">Executing Commands</h3>
+      <div class="panel-actions">
+        <button class="action-btn" (click)="toggleExpand(); $event.stopPropagation()" title="Collapse">&#8722;</button>
+        <button class="action-btn" (click)="onDismiss(); $event.stopPropagation()" title="Dismiss">&times;</button>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="progress-bar-container">
+      <div
+        class="progress-bar-fill"
+        [style.width.%]="dialogService.progress().percent">
+      </div>
+      <span class="progress-text">
         {{ dialogService.progress().completed }}/{{ dialogService.progress().total }}
       </span>
-      <button class="pill-dismiss" (click)="onDismiss(); $event.stopPropagation()" title="Dismiss">&times;</button>
     </div>
-  }
 
-  <!-- Expanded panel: full command list -->
-  @if (isExpanded()) {
-    <div class="toast-panel">
-      <!-- Header -->
-      <div class="panel-header">
-        <h3 class="panel-title glow-text">Executing Commands</h3>
-        <div class="panel-actions">
-          <button class="action-btn" (click)="toggleExpand()" title="Collapse">&#8722;</button>
-          <button class="action-btn" (click)="onDismiss()" title="Dismiss">&times;</button>
+    <!-- Command List -->
+    <div class="command-list">
+      @for (exec of dialogService.executions(); track exec.id) {
+        @if (exec.status !== 'cancelled') {
+        <div class="command-row" [class]="'status-' + exec.status">
+          <span class="status-icon">
+            @switch (exec.status) {
+              @case ('pending') { <span class="spinner small"></span> }
+              @case ('completed') { <span class="check">&#10003;</span> }
+              @case ('error') { <span class="error-icon">&#10005;</span> }
+            }
+          </span>
+          <span class="command-text" [title]="exec.command">{{ exec.command }}</span>
+          @if (exec.group) {
+            <span class="group-tag">{{ exec.group }}</span>
+          }
         </div>
-      </div>
+        }
+      }
 
-      <!-- Progress Bar -->
-      <div class="progress-bar-container">
-        <div
-          class="progress-bar-fill"
-          [style.width.%]="dialogService.progress().percent">
+      <!-- Cancelled Section -->
+      @if (dialogService.hasCancelled()) {
+        <div class="cancelled-divider" (click)="toggleCancelled(); $event.stopPropagation()">
+          <span class="divider-line"></span>
+          <span class="divider-text">
+            Cancelled ({{ dialogService.cancelledExecutions().length }})
+            <span class="toggle-icon">{{ showCancelled() ? '&#9662;' : '&#9656;' }}</span>
+          </span>
+          <span class="divider-line"></span>
         </div>
-        <span class="progress-text">
-          {{ dialogService.progress().completed }}/{{ dialogService.progress().total }}
-        </span>
-      </div>
 
-      <!-- Command List -->
-      <div class="command-list">
-        @for (exec of dialogService.executions(); track exec.id) {
-          @if (exec.status !== 'cancelled') {
-          <div class="command-row" [class]="'status-' + exec.status">
+        @if (showCancelled()) {
+          @for (exec of dialogService.cancelledExecutions(); track exec.id) {
+          <div class="command-row status-cancelled">
             <span class="status-icon">
-              @switch (exec.status) {
-                @case ('pending') { <span class="spinner small"></span> }
-                @case ('completed') { <span class="check">&#10003;</span> }
-                @case ('error') { <span class="error-icon">&#10005;</span> }
-              }
+              <span class="cancelled-icon">&#10005;</span>
             </span>
             <span class="command-text" [title]="exec.command">{{ exec.command }}</span>
             @if (exec.group) {
-              <span class="group-tag">{{ exec.group }}</span>
+              <span class="group-tag dimmed">{{ exec.group }}</span>
             }
           </div>
           }
         }
-
-        <!-- Cancelled Section -->
-        @if (dialogService.hasCancelled()) {
-          <div class="cancelled-divider" (click)="toggleCancelled()">
-            <span class="divider-line"></span>
-            <span class="divider-text">
-              Cancelled ({{ dialogService.cancelledExecutions().length }})
-              <span class="toggle-icon">{{ showCancelled() ? '&#9662;' : '&#9656;' }}</span>
-            </span>
-            <span class="divider-line"></span>
-          </div>
-
-          @if (showCancelled()) {
-            @for (exec of dialogService.cancelledExecutions(); track exec.id) {
-            <div class="command-row status-cancelled">
-              <span class="status-icon">
-                <span class="cancelled-icon">&#10005;</span>
-              </span>
-              <span class="command-text" [title]="exec.command">{{ exec.command }}</span>
-              @if (exec.group) {
-                <span class="group-tag dimmed">{{ exec.group }}</span>
-              }
-            </div>
-            }
-          }
-        }
-      </div>
-
-      <!-- Footer status -->
-      @if (dialogService.allDone() && !dialogService.hasErrors() && !dialogService.hasCancelled()) {
-        <div class="panel-footer success">All commands completed successfully</div>
-      }
-      @if (dialogService.hasErrors()) {
-        <div class="panel-footer error">Some commands failed</div>
       }
     </div>
-  }
+
+    <!-- Footer status -->
+    @if (dialogService.allDone() && !dialogService.hasErrors() && !dialogService.hasCancelled()) {
+      <div class="panel-footer success">All commands completed successfully</div>
+    }
+    @if (dialogService.hasErrors()) {
+      <div class="panel-footer error">Some commands failed</div>
+    }
+  </div>
 </div>
 }

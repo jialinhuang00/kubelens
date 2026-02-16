@@ -234,14 +234,6 @@ export class DashboardComponent implements OnInit {
   }
 
   constructor() {
-    effect(() => {
-      const namespaces = this.namespaceService.namespaces();
-      if (namespaces.length > 0 && !this.selectedNamespace()) {
-        this.selectedNamespace.set(namespaces[0]);
-        this.namespaceService.setCurrentNamespace(namespaces[0]);
-        this.loadResourcesForNamespace(namespaces[0]);
-      }
-    });
   }
 
   async ngOnInit() {
