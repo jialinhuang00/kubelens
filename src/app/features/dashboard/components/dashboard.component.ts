@@ -297,20 +297,18 @@ export class DashboardComponent implements OnInit {
     this.ecrService.clear();
 
     if (!value) {
-      this.deploymentService.stopRolloutMonitoring();
+      this.deploymentService.clearRolloutMonitoring();
       return;
     }
 
     // Auto-select matching pod and service if none selected
     this.autoSelectRelatedResources(value);
 
-    // Fetch deployment status (startRolloutMonitoring handles status + history)
+    // Fetch deployment status once (for deploymentImage computed signal + button states)
     const namespace = this.selectedNamespace();
     if (namespace) {
-      this.deploymentService.startRolloutMonitoring(value, namespace);
+      this.deploymentService.getDeploymentStatus(value, namespace);
     }
-
-    // deploymentImage is now a computed signal derived from deploymentStatus
   }
 
   private autoSelectRelatedResources(deployment: string) {
@@ -359,6 +357,20 @@ export class DashboardComponent implements OnInit {
 
   onToggleRolloutConsole() {
     this.uiStateService.toggleRolloutConsole();
+
+    const deployment = this.selectedDeployment();
+    const namespace = this.selectedNamespace();
+    if (!deployment || !namespace) return;
+
+    if (this.isRolloutConsoleExpanded()) {
+      this.deploymentService.fetchRolloutStatus(deployment, namespace);
+    } else {
+      this.deploymentService.clearRolloutMonitoring();
+    }
+  }
+
+  onRefetchRolloutStatus() {
+    this.deploymentService.refetchRolloutStatus();
   }
 
   // Command execution

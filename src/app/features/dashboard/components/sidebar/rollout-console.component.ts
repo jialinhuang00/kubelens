@@ -35,6 +35,7 @@ export class RolloutConsoleComponent {
   @Output() imageUpgrade = new EventEmitter<{ deployment: string, image: string }>();
   @Output() loadEcrTags = new EventEmitter<void>();
   @Output() ecrTagSelect = new EventEmitter<string>();
+  @Output() refetchStatus = new EventEmitter<void>();
 
   // UI State
   showHistoryTable = signal<boolean>(false);

@@ -1119,11 +1119,11 @@ function handleRollout(parsed) {
 function handleConfig(parsed) {
   switch (parsed.subAction) {
     case 'current-context':
-      return { success: true, stdout: 'arn:aws:eks:us-east-1:REDACTED_ACCOUNT:cluster/demo-dev' };
+      return { success: true, stdout: 'snapshot-context' };
     case 'get-contexts':
       return {
         success: true,
-        stdout: `CURRENT   NAME                                                          CLUSTER                                                       AUTHINFO                                                      NAMESPACE\n*         arn:aws:eks:us-east-1:REDACTED_ACCOUNT:cluster/demo-dev         arn:aws:eks:us-east-1:REDACTED_ACCOUNT:cluster/demo-dev         arn:aws:eks:us-east-1:REDACTED_ACCOUNT:cluster/demo-dev         ${DEFAULT_NAMESPACE}`
+        stdout: `CURRENT   NAME                 CLUSTER              AUTHINFO             NAMESPACE\n*         snapshot-context     snapshot-cluster     snapshot-user        ${DEFAULT_NAMESPACE}`
       };
     default:
       return { success: false, error: `[SNAPSHOT] Unsupported config action: ${parsed.subAction}` };

@@ -3,11 +3,15 @@ const { exec } = require('child_process');
 
 const router = express.Router();
 
-// Map AWS account IDs to CLI profile names
-const ACCOUNT_PROFILE_MAP = {
-  'REDACTED_ACCOUNT': 'PowerUserAccess-REDACTED_ACCOUNT',
-  // Add more accounts here as needed
-};
+// ECR_PROFILE_MAP: maps AWS account ID → AWS SSO profile name (JSON)
+// e.g. {"REDACTED_ACCOUNT":"PowerUserAccess-REDACTED_ACCOUNT"}
+const ECR_PROFILE_MAP = (() => {
+  try {
+    return JSON.parse(process.env.ECR_PROFILE_MAP || '{}');
+  } catch {
+    return {};
+  }
+})();
 
 /**
  * GET /api/ecr/tags?image=<full-ecr-image-url>
@@ -30,8 +34,8 @@ router.get('/ecr/tags', (req, res) => {
   const region = match[2];
   const repository = match[3];
 
-  // Use mapped profile via env var, otherwise default
-  const profile = ACCOUNT_PROFILE_MAP[accountId];
+  // Look up profile for this account
+  const profile = ECR_PROFILE_MAP[accountId];
   const env = profile ? { ...process.env, AWS_PROFILE: profile } : process.env;
 
   const cmd = `aws ecr describe-images --repository-name ${repository} --region ${region} --query 'sort_by(imageDetails,&imagePushedAt)[-10:]' --output json --no-cli-pager`;

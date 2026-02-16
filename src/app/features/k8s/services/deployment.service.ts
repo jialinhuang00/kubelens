@@ -65,7 +65,6 @@ export class DeploymentService {
   // Rollout monitoring
   rolloutStatus = signal<RolloutStatus | null>(null);
   isMonitoringRollout = signal<boolean>(false);
-  private rolloutInterval: any = null;
   private lastHistoryUpdate: number = 0;
   private currentMonitoredDeployment: string = '';
   private currentMonitoredNamespace: string = '';
@@ -99,12 +98,12 @@ export class DeploymentService {
       this.templates.set(templates);
 
       // Stop any existing rollout monitoring
-      this.stopRolloutMonitoring();
+      this.clearRolloutMonitoring();
     } else {
       this.templates.set([]);
       this.deploymentStatus.set(null);
       this.rolloutHistory.set([]);
-      this.stopRolloutMonitoring();
+      this.clearRolloutMonitoring();
     }
   }
 
@@ -224,48 +223,23 @@ export class DeploymentService {
     return null;
   }
 
-  async startRolloutMonitoring(deployment: string, namespace: string) {
-    // Always stop any existing monitoring first
-    this.stopRolloutMonitoring();
-    
-    console.log(`🔄 Starting rollout monitoring for ${deployment} in ${namespace}`);
+  async fetchRolloutStatus(deployment: string, namespace: string) {
     this.currentMonitoredDeployment = deployment;
     this.currentMonitoredNamespace = namespace;
     this.isMonitoringRollout.set(true);
 
-    // Initial status fetch only (history is fetched on-demand when user expands)
     const rolloutGroup = ExecutionGroupGenerator.deploymentOperations(deployment, namespace);
     await this.executionContext.withGroup(rolloutGroup, async () => {
       await this.getDeploymentStatus(deployment, namespace);
     });
-
-    // Monitor status every 10 seconds (lightweight — no history polling)
-    this.rolloutInterval = setInterval(async () => {
-      try {
-        if (this.currentMonitoredDeployment !== deployment || this.currentMonitoredNamespace !== namespace) {
-          this.stopRolloutMonitoring();
-          return;
-        }
-
-        const monitorGroup = ExecutionGroupGenerator.deploymentOperations(deployment, namespace);
-        await this.executionContext.withGroup(monitorGroup, async () => {
-          await this.getDeploymentStatus(deployment, namespace);
-        });
-      } catch (error) {
-        console.error('Error during rollout monitoring:', error);
-      }
-    }, 10000);
   }
 
-  stopRolloutMonitoring() {
-    console.log(`⏹️ Stopping rollout monitoring for ${this.currentMonitoredDeployment}`);
-    
-    if (this.rolloutInterval) {
-      clearInterval(this.rolloutInterval);
-      this.rolloutInterval = null;
-      console.log(`✅ Cleared rollout interval`);
-    }
-    
+  async refetchRolloutStatus() {
+    if (!this.currentMonitoredDeployment || !this.currentMonitoredNamespace) return;
+    await this.fetchRolloutStatus(this.currentMonitoredDeployment, this.currentMonitoredNamespace);
+  }
+
+  clearRolloutMonitoring() {
     this.currentMonitoredDeployment = '';
     this.currentMonitoredNamespace = '';
     this.isMonitoringRollout.set(false);
@@ -450,7 +424,7 @@ export class DeploymentService {
       );
       if (response.success) {
         // Start monitoring the new rollout
-        this.startRolloutMonitoring(deployment, namespace);
+        this.fetchRolloutStatus(deployment, namespace);
       }
       return response.success;
     } catch (error) {
@@ -466,7 +440,7 @@ export class DeploymentService {
       );
       if (response.success) {
         // Start monitoring the rollback
-        this.startRolloutMonitoring(deployment, namespace);
+        this.fetchRolloutStatus(deployment, namespace);
       }
       return response.success;
     } catch (error) {
@@ -477,6 +451,6 @@ export class DeploymentService {
 
   // Cleanup method
   destroy() {
-    this.stopRolloutMonitoring();
+    this.clearRolloutMonitoring();
   }
 }

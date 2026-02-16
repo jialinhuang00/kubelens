@@ -41,6 +41,7 @@ export class CommandChipsComponent {
   @Output() ecrTagSelect = new EventEmitter<string>();
   @Output() toggleRolloutExpanded = new EventEmitter<void>();
   @Output() imageUpgrade = new EventEmitter<{ deployment: string, image: string }>();
+  @Output() refetchStatus = new EventEmitter<void>();
 
   // Collapsible section state
   isCollapsed = signal(false);
