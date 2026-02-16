@@ -33,7 +33,10 @@
       "WebFetch(domain:piktochart.com)",
       "Bash(open:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(aws ecr describe-images:*)",
+      "Bash(chmod:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []

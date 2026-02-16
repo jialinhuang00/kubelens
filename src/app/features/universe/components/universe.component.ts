@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { DecimalPipe, KeyValuePipe } from '@angular/common';
-import { MockModeService } from '../../../core/services/mock-mode.service';
+import { DataModeService } from '../../../core/services/data-mode.service';
 import { GraphDataService } from '../services/graph-data.service';
 import { GraphLayoutService, NodeLabel, NamespaceBoundary } from '../services/graph-layout.service';
 import {
@@ -38,7 +38,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly graphData = inject(GraphDataService);
   private readonly graphLayout = inject(GraphLayoutService);
   private readonly router = inject(Router);
-  protected readonly mockModeService = inject(MockModeService);
+  protected readonly dataModeService = inject(DataModeService);
 
   @ViewChild('graphCanvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
 

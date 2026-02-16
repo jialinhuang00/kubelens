@@ -4,7 +4,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
-const mockK8s = require('../mock-k8s');
+const snapshotK8s = require('../snapshot-handler');
 
 const router = express.Router();
 
@@ -100,9 +100,9 @@ router.post('/execute', (req, res) => {
     });
   }
 
-  if (req.query.mock === 'true') {
-    console.log(`[MOCK] Intercepting: ${command}`);
-    const result = mockK8s.handleCommand(command);
+  if (req.query.snapshot === 'true') {
+    console.log(`[SNAPSHOT] Intercepting: ${command}`);
+    const result = snapshotK8s.handleCommand(command);
     return res.json({
       success: result.success,
       stdout: result.stdout || '',
@@ -159,10 +159,10 @@ function mountStream(router, io) {
   router.post('/execute/stream', (req, res) => {
     const { command, streamId } = req.body;
 
-    if (req.query.mock === 'true') {
-      console.log(`[MOCK] Stream intercepting: ${command}`);
-      const result = mockK8s.handleCommand(command);
-      res.json({ success: true, message: 'Stream started (mock)', streamId });
+    if (req.query.snapshot === 'true') {
+      console.log(`[SNAPSHOT] Stream intercepting: ${command}`);
+      const result = snapshotK8s.handleCommand(command);
+      res.json({ success: true, message: 'Stream started (snapshot)', streamId });
       setTimeout(() => {
         io.emit('stream-data', { streamId, type: 'stdout', data: result.stdout || result.error || '', timestamp: Date.now() });
         setTimeout(() => {

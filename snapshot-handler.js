@@ -1,18 +1,17 @@
 /**
- * Mock K8s data interceptor.
- * Reads backup YAML files and returns pre-baked responses for kubectl commands.
+ * K8s snapshot handler.
+ * Reads dumped YAML files from a cluster snapshot and returns
+ * pre-baked responses for kubectl commands.
  *
- * Usage: MOCK_K8S=true node server-legacy.js
- * Set MOCK_K8S_DATA to override the backup data path.
+ * Set K8S_SNAPSHOT_PATH to override the default snapshot directory.
  */
 
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 
-const BACKUP_PATH = path.join(__dirname, 'k8s-backup');
-const FALLBACK_PATH = process.env.MOCK_K8S_DATA || path.join(__dirname, 'mock-data');
-const MOCK_NAMESPACE = 'demo';
+const BACKUP_PATH = process.env.K8S_SNAPSHOT_PATH || path.join(__dirname, 'k8s-snapshot');
+const DEFAULT_NAMESPACE = 'demo';
 
 // File aliases (same as graph endpoint)
 const FILE_ALIASES = {
@@ -25,11 +24,9 @@ const FILE_ALIASES = {
 const cache = {};
 
 // Resolve file path for a given namespace:
-//   1st: k8s-backup/<namespace>/<file>  (per-namespace backup)
-//   2nd: mock-data/<file>               (fallback, legacy single-namespace data)
-//   3rd: null                           (no data available)
+//   1st: k8s-snapshot/<namespace>/<file>
+//   2nd: null (no data available)
 function resolveFilePath(filename, namespace) {
-  // Try namespace-specific directory in k8s-backup
   if (namespace) {
     const nsDir = path.join(BACKUP_PATH, namespace);
     const nsPath = path.join(nsDir, filename);
@@ -44,9 +41,6 @@ function resolveFilePath(filename, namespace) {
       }
     }
   }
-  // Fallback to flat mock-data
-  const fallbackFilePath = path.join(FALLBACK_PATH, filename);
-  if (fs.existsSync(fallbackFilePath)) return fallbackFilePath;
   return null;
 }
 
@@ -71,9 +65,9 @@ function loadText(filename, namespace) {
   return content;
 }
 
-// List available namespaces from k8s-backup directories
+// List available namespaces from k8s-snapshot directories
 function listBackupNamespaces() {
-  if (!fs.existsSync(BACKUP_PATH)) return [MOCK_NAMESPACE];
+  if (!fs.existsSync(BACKUP_PATH)) return [DEFAULT_NAMESPACE];
   return fs.readdirSync(BACKUP_PATH, { withFileTypes: true })
     .filter(e => e.isDirectory() && !e.name.startsWith('.') && e.name !== '_cluster')
     .map(e => e.name);
@@ -260,7 +254,7 @@ Events:               <none>`;
 
 function generatePodDescribe(podName, namespace) {
   // We don't have full pod YAML, generate a basic describe from pods-snapshot
-  const ns = namespace || MOCK_NAMESPACE;
+  const ns = namespace || DEFAULT_NAMESPACE;
   const snapshot = loadText('pods-snapshot.txt', ns);
   if (!snapshot) return `Error from server (NotFound): pods "${podName}" not found`;
   const lines = snapshot.trim().split('\n');
@@ -486,8 +480,8 @@ function handleCommand(command) {
     return { success: false, error: 'Failed to parse command' };
   }
 
-  console.log(`[MOCK] Handling: ${command}`);
-  console.log(`[MOCK] Parsed:`, JSON.stringify(parsed, null, 2));
+  console.log(`[SNAPSHOT] Handling: ${command}`);
+  console.log(`[SNAPSHOT] Parsed:`, JSON.stringify(parsed, null, 2));
 
   try {
     switch (parsed.action) {
@@ -502,31 +496,31 @@ function handleCommand(command) {
       case 'logs':
         return handleLogs(parsed);
       case 'exec':
-        return { success: false, error: '[MOCK] exec is not supported in mock mode' };
+        return { success: false, error: '[SNAPSHOT] exec is not supported in snapshot mode' };
       case 'delete':
-        return { success: false, error: '[MOCK] delete is not supported in mock mode (read-only)' };
+        return { success: false, error: '[SNAPSHOT] delete is not supported in snapshot mode (read-only)' };
       case 'set':
         return handleSet(parsed);
       case 'port-forward':
-        return { success: false, error: '[MOCK] port-forward is not supported in mock mode' };
+        return { success: false, error: '[SNAPSHOT] port-forward is not supported in snapshot mode' };
       case 'patch':
-        return { success: true, stdout: `service/${parsed.resourceName || 'unknown'} patched (mock)` };
+        return { success: true, stdout: `service/${parsed.resourceName || 'unknown'} patched (snapshot)` };
       case 'run':
-        return { success: true, stdout: 'pod/test-connectivity created (mock)\nConnection successful' };
+        return { success: true, stdout: 'pod/test-connectivity created (snapshot)\nConnection successful' };
       case 'apply':
-        return { success: true, stdout: 'resource applied (mock)' };
+        return { success: true, stdout: 'resource applied (snapshot)' };
       default:
-        return { success: false, error: `[MOCK] Unsupported action: ${parsed.action}` };
+        return { success: false, error: `[SNAPSHOT] Unsupported action: ${parsed.action}` };
     }
   } catch (err) {
-    console.error('[MOCK] Error:', err);
-    return { success: false, error: `[MOCK] Error: ${err.message}` };
+    console.error('[SNAPSHOT] Error:', err);
+    return { success: false, error: `[SNAPSHOT] Error: ${err.message}` };
   }
 }
 
 // --- GET handler ---
 // Routes to resource-specific handlers. Generic resources use YAML files
-// from k8s-backup/<namespace>/, falling back to mock-data/.
+// from k8s-snapshot/<namespace>/, from k8s-snapshot/<namespace>/.
 
 function handleGet(parsed) {
   // kubectl get all
@@ -562,13 +556,13 @@ function handleGet(parsed) {
   // Generic YAML-backed resources
   const yamlFile = RESOURCE_FILE_MAP[parsed.resource];
   if (!yamlFile) {
-    return { success: false, error: `[MOCK] Unknown resource type: ${parsed.resource}` };
+    return { success: false, error: `[SNAPSHOT] Unknown resource type: ${parsed.resource}` };
   }
 
   const ns = parsed.namespace;
   const data = loadYaml(yamlFile, ns);
   if (!data) {
-    return { success: false, error: `[MOCK] No backup data for ${parsed.resource}` };
+    return { success: false, error: `[SNAPSHOT] No backup data for ${parsed.resource}` };
   }
 
   // Single resource by name
@@ -649,7 +643,7 @@ function handleGet(parsed) {
   return { success: true, stdout: extractNames(data).join('\n') };
 }
 
-// Data: directory listing of k8s-backup/ subdirectories
+// Data: directory listing of k8s-snapshot/ subdirectories
 function handleGetNamespaces(parsed) {
   const namespaces = listBackupNamespaces();
 
@@ -716,8 +710,8 @@ function handleGetNodes(parsed) {
   return { success: true, stdout: output };
 }
 
-// Data: k8s-backup/<namespace>/pods-snapshot.txt (tabular text)
-//       k8s-backup/<namespace>/pods-images.txt   (pod→image mapping)
+// Data: k8s-snapshot/<namespace>/pods-snapshot.txt (tabular text)
+//       k8s-snapshot/<namespace>/pods-images.txt   (pod→image mapping)
 function handleGetPods(parsed) {
   const ns = parsed.namespace;
   const snapshot = loadText('pods-snapshot.txt', ns);
@@ -773,7 +767,7 @@ function buildPodJson(podLine, ns, imagesText) {
   const podJson = {
     apiVersion: 'v1',
     kind: 'Pod',
-    metadata: { name: parts[0], namespace: ns || MOCK_NAMESPACE },
+    metadata: { name: parts[0], namespace: ns || DEFAULT_NAMESPACE },
     status: {
       phase: parts[2],
       podIP: parts[5] || '',
@@ -808,7 +802,7 @@ function buildPodJson(podLine, ns, imagesText) {
   return podJson;
 }
 
-// Data: generated from k8s-backup/<namespace>/deployments.yaml
+// Data: generated from k8s-snapshot/<namespace>/deployments.yaml
 function handleGetReplicasets(parsed) {
   const data = loadYaml('deployments.yaml', parsed.namespace);
   if (!data) return { success: true, stdout: 'No resources found.' };
@@ -841,11 +835,11 @@ function handleGetReplicasets(parsed) {
 }
 
 function handleGetEvents(parsed) {
-  // Mock some events
+  // Simulated events
   const now = new Date().toISOString();
   const events = [
     `LAST SEEN   TYPE      REASON              OBJECT                                        MESSAGE`,
-    `3m          Normal    Scheduled           pod/web-app-7449d97884-j7bt5                    Successfully assigned ${MOCK_NAMESPACE}/web-app-7449d97884-j7bt5 to ip-10-0-2-80.ec2.internal`,
+    `3m          Normal    Scheduled           pod/web-app-7449d97884-j7bt5                    Successfully assigned ${DEFAULT_NAMESPACE}/web-app-7449d97884-j7bt5 to ip-10-0-2-80.ec2.internal`,
     `3m          Normal    Pulled              pod/web-app-7449d97884-j7bt5                    Container image already present on machine`,
     `3m          Normal    Created             pod/web-app-7449d97884-j7bt5                    Created container web-app`,
     `3m          Normal    Started             pod/web-app-7449d97884-j7bt5                    Started container web-app`,
@@ -868,9 +862,9 @@ function handleGetEvents(parsed) {
   return { success: true, stdout: events.join('\n') };
 }
 
-// Data: aggregates pods-snapshot.txt + all YAML files from k8s-backup/<namespace>/
+// Data: aggregates pods-snapshot.txt + all YAML files from k8s-snapshot/<namespace>/
 function handleGetAll(parsed) {
-  const ns = parsed.namespace || MOCK_NAMESPACE;
+  const ns = parsed.namespace || DEFAULT_NAMESPACE;
   const parts = [];
 
   // Pods
@@ -974,7 +968,7 @@ function resolveJsonPath(obj, pathStr) {
 
 // --- DESCRIBE handler ---
 
-// Data: YAML files from k8s-backup/<namespace>/, pods use pods-snapshot.txt
+// Data: YAML files from k8s-snapshot/<namespace>/, pods use pods-snapshot.txt
 function handleDescribe(parsed) {
   const resource = parsed.resource;
   const name = parsed.resourceName;
@@ -1045,7 +1039,7 @@ function handleDescribe(parsed) {
     return { success: true, stdout: output };
   }
 
-  return { success: false, error: `[MOCK] describe not implemented for: ${resource}` };
+  return { success: false, error: `[SNAPSHOT] describe not implemented for: ${resource}` };
 }
 
 function generateGenericDescribe(item) {
@@ -1066,10 +1060,10 @@ Events:            <none>`;
 
 // --- ROLLOUT handler ---
 
-// Data: k8s-backup/<namespace>/deployments.yaml
+// Data: k8s-snapshot/<namespace>/deployments.yaml
 function handleRollout(parsed) {
   const deployment = parsed.resource; // deployment name is in resource position for rollout
-  const ns = parsed.namespace || MOCK_NAMESPACE;
+  const ns = parsed.namespace || DEFAULT_NAMESPACE;
 
   // Parse: kubectl rollout status deployment/X -n ns
   let deploymentName = deployment;
@@ -1116,7 +1110,7 @@ function handleRollout(parsed) {
     case 'restart':
       return { success: true, stdout: `deployment.apps/${deploymentName} restarted` };
     default:
-      return { success: false, error: `[MOCK] Unsupported rollout action: ${parsed.subAction}` };
+      return { success: false, error: `[SNAPSHOT] Unsupported rollout action: ${parsed.subAction}` };
   }
 }
 
@@ -1129,10 +1123,10 @@ function handleConfig(parsed) {
     case 'get-contexts':
       return {
         success: true,
-        stdout: `CURRENT   NAME                                                          CLUSTER                                                       AUTHINFO                                                      NAMESPACE\n*         arn:aws:eks:us-east-1:REDACTED_ACCOUNT:cluster/demo-dev         arn:aws:eks:us-east-1:REDACTED_ACCOUNT:cluster/demo-dev         arn:aws:eks:us-east-1:REDACTED_ACCOUNT:cluster/demo-dev         ${MOCK_NAMESPACE}`
+        stdout: `CURRENT   NAME                                                          CLUSTER                                                       AUTHINFO                                                      NAMESPACE\n*         arn:aws:eks:us-east-1:REDACTED_ACCOUNT:cluster/demo-dev         arn:aws:eks:us-east-1:REDACTED_ACCOUNT:cluster/demo-dev         arn:aws:eks:us-east-1:REDACTED_ACCOUNT:cluster/demo-dev         ${DEFAULT_NAMESPACE}`
       };
     default:
-      return { success: false, error: `[MOCK] Unsupported config action: ${parsed.subAction}` };
+      return { success: false, error: `[SNAPSHOT] Unsupported config action: ${parsed.subAction}` };
   }
 }
 
@@ -1142,7 +1136,7 @@ function handleLogs(parsed) {
   const podName = parsed.resource;
   return {
     success: true,
-    stdout: `[MOCK] Log output for pod ${podName} in namespace ${parsed.namespace || MOCK_NAMESPACE}\n` +
+    stdout: `[SNAPSHOT] Log output for pod ${podName} in namespace ${parsed.namespace || DEFAULT_NAMESPACE}\n` +
       `2026-02-13T12:00:00Z INFO  Application started\n` +
       `2026-02-13T12:00:01Z INFO  Listening on port 8080\n` +
       `2026-02-13T12:00:05Z INFO  Health check passed\n` +
@@ -1156,9 +1150,9 @@ function handleLogs(parsed) {
 
 function handleSet(parsed) {
   if (parsed.subAction === 'image') {
-    return { success: true, stdout: `deployment.apps/${parsed.resource || 'unknown'} image updated (mock)` };
+    return { success: true, stdout: `deployment.apps/${parsed.resource || 'unknown'} image updated (snapshot)` };
   }
-  return { success: false, error: `[MOCK] Unsupported set action: ${parsed.subAction}` };
+  return { success: false, error: `[SNAPSHOT] Unsupported set action: ${parsed.subAction}` };
 }
 
 // --- Resource counts ---

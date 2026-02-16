@@ -9,17 +9,17 @@
       <div class="mode-toggle flex rounded-md overflow-hidden border" style="border-color: var(--border-subtle)">
         <button
           class="mode-btn px-3 py-1.5 text-xs font-medium transition-all"
-          [class.mode-active]="!mockModeService.isMockMode()"
-          (click)="mockModeService.setMockMode(false)">
+          [class.mode-active]="!dataModeService.isSnapshotMode()"
+          [disabled]="!dataModeService.realtimeAvailable()"
+          (click)="dataModeService.setSnapshotMode(false)">
           Realtime
         </button>
         <button
           class="mode-btn px-3 py-1.5 text-xs font-medium transition-all"
-          [class.mode-active]="mockModeService.isMockMode()"
-          [disabled]="!mockModeService.mockAvailable()"
-          [title]="mockModeService.mockAvailable() ? 'Use mock backup data' : 'No mock data available'"
-          (click)="mockModeService.setMockMode(true)">
-          Mock Data
+          [class.mode-active]="dataModeService.isSnapshotMode()"
+          [disabled]="!dataModeService.snapshotAvailable()"
+          (click)="dataModeService.setSnapshotMode(true)">
+          Snapshot
         </button>
       </div>
     </header>

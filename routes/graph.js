@@ -18,7 +18,7 @@ function discoverNamespaces(dataPaths) {
     const entries = fs.readdirSync(dp, { withFileTypes: true });
     const hasYaml = entries.some(e => e.isFile() && e.name.endsWith('.yaml'));
     if (hasYaml && !entries.some(e => e.isDirectory() && !e.name.startsWith('.'))) {
-      const nsName = path.basename(dp) === 'mock-data' ? 'demo' : path.basename(dp);
+      const nsName = path.basename(dp);
       namespaces.set(nsName, dp);
     } else {
       for (const entry of entries) {
@@ -121,8 +121,8 @@ function extractWorkloadEdges(ns, kind, name, podSpec, addNode, addEdge) {
 // GET /api/graph
 router.get('/graph', (req, res) => {
   const rootDir = path.join(__dirname, '..');
-  const localBackup = path.join(rootDir, 'k8s-backup');
-  const fallbackPath = process.env.MOCK_K8S_DATA || path.join(rootDir, 'mock-data');
+  const localBackup = path.join(rootDir, 'k8s-snapshot');
+  const fallbackPath = process.env.K8S_SNAPSHOT_PATH || localBackup;
 
   let dataPaths;
   if (req.query.path) {

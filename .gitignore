@@ -74,9 +74,7 @@ Icon?
 # Kubernetes and cluster files (if sensitive)
 kubeconfig*
 *.kubeconfig
-/mock-data
-/k8s-backup
-/k8s-backup-*
+/k8s-snapshot
 
 # Git specific
 .git/

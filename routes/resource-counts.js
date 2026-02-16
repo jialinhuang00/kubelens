@@ -1,6 +1,6 @@
 const express = require('express');
 const { exec } = require('child_process');
-const mockK8s = require('../mock-k8s');
+const snapshotK8s = require('../snapshot-handler');
 
 const router = express.Router();
 
@@ -13,9 +13,9 @@ router.get('/resource-counts', (req, res) => {
     return res.status(400).json({ error: 'namespace query parameter is required' });
   }
 
-  // Mock mode: count from backup YAML files
-  if (req.query.mock === 'true') {
-    const counts = mockK8s.getResourceCounts(namespace);
+  // Snapshot mode: count from backup YAML files
+  if (req.query.snapshot === 'true') {
+    const counts = snapshotK8s.getResourceCounts(namespace);
     return res.json({ success: true, counts });
   }
 

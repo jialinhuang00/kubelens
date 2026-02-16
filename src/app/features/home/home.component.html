@@ -1,0 +1,49 @@
+<div class="home">
+  <h1 class="title">kubecmds-viz</h1>
+  <p class="subtitle">Kubernetes Commands Visualized</p>
+
+  <!-- Mode toggle -->
+  <div class="mode-toggle">
+    <button class="mode-btn"
+      [class.active]="!dataModeService.isSnapshotMode()"
+      [disabled]="!dataModeService.realtimeAvailable()"
+      [title]="dataModeService.realtimeAvailable()
+        ? 'kubectl ' + dataModeService.kubectlVersion()
+        : 'kubectl not available'"
+      (click)="dataModeService.setSnapshotMode(false)">
+      Realtime
+    </button>
+    <button class="mode-btn"
+      [class.active]="dataModeService.isSnapshotMode()"
+      [disabled]="!dataModeService.snapshotAvailable()"
+      [title]="dataModeService.snapshotAvailable()
+        ? 'Use cluster snapshot data'
+        : 'No k8s-snapshot directory found'"
+      (click)="dataModeService.setSnapshotMode(true)">
+      Snapshot
+    </button>
+  </div>
+
+  <!-- Availability hints -->
+  @if (!dataModeService.realtimeAvailable() && !dataModeService.snapshotAvailable()) {
+    <p class="hint hint-error">kubectl not available and no snapshot found</p>
+  } @else if (!dataModeService.realtimeAvailable()) {
+    <p class="hint">kubectl not available — using snapshot mode</p>
+  } @else if (!dataModeService.snapshotAvailable()) {
+    <p class="hint">No snapshot found. Run <code>./scripts/k8s-export.sh</code> to dump your cluster.</p>
+  }
+
+  <!-- Navigation cards -->
+  <div class="cards">
+    <a class="card" routerLink="/terminal">
+      <span class="card-icon">&gt;_</span>
+      <span class="card-label">Terminal</span>
+      <span class="card-desc">Execute commands, inspect resources, manage rollouts</span>
+    </a>
+    <a class="card" routerLink="/universe">
+      <span class="card-icon">&#9678;</span>
+      <span class="card-label">Graph</span>
+      <span class="card-desc">GPU-accelerated resource topology visualization</span>
+    </a>
+  </div>
+</div>

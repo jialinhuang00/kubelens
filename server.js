@@ -13,9 +13,9 @@ const io = new Server(server, {
 });
 const PORT = 3000;
 
-// Always load mock-k8s module — per-request mock mode via ?mock=true
-require('./mock-k8s');
-console.log('mock-k8s loaded — use ?mock=true on requests to enable mock mode');
+// Always load snapshot handler — per-request snapshot mode via ?snapshot=true
+require('./snapshot-handler');
+console.log('snapshot-handler loaded — use ?snapshot=true on requests to enable snapshot mode');
 
 app.use(cors({
   origin: ['http://localhost:4200', 'https://kubevisualize.jialin00.com'],

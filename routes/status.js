@@ -49,15 +49,18 @@ router.get('/health', (req, res) => {
   });
 });
 
-// GET /api/mock-status
-router.get('/mock-status', (req, res) => {
-  const mockDataDir = path.join(__dirname, '..', 'mock-data');
+// GET /api/snapshot-status
+router.get('/snapshot-status', (req, res) => {
+  const backupDir = path.join(__dirname, '..', 'k8s-snapshot');
   let available = false;
 
   try {
-    if (fs.existsSync(mockDataDir)) {
-      const entries = fs.readdirSync(mockDataDir);
-      available = entries.some(e => e.endsWith('.yaml'));
+    if (fs.existsSync(backupDir)) {
+      const entries = fs.readdirSync(backupDir);
+      available = entries.some(e => {
+        const full = path.join(backupDir, e);
+        return fs.statSync(full).isDirectory() && !e.startsWith('.');
+      });
     }
   } catch (e) {
     // directory doesn't exist or can't be read

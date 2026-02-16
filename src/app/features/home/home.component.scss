@@ -1,0 +1,129 @@
+.home {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #e8b866;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+}
+
+// Mode toggle
+.mode-toggle {
+  display: flex;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 0.75rem;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  margin-bottom: 2rem;
+
+  code {
+    font-family: 'IBM Plex Mono', monospace;
+    color: #e8b866;
+    background: rgba(232, 184, 102, 0.1);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+  }
+
+  &.hint-error {
+    color: #e07070;
+    opacity: 1;
+  }
+}
+
+.mode-btn {
+  padding: 6px 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover:not(:disabled) {
+    color: var(--text-primary);
+    background: rgba(232, 184, 102, 0.08);
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  &.active {
+    color: #0e0b08;
+    background: #e8b866;
+  }
+}
+
+// Navigation cards
+.cards {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 220px;
+  padding: 2rem 1.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: #e8b866;
+    box-shadow: 0 0 20px rgba(232, 184, 102, 0.15);
+    transform: translateY(-2px);
+  }
+}
+
+.card-icon {
+  font-size: 2rem;
+  font-family: 'IBM Plex Mono', monospace;
+  color: #e8b866;
+  line-height: 1;
+}
+
+.card-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.card-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.4;
+}

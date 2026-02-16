@@ -23,7 +23,7 @@ import { ExecutionDialogComponent } from '../../../shared/components/execution-d
 import { ExecutionDialogService } from '../../../core/services/execution-dialog.service';
 import { ExecutionGroupGenerator } from '../../../shared/constants/execution-groups.constants';
 import { OutputData } from '../../../shared/interfaces/output-data.interface';
-import { MockModeService } from '../../../core/services/mock-mode.service';
+import { DataModeService } from '../../../core/services/data-mode.service';
 import { EcrService } from '../../k8s/services/ecr.service';
 
 // Resource config: defines all resource types, their labels, colors, and template generators
@@ -56,7 +56,7 @@ export class DashboardComponent implements OnInit {
   private rolloutStateService = inject(RolloutStateService);
   private executionContext = inject(ExecutionContextService);
   private dialogService = inject(ExecutionDialogService);
-  protected mockModeService = inject(MockModeService);
+  protected dataModeService = inject(DataModeService);
   protected ecrService = inject(EcrService);
 
   protected readonly title = signal('kubecmds-viz');
@@ -245,7 +245,7 @@ export class DashboardComponent implements OnInit {
   }
 
   async ngOnInit() {
-    this.mockModeService.checkAvailability();
+    this.dataModeService.checkAvailability();
     await this.namespaceService.loadNamespaces();
 
     this.rolloutStateService.rolloutAction$.subscribe(event => {
