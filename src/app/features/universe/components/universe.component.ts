@@ -71,6 +71,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly expandedPods = signal<GraphNode[]>([]);
   readonly expandedWorkloadId = signal<string | null>(null);
   private readonly WORKLOAD_KINDS = new Set<K8sResourceKind>(['Deployment', 'StatefulSet', 'DaemonSet', 'CronJob']);
+  private dataCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   // Namespace list for overview panel
   readonly namespaceList = computed(() => {
@@ -203,20 +204,28 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     // Wait for data to load, then init graph
-    const checkData = setInterval(() => {
+    this.dataCheckInterval = setInterval(() => {
       const data = this.graphData.data();
       if (data && this.canvasRef) {
-        clearInterval(checkData);
+        this.clearDataCheck();
         this.initGraph(data);
       }
       if (this.error()) {
-        clearInterval(checkData);
+        this.clearDataCheck();
       }
     }, 100);
   }
 
   ngOnDestroy(): void {
+    this.clearDataCheck();
     this.graphLayout.destroy();
+  }
+
+  private clearDataCheck(): void {
+    if (this.dataCheckInterval) {
+      clearInterval(this.dataCheckInterval);
+      this.dataCheckInterval = null;
+    }
   }
 
   private initGraph(data: import('../models/graph.models').GraphDataResponse): void {
@@ -327,16 +336,17 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.dataModeService.setSnapshotMode(snapshot);
     this.graphLayout.destroy();
     this.graphData.fetchGraph();
-    const checkData = setInterval(() => {
+    this.clearDataCheck();
+    this.dataCheckInterval = setInterval(() => {
       const data = this.graphData.data();
       if (data && this.canvasRef) {
-        clearInterval(checkData);
+        this.clearDataCheck();
         this.clearSelection();
         this.focusedNamespace.set(null);
         this.initGraph(data);
       }
       if (this.error()) {
-        clearInterval(checkData);
+        this.clearDataCheck();
       }
     }, 100);
   }

@@ -1,4 +1,5 @@
-import { Component, signal, inject, OnInit, effect, computed } from '@angular/core';
+import { Component, signal, inject, OnInit, effect, computed, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -58,6 +59,7 @@ export class DashboardComponent implements OnInit {
   private dialogService = inject(ExecutionDialogService);
   protected dataModeService = inject(DataModeService);
   protected ecrService = inject(EcrService);
+  private destroyRef = inject(DestroyRef);
 
   protected readonly title = signal('kubecmds-viz');
 
@@ -240,7 +242,9 @@ export class DashboardComponent implements OnInit {
     this.dataModeService.checkAvailability();
     await this.namespaceService.loadNamespaces();
 
-    this.rolloutStateService.rolloutAction$.subscribe(event => {
+    this.rolloutStateService.rolloutAction$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(event => {
       console.log(`Dashboard received rollout action: ${event.action} for ${event.deployment} in ${event.namespace}`);
     });
   }
