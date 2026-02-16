@@ -6,6 +6,7 @@
 #   ./scripts/k8s-export.sh -n my-namespace           # single namespace
 #   ./scripts/k8s-export.sh -n demo -n kube-system   # multiple namespaces
 #   ./scripts/k8s-export.sh --cluster-scoped           # also export cluster-scoped resources
+#   ./scripts/k8s-export.sh --resume                    # skip already-exported files
 
 set -euo pipefail
 
@@ -13,6 +14,7 @@ set -euo pipefail
 NAMESPACES=()
 ALL_NS=true
 CLUSTER_SCOPED=false
+RESUME=false
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BASE_DIR="${SCRIPT_DIR}/../k8s-snapshot"
 
@@ -58,6 +60,8 @@ while [[ $# -gt 0 ]]; do
       NAMESPACES+=("$2"); ALL_NS=false; shift 2 ;;
     --cluster-scoped)
       CLUSTER_SCOPED=true; shift ;;
+    --resume)
+      RESUME=true; shift ;;
     -h|--help)
       head -9 "$0" | tail -7; exit 0 ;;
     *)
@@ -86,8 +90,25 @@ echo "Export target:   $BASE_DIR"
 echo "Namespaces:      ${NAMESPACES[*]}"
 echo ""
 
-# Clean previous snapshot
-rm -rf "$BASE_DIR"
+# Clean previous snapshot (skip if resuming)
+if [[ "$RESUME" == "true" ]]; then
+  rm -f "${BASE_DIR}/.export-complete"
+  # Filter out completed namespaces (those with .done marker)
+  ALL_COUNT=${#NAMESPACES[@]}
+  REMAINING=()
+  for ns in "${NAMESPACES[@]}"; do
+    if [[ -f "${BASE_DIR}/${ns}/.done" ]]; then
+      echo "=== Namespace: $ns === (complete, skipping)"
+    else
+      REMAINING+=("$ns")
+    fi
+  done
+  echo "Resuming: ${#REMAINING[@]} remaining out of $ALL_COUNT namespaces"
+  echo ""
+  NAMESPACES=("${REMAINING[@]}")
+else
+  rm -rf "$BASE_DIR"
+fi
 
 # --- Export namespaced resources ---
 for ns in "${NAMESPACES[@]}"; do
@@ -96,23 +117,38 @@ for ns in "${NAMESPACES[@]}"; do
   mkdir -p "$NS_DIR"
 
   for resource in "${NS_RESOURCES[@]}"; do
+    OUT_FILE="${NS_DIR}/${resource}.yaml"
+    if [[ "$RESUME" == "true" && -f "$OUT_FILE" ]]; then
+      echo "  $resource (exists, skipped)"
+      continue
+    fi
     count=$(kubectl get "$resource" -n "$ns" --no-headers 2>/dev/null | wc -l | tr -d ' ')
     if [[ "$count" -gt 0 ]]; then
       echo "  $resource ($count objects)"
-      kubectl get "$resource" -n "$ns" -o yaml > "${NS_DIR}/${resource}.yaml"
+      kubectl get "$resource" -n "$ns" -o yaml > "${OUT_FILE}.tmp" && mv "${OUT_FILE}.tmp" "$OUT_FILE"
     fi
   done
 
   # Export pod YAML + reference snapshots
-  count=$(kubectl get pods -n "$ns" --no-headers 2>/dev/null | wc -l | tr -d ' ')
-  if [[ "$count" -gt 0 ]]; then
-    echo "  pods ($count objects)"
-    kubectl get pods -n "$ns" -o yaml > "${NS_DIR}/pods.yaml"
+  if [[ "$RESUME" == "true" && -f "${NS_DIR}/pods.yaml" ]]; then
+    echo "  pods (exists, skipped)"
+  else
+    count=$(kubectl get pods -n "$ns" --no-headers 2>/dev/null | wc -l | tr -d ' ')
+    if [[ "$count" -gt 0 ]]; then
+      echo "  pods ($count objects)"
+      kubectl get pods -n "$ns" -o yaml > "${NS_DIR}/pods.yaml.tmp" && mv "${NS_DIR}/pods.yaml.tmp" "${NS_DIR}/pods.yaml"
+    fi
   fi
-  kubectl get pods -n "$ns" -o wide > "${NS_DIR}/pods-snapshot.txt" 2>/dev/null || true
-  kubectl get pods -n "$ns" -o custom-columns="POD:metadata.name,IMAGE:spec.containers[*].image" \
-    > "${NS_DIR}/pods-images.txt" 2>/dev/null || true
+  if [[ "$RESUME" != "true" || ! -f "${NS_DIR}/pods-snapshot.txt" ]]; then
+    kubectl get pods -n "$ns" -o wide > "${NS_DIR}/pods-snapshot.txt.tmp" 2>/dev/null && mv "${NS_DIR}/pods-snapshot.txt.tmp" "${NS_DIR}/pods-snapshot.txt" || true
+  fi
+  if [[ "$RESUME" != "true" || ! -f "${NS_DIR}/pods-images.txt" ]]; then
+    kubectl get pods -n "$ns" -o custom-columns="POD:metadata.name,IMAGE:spec.containers[*].image" \
+      > "${NS_DIR}/pods-images.txt.tmp" 2>/dev/null && mv "${NS_DIR}/pods-images.txt.tmp" "${NS_DIR}/pods-images.txt" || true
+  fi
 
+  # Mark namespace as complete
+  touch "${NS_DIR}/.done"
   echo ""
 done
 
@@ -123,17 +159,21 @@ if [[ "$CLUSTER_SCOPED" == "true" ]]; then
   mkdir -p "$CLUSTER_DIR"
 
   for resource in "${CLUSTER_RESOURCES[@]}"; do
+    OUT_FILE="${CLUSTER_DIR}/${resource}.yaml"
     count=$(kubectl get "$resource" --no-headers 2>/dev/null | wc -l | tr -d ' ')
     if [[ "$count" -gt 0 ]]; then
       echo "  $resource ($count objects)"
-      kubectl get "$resource" -o yaml > "${CLUSTER_DIR}/${resource}.yaml"
+      kubectl get "$resource" -o yaml > "${OUT_FILE}.tmp" && mv "${OUT_FILE}.tmp" "$OUT_FILE"
     fi
   done
   echo ""
 fi
 
+# --- Mark complete ---
+touch "${BASE_DIR}/.export-complete"
+
 # --- Summary ---
-TOTAL_FILES=$(find "$BASE_DIR" -type f | wc -l | tr -d ' ')
+TOTAL_FILES=$(find "$BASE_DIR" -type f ! -name '.export-complete' ! -name '.done' ! -name '*.tmp' | wc -l | tr -d ' ')
 TOTAL_SIZE=$(du -sh "$BASE_DIR" | cut -f1)
 echo "Done! Exported $TOTAL_FILES files ($TOTAL_SIZE) to k8s-snapshot/"
 echo ""

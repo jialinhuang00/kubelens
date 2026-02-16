@@ -95,6 +95,21 @@
 
 .ns-panel {
   min-width: 180px;
+
+  &.ns-hint {
+    border: 1.5px solid rgba(232, 184, 102, 0.5);
+    box-shadow: 0 0 8px rgba(232, 184, 102, 0.2);
+    animation: ns-pulse 2s ease-in-out infinite;
+
+    .panel-label {
+      color: #e8b866;
+    }
+  }
+}
+
+@keyframes ns-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(232, 184, 102, 0.2); }
+  50% { box-shadow: 0 0 14px rgba(232, 184, 102, 0.4); }
 }
 
 .panel-header {
@@ -192,6 +207,11 @@
 }
 
 // --- Resource book spines ---
+
+.resource-spine-wrapper.spine-disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
 
 .resource-spine-wrapper {
   display: flex;

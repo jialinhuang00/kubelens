@@ -15,7 +15,7 @@
     </button>
     <button class="mode-btn"
       [class.active]="dataModeService.isSnapshotMode()"
-      [disabled]="!dataModeService.snapshotAvailable()"
+      [disabled]="!dataModeService.snapshotAvailable() || exportService.isRunning()"
       [title]="dataModeService.snapshotAvailable()
         ? 'Use cluster snapshot data'
         : 'No k8s-snapshot directory found'"
@@ -24,13 +24,61 @@
     </button>
   </div>
 
-  <!-- Availability hints -->
-  @if (!dataModeService.realtimeAvailable() && !dataModeService.snapshotAvailable()) {
-    <p class="hint hint-error">kubectl not available and no snapshot found</p>
-  } @else if (!dataModeService.realtimeAvailable()) {
-    <p class="hint">kubectl not available — using snapshot mode</p>
-  } @else if (!dataModeService.snapshotAvailable()) {
-    <p class="hint">No snapshot found. Run <code>./scripts/k8s-export.sh</code> to dump your cluster.</p>
+  <!-- Export panel — always takes priority -->
+  @if (exportService.isRunning()) {
+    <div class="export-panel export-panel-lg">
+      <div class="export-header">
+        <span class="export-tip">{{ exportService.tip() }}</span>
+        <button class="export-cancel" (click)="pauseExport()">Pause</button>
+      </div>
+      @if (exportService.currentNamespace()) {
+        <p class="export-ns">
+          namespace: <strong>{{ exportService.currentNamespace() }}</strong>@if (exportService.currentResource()) {<span>, writing... {{ exportService.currentResource() }}</span>}
+        </p>
+      }
+      <div class="progress-bar">
+        <div class="progress-fill animating" [style.width.%]="exportService.progress()"></div>
+      </div>
+      <div class="export-stats">
+        <span>{{ exportService.completedNs() }} / {{ exportService.totalNs() || '?' }} namespaces</span>
+        @if (exportService.eta()) {
+          <span>{{ exportService.eta() }}</span>
+        }
+        <span>{{ exportService.fileCount() }} files</span>
+      </div>
+    </div>
+  } @else if (exportService.paused()) {
+    <div class="export-panel export-paused">
+      <div class="export-header">
+        <span class="export-label">Paused</span>
+      </div>
+      <div class="export-stats">
+        <span>{{ exportService.fileCount() }} files exported</span>
+      </div>
+      <button class="export-btn" (click)="resumeExport()">Resume</button>
+    </div>
+  } @else if (exportService.done()) {
+    <div class="export-panel export-done">
+      <p class="export-success">Export complete — {{ exportService.fileCount() }} files exported</p>
+      <button class="export-btn" (click)="onExportDone()">Continue</button>
+    </div>
+  } @else if (exportService.error()) {
+    <div class="export-panel">
+      <p class="hint hint-error">Export failed: {{ exportService.error() }}</p>
+      <button class="export-btn" (click)="startExport()">Retry</button>
+    </div>
+  } @else {
+    <!-- Availability hints — only when no export activity -->
+    @if (!dataModeService.realtimeAvailable() && !dataModeService.snapshotAvailable()) {
+      <p class="hint hint-error">kubectl not available and no snapshot found</p>
+    } @else if (!dataModeService.realtimeAvailable()) {
+      <p class="hint">kubectl not available — using snapshot mode</p>
+    } @else if (!dataModeService.snapshotAvailable()) {
+      <div class="export-panel">
+        <p class="hint">No snapshot found. Export your cluster data to get started.</p>
+        <button class="export-btn" (click)="startExport()">Export Snapshot</button>
+      </div>
+    }
   }
 
   <!-- Navigation cards -->

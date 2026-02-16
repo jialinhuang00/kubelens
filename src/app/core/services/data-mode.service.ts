@@ -1,10 +1,12 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { K8sExportService } from './k8s-export.service';
 
 @Injectable({ providedIn: 'root' })
 export class DataModeService {
   private http = inject(HttpClient);
+  private exportService = inject(K8sExportService);
 
   isSnapshotMode = signal(false);
   snapshotAvailable = signal(false);
@@ -59,6 +61,7 @@ export class DataModeService {
 
   setSnapshotMode(enabled: boolean): void {
     if (enabled && !this.snapshotAvailable()) return;
+    if (enabled && this.exportService.isRunning()) return;
     if (!enabled && !this.realtimeAvailable()) return;
     this.isSnapshotMode.set(enabled);
   }

@@ -14,7 +14,7 @@
   <div class="section-body" [class.collapsed]="isCollapsed()">
     <div class="column-view">
       <!-- Panel 1: Namespace (always expanded, scrollable list) -->
-      <div class="column-panel ns-panel">
+      <div class="column-panel ns-panel" [class.ns-hint]="!selectedNamespace">
         <div class="panel-header">
           <span class="panel-label">Namespace</span>
           <input
@@ -44,11 +44,14 @@
 
       <!-- Resource book spines: vertical tabs, click to expand -->
       @for (res of resources; track res.key) {
-        <div class="resource-spine-wrapper" [class.expanded]="expandedResource() === res.key">
+        <div class="resource-spine-wrapper"
+             [class.expanded]="expandedResource() === res.key"
+             [class.spine-disabled]="!selectedNamespace">
           <!-- Spine tab (vertical label) -->
           <button class="resource-spine"
                   [class.has-data]="getSpineCount(res) > 0"
                   [class.has-selection]="res.selected !== ''"
+                  [disabled]="!selectedNamespace"
                   (click)="toggleResource(res.key)">
             <span class="spine-label">{{ res.label }}</span>
             @if (getSpineCount(res) > 0) {

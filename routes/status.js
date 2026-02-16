@@ -2,6 +2,7 @@ const express = require('express');
 const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const fsp = fs.promises;
 
 const router = express.Router();
 
@@ -50,19 +51,14 @@ router.get('/health', (req, res) => {
 });
 
 // GET /api/snapshot-status
-router.get('/snapshot-status', (req, res) => {
+router.get('/snapshot-status', async (req, res) => {
   const backupDir = path.join(__dirname, '..', 'k8s-snapshot');
   let available = false;
 
   try {
-    if (fs.existsSync(backupDir)) {
-      const entries = fs.readdirSync(backupDir);
-      available = entries.some(e => {
-        const full = path.join(backupDir, e);
-        return fs.statSync(full).isDirectory() && !e.startsWith('.');
-      });
-    }
-  } catch (e) {
+    const entries = await fsp.readdir(backupDir, { withFileTypes: true });
+    available = entries.some(e => e.isDirectory() && !e.name.startsWith('.'));
+  } catch {
     // directory doesn't exist or can't be read
   }
 

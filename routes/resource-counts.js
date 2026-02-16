@@ -1,5 +1,7 @@
 const express = require('express');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
+const util = require('util');
+const execFileAsync = util.promisify(execFile);
 const snapshotK8s = require('../snapshot-handler');
 
 const router = express.Router();
@@ -7,7 +9,7 @@ const router = express.Router();
 // GET /api/resource-counts?namespace=X
 // Returns { resourceType: count } for all resource types in a namespace.
 // Used by book spine badges to show counts without loading full item lists.
-router.get('/resource-counts', (req, res) => {
+router.get('/resource-counts', async (req, res) => {
   const namespace = req.query.namespace;
   if (!namespace) {
     return res.status(400).json({ error: 'namespace query parameter is required' });
@@ -42,19 +44,25 @@ router.get('/resource-counts', (req, res) => {
     'httproutes.gateway.networking.k8s.io': 'httproutes',
   };
 
-  const counts = {};
-  let completed = 0;
-
-  for (const type of resourceTypes) {
-    const cmd = `kubectl get ${type} -n ${namespace} --no-headers 2>/dev/null | wc -l`;
-    exec(cmd, { timeout: 10000 }, (error, stdout) => {
-      const key = keyMap[type] || type;
-      counts[key] = error ? 0 : parseInt(stdout.trim()) || 0;
-      completed++;
-      if (completed === resourceTypes.length) {
-        res.json({ success: true, counts });
-      }
-    });
+  try {
+    const results = await Promise.all(
+      resourceTypes.map(async (type) => {
+        const key = keyMap[type] || type;
+        try {
+          const { stdout } = await execFileAsync(
+            'kubectl', ['get', type, '-n', namespace, '--no-headers'],
+            { timeout: 10000 }
+          );
+          return [key, stdout.trim().split('\n').filter(l => l).length];
+        } catch {
+          return [key, 0];
+        }
+      })
+    );
+    const counts = Object.fromEntries(results);
+    res.json({ success: true, counts });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
