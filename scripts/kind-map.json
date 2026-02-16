@@ -1,0 +1,22 @@
+{
+  "Deployment": "deployments",
+  "Service": "services",
+  "ConfigMap": "configmaps",
+  "Secret": "secrets",
+  "Ingress": "ingresses",
+  "StatefulSet": "statefulsets",
+  "DaemonSet": "daemonsets",
+  "CronJob": "cronjobs",
+  "Job": "jobs",
+  "ServiceAccount": "serviceaccounts",
+  "Role": "roles",
+  "RoleBinding": "rolebindings",
+  "PersistentVolumeClaim": "persistentvolumeclaims",
+  "NetworkPolicy": "networkpolicies",
+  "HorizontalPodAutoscaler": "horizontalpodautoscalers",
+  "PodDisruptionBudget": "poddisruptionbudgets",
+  "Endpoints": "endpoints",
+  "Gateway": "gateways.gateway.networking.k8s.io",
+  "HTTPRoute": "httproutes.gateway.networking.k8s.io",
+  "TCPRoute": "tcproutes.gateway.networking.k8s.io"
+}
