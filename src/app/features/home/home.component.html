@@ -26,6 +26,7 @@
 
   <!-- Export panel — always takes priority -->
   @if (exportService.isRunning()) {
+    <div class="export-backdrop"></div>
     <div class="export-panel export-panel-lg">
       <div class="export-header">
         <span class="export-tip">{{ exportService.tip() }}</span>
@@ -33,8 +34,16 @@
       </div>
       @if (exportService.currentNamespace()) {
         <p class="export-ns">
-          namespace: <strong>{{ exportService.currentNamespace() }}</strong>@if (exportService.currentResource()) {<span>, writing... {{ exportService.currentResource() }}</span>}
+          namespace: <strong>{{ exportService.currentNamespace() }}</strong>
         </p>
+        @for (res of showAllResources ? exportService.activeResources() : exportService.activeResources().slice(0, 5); track res) {
+          <p class="export-resource">writing... {{ res }}</p>
+        }
+        @if (exportService.activeResources().length > 5) {
+          <button class="export-show-more" (click)="showAllResources = !showAllResources">
+            {{ showAllResources ? 'show less' : '+ ' + (exportService.activeResources().length - 5) + ' more...' }}
+          </button>
+        }
       }
       <div class="progress-bar">
         <div class="progress-fill animating" [style.width.%]="exportService.progress()"></div>

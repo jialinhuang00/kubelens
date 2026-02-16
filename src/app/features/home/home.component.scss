@@ -128,8 +128,24 @@
   line-height: 1.4;
 }
 
+// Export backdrop — dims everything behind the active export panel
+.export-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 6, 4, 0.6);
+  z-index: 10;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 // Export panel
 .export-panel {
+  position: relative;
+  z-index: 11;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -141,17 +157,28 @@
     padding: 1.5rem 2rem;
     gap: 0.75rem;
   }
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
+  background: rgba(50, 40, 26, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(232, 184, 102, 0.35);
   border-radius: 8px;
   margin-bottom: 2rem;
+  box-shadow:
+    0 0 30px rgba(232, 184, 102, 0.12),
+    0 4px 24px rgba(0, 0, 0, 0.4);
 
   &.export-done {
-    border-color: #6dca82;
+    border-color: rgba(109, 202, 130, 0.5);
+    box-shadow:
+      0 0 30px rgba(109, 202, 130, 0.12),
+      0 4px 24px rgba(0, 0, 0, 0.4);
   }
 
   &.export-paused {
-    border-color: #d4956a;
+    border-color: rgba(212, 149, 106, 0.5);
+    box-shadow:
+      0 0 30px rgba(212, 149, 106, 0.12),
+      0 4px 24px rgba(0, 0, 0, 0.4);
   }
 }
 
@@ -171,15 +198,15 @@
 
 .export-tip {
   font-size: 11px;
-  color: var(--text-secondary);
+  color: #d4c8a8;
   font-style: italic;
 }
 
 .export-cancel {
   font-size: 10px;
-  color: var(--text-secondary);
+  color: #c8bca0;
   background: transparent;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid rgba(200, 188, 160, 0.3);
   border-radius: 4px;
   padding: 2px 8px;
   cursor: pointer;
@@ -193,13 +220,79 @@
 
 .export-ns {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: #c8bca0;
   font-family: 'IBM Plex Mono', monospace;
   margin: 0;
 
   strong {
-    color: #e8b866;
+    color: #f0c870;
     font-weight: 600;
+  }
+}
+
+.export-resource {
+  font-size: 11px;
+  color: #b8ac90;
+  font-family: 'IBM Plex Mono', monospace;
+  margin: 0;
+  animation: slideIn 0.3s ease-out;
+  position: relative;
+  padding-left: 20px;
+
+  &::before {
+    content: '📄';
+    position: absolute;
+    left: 0;
+    font-size: 10px;
+    animation: paperFly 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-12px) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(0);
+  }
+}
+
+@keyframes paperFly {
+  0% {
+    transform: translateX(0) translateY(0) rotate(0deg);
+    opacity: 0.4;
+  }
+  15% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(6px) translateY(-5px) rotate(8deg);
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(12px) translateY(0) rotate(0deg);
+    opacity: 0.4;
+  }
+}
+
+.export-show-more {
+  font-size: 10px;
+  color: #e8b866;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+
+  &:hover {
+    opacity: 1;
   }
 }
 
@@ -244,7 +337,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 10px;
-  color: var(--text-secondary);
+  color: #b8ac90;
   font-family: 'IBM Plex Mono', monospace;
 }
 

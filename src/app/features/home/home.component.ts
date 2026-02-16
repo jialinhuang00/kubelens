@@ -13,6 +13,7 @@ import { K8sExportService } from '../../core/services/k8s-export.service';
 export class HomeComponent implements OnInit {
   dataModeService = inject(DataModeService);
   exportService = inject(K8sExportService);
+  showAllResources = false;
   ngOnInit() {
     this.dataModeService.checkAvailability();
     this.exportService.checkState();

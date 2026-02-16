@@ -8,7 +8,7 @@ interface ExportProgress {
   totalNamespaces: number;
   completedNamespaces: number;
   currentNamespace: string;
-  currentResource: string;
+  activeResources: string[];
   fileCount: number;
   etaSeconds: number | null;
   error: string | null;
@@ -38,7 +38,7 @@ export class K8sExportService {
   totalNs = signal(0);
   completedNs = signal(0);
   currentNamespace = signal('');
-  currentResource = signal('');
+  activeResources = signal<string[]>([]);
   fileCount = signal(0);
   eta = signal('');
   progress = signal(0);
@@ -109,7 +109,7 @@ export class K8sExportService {
     this.totalNs.set(data.totalNamespaces);
     this.completedNs.set(data.completedNamespaces);
     this.currentNamespace.set(data.currentNamespace);
-    this.currentResource.set(data.currentResource);
+    this.activeResources.set(data.activeResources);
     this.fileCount.set(data.fileCount);
     this.eta.set(data.etaSeconds != null ? this.formatEta(data.etaSeconds) : '');
     this.error.set(data.error);
