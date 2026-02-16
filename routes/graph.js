@@ -2,7 +2,9 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const yaml = require('js-yaml');
-const { execSync } = require('child_process');
+const { execFile } = require('child_process');
+const util = require('util');
+const execFileAsync = util.promisify(execFile);
 
 const router = express.Router();
 
@@ -60,15 +62,16 @@ function getItemsFromSnapshot(nsDir, resourceKey) {
 
 // --- Realtime (kubectl) helpers ---
 
-function execKubectl(args) {
+async function execKubectl(args) {
   try {
-    const result = execSync(`kubectl ${args}`, {
+    const argList = args.split(/\s+/);
+    const { stdout } = await execFileAsync('kubectl', argList, {
       encoding: 'utf8',
       timeout: 30000,
       maxBuffer: 50 * 1024 * 1024,
     });
-    const bytes = Buffer.byteLength(result, 'utf8');
-    const parsed = JSON.parse(result);
+    const bytes = Buffer.byteLength(stdout, 'utf8');
+    const parsed = JSON.parse(stdout);
     console.log(`[graph] kubectl ${args.split(' -')[0]}: ${(bytes / 1024).toFixed(1)}KB, ${parsed.items?.length ?? 0} items`);
     return parsed;
   } catch (e) {
@@ -77,7 +80,7 @@ function execKubectl(args) {
   }
 }
 
-function fetchLiveData() {
+async function fetchLiveData() {
   const batches = [
     { resources: 'deployments,statefulsets,daemonsets,cronjobs', keys: ['deployments', 'statefulsets', 'daemonsets', 'cronjobs'] },
     { resources: 'services,configmaps,ingresses', keys: ['services', 'configmaps', 'ingresses'] },
@@ -135,14 +138,14 @@ function fetchLiveData() {
     }
   }
 
-  for (const batch of batches) {
-    const data = execKubectl(`get ${batch.resources} -A -o json`);
-    ingest(data, batch.keys);
-  }
+  // Run all kubectl commands in parallel — no more blocking the event loop
+  const allBatches = [...batches, ...optionalBatches];
+  const results = await Promise.all(
+    allBatches.map(batch => execKubectl(`get ${batch.resources} -A -o json`))
+  );
 
-  for (const batch of optionalBatches) {
-    const data = execKubectl(`get ${batch.resources} -A -o json`);
-    ingest(data, batch.keys);
+  for (let i = 0; i < allBatches.length; i++) {
+    ingest(results[i], allBatches[i].keys);
   }
 
   return { nsData, namespaces: [...allNamespaces] };
@@ -521,43 +524,48 @@ function buildGraph(getItemsFn, namespaceList) {
 }
 
 // GET /api/graph
-router.get('/graph', (req, res) => {
+router.get('/graph', async (req, res) => {
   const isSnapshot = req.query.snapshot === 'true';
 
-  if (isSnapshot) {
-    const rootDir = path.join(__dirname, '..');
-    const localBackup = path.join(rootDir, 'k8s-snapshot');
-    const fallbackPath = process.env.K8S_SNAPSHOT_PATH || localBackup;
+  try {
+    if (isSnapshot) {
+      const rootDir = path.join(__dirname, '..');
+      const localBackup = path.join(rootDir, 'k8s-snapshot');
+      const fallbackPath = process.env.K8S_SNAPSHOT_PATH || localBackup;
 
-    let dataPaths;
-    if (req.query.path) {
-      dataPaths = [path.resolve(req.query.path)];
-    } else if (fs.existsSync(localBackup)) {
-      dataPaths = [localBackup];
+      let dataPaths;
+      if (req.query.path) {
+        dataPaths = [path.resolve(req.query.path)];
+      } else if (fs.existsSync(localBackup)) {
+        dataPaths = [localBackup];
+      } else {
+        dataPaths = [fallbackPath];
+      }
+
+      const namespaceDirs = discoverNamespaces(dataPaths);
+      const namespaceList = [...namespaceDirs.keys()];
+
+      const getItemsFn = (ns, resourceKey) => {
+        const nsDir = namespaceDirs.get(ns);
+        if (!nsDir) return [];
+        return getItemsFromSnapshot(nsDir, resourceKey);
+      };
+
+      res.json(buildGraph(getItemsFn, namespaceList));
     } else {
-      dataPaths = [fallbackPath];
+      const { nsData, namespaces } = await fetchLiveData();
+
+      const getItemsFn = (ns, resourceKey) => {
+        const nsMap = nsData.get(ns);
+        if (!nsMap) return [];
+        return nsMap.get(resourceKey) || [];
+      };
+
+      res.json(buildGraph(getItemsFn, namespaces));
     }
-
-    const namespaceDirs = discoverNamespaces(dataPaths);
-    const namespaceList = [...namespaceDirs.keys()];
-
-    const getItemsFn = (ns, resourceKey) => {
-      const nsDir = namespaceDirs.get(ns);
-      if (!nsDir) return [];
-      return getItemsFromSnapshot(nsDir, resourceKey);
-    };
-
-    res.json(buildGraph(getItemsFn, namespaceList));
-  } else {
-    const { nsData, namespaces } = fetchLiveData();
-
-    const getItemsFn = (ns, resourceKey) => {
-      const nsMap = nsData.get(ns);
-      if (!nsMap) return [];
-      return nsMap.get(resourceKey) || [];
-    };
-
-    res.json(buildGraph(getItemsFn, namespaces));
+  } catch (err) {
+    console.error('[graph] Error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch graph data' });
   }
 });
 
