@@ -323,6 +323,24 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.router.navigate(['/']);
   }
 
+  switchMode(snapshot: boolean): void {
+    this.dataModeService.setSnapshotMode(snapshot);
+    this.graphLayout.destroy();
+    this.graphData.fetchGraph();
+    const checkData = setInterval(() => {
+      const data = this.graphData.data();
+      if (data && this.canvasRef) {
+        clearInterval(checkData);
+        this.clearSelection();
+        this.focusedNamespace.set(null);
+        this.initGraph(data);
+      }
+      if (this.error()) {
+        clearInterval(checkData);
+      }
+    }, 100);
+  }
+
   selectKind(kind: K8sResourceKind): void {
     if (this.selectedKind() === kind) {
       // Toggle off

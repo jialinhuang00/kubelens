@@ -40,15 +40,10 @@
       <span class="card-label">Terminal</span>
       <span class="card-desc">Execute commands, inspect resources, manage rollouts</span>
     </a>
-    <a class="card" routerLink="/universe"
-      [class.disabled]="!dataModeService.isSnapshotMode()"
-      [attr.title]="dataModeService.isSnapshotMode() ? null : 'Graph requires snapshot mode'">
+    <a class="card" routerLink="/universe">
       <span class="card-icon">&#9678;</span>
       <span class="card-label">Graph</span>
       <span class="card-desc">GPU-accelerated resource topology visualization</span>
-      @if (!dataModeService.isSnapshotMode()) {
-        <span class="card-hint">Snapshot mode only</span>
-      }
     </a>
   </div>
 </div>

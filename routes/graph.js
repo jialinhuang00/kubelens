@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const yaml = require('js-yaml');
+const { execSync } = require('child_process');
 
 const router = express.Router();
 
@@ -10,6 +11,8 @@ const FILE_ALIASES = {
   'tcproutes': ['tcproutes.gateway.networking.k8s.io.yaml', 'tcproutes.yaml'],
   'gateways': ['gateways.gateway.networking.k8s.io.yaml', 'gateways.yaml'],
 };
+
+// --- Snapshot helpers ---
 
 function discoverNamespaces(dataPaths) {
   const namespaces = new Map();
@@ -42,7 +45,7 @@ function loadYamlFile(nsDir, filename) {
   }
 }
 
-function getItems(nsDir, resourceKey) {
+function getItemsFromSnapshot(nsDir, resourceKey) {
   const aliases = FILE_ALIASES[resourceKey];
   if (aliases) {
     for (const fname of aliases) {
@@ -54,6 +57,98 @@ function getItems(nsDir, resourceKey) {
   const data = loadYamlFile(nsDir, `${resourceKey}.yaml`);
   return data?.items || [];
 }
+
+// --- Realtime (kubectl) helpers ---
+
+function execKubectl(args) {
+  try {
+    const result = execSync(`kubectl ${args}`, {
+      encoding: 'utf8',
+      timeout: 30000,
+      maxBuffer: 50 * 1024 * 1024,
+    });
+    const bytes = Buffer.byteLength(result, 'utf8');
+    const parsed = JSON.parse(result);
+    console.log(`[graph] kubectl ${args.split(' -')[0]}: ${(bytes / 1024).toFixed(1)}KB, ${parsed.items?.length ?? 0} items`);
+    return parsed;
+  } catch (e) {
+    console.warn(`[graph] kubectl ${args}: ${e.message?.split('\n')[0]}`);
+    return { items: [] };
+  }
+}
+
+function fetchLiveData() {
+  const batches = [
+    { resources: 'deployments,statefulsets,daemonsets,cronjobs', keys: ['deployments', 'statefulsets', 'daemonsets', 'cronjobs'] },
+    { resources: 'services,configmaps,ingresses', keys: ['services', 'configmaps', 'ingresses'] },
+    { resources: 'secrets,serviceaccounts,rolebindings', keys: ['secrets', 'serviceaccounts', 'rolebindings'] },
+    { resources: 'pods', keys: ['pods'] },
+    { resources: 'hpa', keys: ['horizontalpodautoscalers'] },
+    { resources: 'pvc', keys: ['persistentvolumeclaims'] },
+  ];
+
+  const optionalBatches = [
+    { resources: 'gateways.gateway.networking.k8s.io', keys: ['gateways'] },
+    { resources: 'httproutes.gateway.networking.k8s.io', keys: ['httproutes'] },
+    { resources: 'tcproutes.gateway.networking.k8s.io', keys: ['tcproutes'] },
+  ];
+
+  // Map<namespace, Map<resourceKey, items[]>>
+  const nsData = new Map();
+  const allNamespaces = new Set();
+
+  function ingest(data, keys) {
+    const items = data?.items || [];
+    const kindToKey = {};
+    for (const key of keys) {
+      const kindMap = {
+        'deployments': 'Deployment',
+        'statefulsets': 'StatefulSet',
+        'daemonsets': 'DaemonSet',
+        'cronjobs': 'CronJob',
+        'services': 'Service',
+        'configmaps': 'ConfigMap',
+        'ingresses': 'Ingress',
+        'secrets': 'Secret',
+        'serviceaccounts': 'ServiceAccount',
+        'rolebindings': 'RoleBinding',
+        'pods': 'Pod',
+        'horizontalpodautoscalers': 'HorizontalPodAutoscaler',
+        'persistentvolumeclaims': 'PersistentVolumeClaim',
+        'gateways': 'Gateway',
+        'httproutes': 'HTTPRoute',
+        'tcproutes': 'TCPRoute',
+      };
+      if (kindMap[key]) kindToKey[kindMap[key]] = key;
+    }
+
+    for (const item of items) {
+      const ns = item.metadata?.namespace || '_cluster';
+      const kind = item.kind;
+      const key = kindToKey[kind] || keys[0];
+
+      allNamespaces.add(ns);
+      if (!nsData.has(ns)) nsData.set(ns, new Map());
+      const nsMap = nsData.get(ns);
+      if (!nsMap.has(key)) nsMap.set(key, []);
+      nsMap.get(key).push(item);
+    }
+  }
+
+  for (const batch of batches) {
+    const data = execKubectl(`get ${batch.resources} -A -o json`);
+    ingest(data, batch.keys);
+  }
+
+  for (const batch of optionalBatches) {
+    const data = execKubectl(`get ${batch.resources} -A -o json`);
+    ingest(data, batch.keys);
+  }
+
+  return { nsData, namespaces: [...allNamespaces] };
+}
+
+// --- Graph building ---
 
 function extractWorkloadEdges(ns, kind, name, podSpec, addNode, addEdge) {
   if (!podSpec) return;
@@ -118,23 +213,7 @@ function extractWorkloadEdges(ns, kind, name, podSpec, addNode, addEdge) {
   }
 }
 
-// GET /api/graph
-router.get('/graph', (req, res) => {
-  const rootDir = path.join(__dirname, '..');
-  const localBackup = path.join(rootDir, 'k8s-snapshot');
-  const fallbackPath = process.env.K8S_SNAPSHOT_PATH || localBackup;
-
-  let dataPaths;
-  if (req.query.path) {
-    dataPaths = [path.resolve(req.query.path)];
-  } else if (fs.existsSync(localBackup)) {
-    dataPaths = [localBackup];
-  } else {
-    dataPaths = [fallbackPath];
-  }
-
-  const namespaceDirs = discoverNamespaces(dataPaths);
-
+function buildGraph(getItemsFn, namespaceList) {
   const nodes = [];
   const edges = [];
   const nodeIds = new Set();
@@ -152,10 +231,10 @@ router.get('/graph', (req, res) => {
     edges.push({ source, target, type, ...(sourceField && { sourceField }) });
   }
 
-  for (const [ns, nsDir] of namespaceDirs) {
+  for (const ns of namespaceList) {
     allNamespaces.push(ns);
 
-    const deployments = getItems(nsDir, 'deployments');
+    const deployments = getItemsFn(ns, 'deployments');
     for (const d of deployments) {
       const name = d.metadata?.name;
       if (!name) continue;
@@ -166,7 +245,7 @@ router.get('/graph', (req, res) => {
       extractWorkloadEdges(ns, 'Deployment', name, d.spec?.template?.spec, addNode, addEdge);
     }
 
-    const statefulsets = getItems(nsDir, 'statefulsets');
+    const statefulsets = getItemsFn(ns, 'statefulsets');
     for (const s of statefulsets) {
       const name = s.metadata?.name;
       if (!name) continue;
@@ -177,7 +256,7 @@ router.get('/graph', (req, res) => {
       extractWorkloadEdges(ns, 'StatefulSet', name, s.spec?.template?.spec, addNode, addEdge);
     }
 
-    const daemonsets = getItems(nsDir, 'daemonsets');
+    const daemonsets = getItemsFn(ns, 'daemonsets');
     for (const ds of daemonsets) {
       const name = ds.metadata?.name;
       if (!name) continue;
@@ -187,7 +266,7 @@ router.get('/graph', (req, res) => {
       extractWorkloadEdges(ns, 'DaemonSet', name, ds.spec?.template?.spec, addNode, addEdge);
     }
 
-    const cronjobs = getItems(nsDir, 'cronjobs');
+    const cronjobs = getItemsFn(ns, 'cronjobs');
     for (const c of cronjobs) {
       const name = c.metadata?.name;
       if (!name) continue;
@@ -201,7 +280,7 @@ router.get('/graph', (req, res) => {
       ...daemonsets.map(ds => ({ kind: 'DaemonSet', item: ds })),
     ];
 
-    const services = getItems(nsDir, 'services');
+    const services = getItemsFn(ns, 'services');
     for (const svc of services) {
       const svcName = svc.metadata?.name;
       if (!svcName) continue;
@@ -221,7 +300,7 @@ router.get('/graph', (req, res) => {
       }
     }
 
-    const httproutes = getItems(nsDir, 'httproutes');
+    const httproutes = getItemsFn(ns, 'httproutes');
     for (const hr of httproutes) {
       const hrName = hr.metadata?.name;
       if (!hrName) continue;
@@ -248,7 +327,7 @@ router.get('/graph', (req, res) => {
       }
     }
 
-    const tcproutes = getItems(nsDir, 'tcproutes');
+    const tcproutes = getItemsFn(ns, 'tcproutes');
     for (const tr of tcproutes) {
       const trName = tr.metadata?.name;
       if (!trName) continue;
@@ -275,13 +354,13 @@ router.get('/graph', (req, res) => {
       }
     }
 
-    const gateways = getItems(nsDir, 'gateways');
+    const gateways = getItemsFn(ns, 'gateways');
     for (const gw of gateways) {
       const gwName = gw.metadata?.name;
       if (gwName) addNode(ns, 'Gateway', gwName, 'abstract', { gatewayClassName: gw.spec?.gatewayClassName });
     }
 
-    const ingresses = getItems(nsDir, 'ingresses');
+    const ingresses = getItemsFn(ns, 'ingresses');
     for (const ing of ingresses) {
       const ingName = ing.metadata?.name;
       if (!ingName) continue;
@@ -298,7 +377,7 @@ router.get('/graph', (req, res) => {
       }
     }
 
-    const hpas = getItems(nsDir, 'horizontalpodautoscalers');
+    const hpas = getItemsFn(ns, 'horizontalpodautoscalers');
     for (const hpa of hpas) {
       const hpaName = hpa.metadata?.name;
       if (!hpaName) continue;
@@ -316,7 +395,7 @@ router.get('/graph', (req, res) => {
       }
     }
 
-    const rolebindings = getItems(nsDir, 'rolebindings');
+    const rolebindings = getItemsFn(ns, 'rolebindings');
     for (const rb of rolebindings) {
       const rbName = rb.metadata?.name;
       if (!rbName) continue;
@@ -337,7 +416,7 @@ router.get('/graph', (req, res) => {
       }
     }
 
-    const allConfigMaps = getItems(nsDir, 'configmaps');
+    const allConfigMaps = getItemsFn(ns, 'configmaps');
     for (const cm of allConfigMaps) {
       const cmName = cm.metadata?.name;
       if (!cmName) continue;
@@ -350,8 +429,8 @@ router.get('/graph', (req, res) => {
 
   // Parse Pods
   const pods = {};
-  for (const [ns, nsDir] of namespaceDirs) {
-    const podItems = getItems(nsDir, 'pods');
+  for (const ns of namespaceList) {
+    const podItems = getItemsFn(ns, 'pods');
     for (const pod of podItems) {
       const podName = pod.metadata?.name;
       if (!podName) continue;
@@ -427,7 +506,7 @@ router.get('/graph', (req, res) => {
     byKind[n.kind] = (byKind[n.kind] || 0) + 1;
   }
 
-  res.json({
+  return {
     nodes,
     edges,
     pods,
@@ -438,7 +517,48 @@ router.get('/graph', (req, res) => {
       byKind,
       namespaceCount: allNamespaces.length,
     },
-  });
+  };
+}
+
+// GET /api/graph
+router.get('/graph', (req, res) => {
+  const isSnapshot = req.query.snapshot === 'true';
+
+  if (isSnapshot) {
+    const rootDir = path.join(__dirname, '..');
+    const localBackup = path.join(rootDir, 'k8s-snapshot');
+    const fallbackPath = process.env.K8S_SNAPSHOT_PATH || localBackup;
+
+    let dataPaths;
+    if (req.query.path) {
+      dataPaths = [path.resolve(req.query.path)];
+    } else if (fs.existsSync(localBackup)) {
+      dataPaths = [localBackup];
+    } else {
+      dataPaths = [fallbackPath];
+    }
+
+    const namespaceDirs = discoverNamespaces(dataPaths);
+    const namespaceList = [...namespaceDirs.keys()];
+
+    const getItemsFn = (ns, resourceKey) => {
+      const nsDir = namespaceDirs.get(ns);
+      if (!nsDir) return [];
+      return getItemsFromSnapshot(nsDir, resourceKey);
+    };
+
+    res.json(buildGraph(getItemsFn, namespaceList));
+  } else {
+    const { nsData, namespaces } = fetchLiveData();
+
+    const getItemsFn = (ns, resourceKey) => {
+      const nsMap = nsData.get(ns);
+      if (!nsMap) return [];
+      return nsMap.get(resourceKey) || [];
+    };
+
+    res.json(buildGraph(getItemsFn, namespaces));
+  }
 });
 
 module.exports = router;

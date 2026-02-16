@@ -14,17 +14,21 @@
       }
     </div>
 
-    <!-- Mode toggle — graph is always file-based, so Realtime is disabled -->
+    <!-- Mode toggle -->
     <div class="sidebar-mode-toggle">
       <div class="mode-toggle">
         <button
           class="mode-btn"
-          disabled
-          title="Graph visualization uses file data only">
+          [class.mode-active]="!dataModeService.isSnapshotMode()"
+          [disabled]="!dataModeService.realtimeAvailable()"
+          (click)="switchMode(false)">
           Realtime
         </button>
         <button
-          class="mode-btn mode-active">
+          class="mode-btn"
+          [class.mode-active]="dataModeService.isSnapshotMode()"
+          [disabled]="!dataModeService.snapshotAvailable()"
+          (click)="switchMode(true)">
           Snapshot Data
         </button>
       </div>
