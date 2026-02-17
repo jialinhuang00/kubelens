@@ -9,6 +9,7 @@ import { PodService } from '../../k8s/services/pod.service';
 import { SvcService } from '../../k8s/services/svc.service';
 import { GenericResourceService, ResourceType } from '../../k8s/services/generic-resource.service';
 import { KubectlService } from '../../../core/services/kubectl.service';
+import { DashboardExecutorService } from '../services/dashboard-executor.service';
 import { OutputParserService } from '../services/output-parser.service';
 import { TemplateService } from '../services/template.service';
 import { UiStateService } from '../services/ui-state.service';
@@ -50,6 +51,7 @@ export class DashboardComponent implements OnInit {
   private svcService = inject(SvcService);
   private genericResourceService = inject(GenericResourceService);
   private kubectlService = inject(KubectlService);
+  private executor = inject(DashboardExecutorService);
   private outputParserService = inject(OutputParserService);
   private templateService = inject(TemplateService);
   private uiStateService = inject(UiStateService);
@@ -382,14 +384,12 @@ export class DashboardComponent implements OnInit {
 
     const userCommandGroup = ExecutionGroupGenerator.userCommand();
 
-    if (this.kubectlService.shouldUseStream(command)) {
+    if (this.executor.shouldUseStream(command)) {
       await this.executeCommandWithStream(command);
       return;
     }
 
-    await this.executionContext.withGroup(userCommandGroup, async () => {
-      await this.executeCommandNormal(command);
-    });
+    await this.executeCommandNormal(command, userCommandGroup);
   }
 
   executeCustomCommand() {
@@ -482,7 +482,7 @@ export class DashboardComponent implements OnInit {
 
   private async executeCommandWithStream(command: string) {
     try {
-      const streamResponse = await this.kubectlService.executeCommandStream(command);
+      const streamResponse = await this.executor.executeStream(command);
 
       if (!streamResponse.isStreaming || !streamResponse.output$) {
         await this.executeCommandNormal(command);
@@ -551,32 +551,27 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  private async executeCommandNormal(command: string) {
+  private async executeCommandNormal(command: string, executionGroup?: string) {
     this.multipleYamls.set([]);
     this.uiStateService.resetOutputStates();
 
-    let wasCancelled = false;
+    const group = executionGroup || ExecutionGroupGenerator.userCommand();
+    const result = await this.executor.executeNormal(command, group);
 
-    try {
-      const response = await this.kubectlService.executeCommand(command);
+    if (result.cancelled) return;
 
-      if (response.success) {
-        this.parseAndSetOutput(response.stdout, command);
+    if (result.networkError) {
+      this.outputType.set('raw');
+      this.commandOutput.set(`Network error: ${result.networkError}`);
+    } else if (result.response) {
+      if (result.response.success) {
+        this.parseAndSetOutput(result.response.stdout, command);
       } else {
         this.outputType.set('raw');
-        this.commandOutput.set(`Error: ${response.error}`);
-      }
-    } catch (error: any) {
-      if (error.message === 'REQUEST_CANCELLED') {
-        wasCancelled = true;
-        return;
-      }
-      this.outputType.set('raw');
-      this.commandOutput.set(`Network error: ${error.message || error}`);
-    } finally {
-      if (!wasCancelled) {
-        this.isLoading.set(false);
+        this.commandOutput.set(`Error: ${result.response.error}`);
       }
     }
+
+    this.isLoading.set(false);
   }
 }
