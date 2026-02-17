@@ -1,87 +1,104 @@
-# KubecmdsViz
+# kubecmds-viz
 
-A visual interface for executing and visualizing kubectl commands, built with Angular and Express.js.
-
-## Features
-
-- **Interactive Command Templates**: Pre-configured kubectl commands organized by resource type
-- **Dynamic Resource Discovery**: Automatically loads namespaces, deployments, and pods
-- **Smart Output Parsing**: Visualizes tabular data, YAML, JSON, and events
-- **Accordion Sidebar**: Collapsible command categories like database explorers
-- **Namespace-aware**: Templates automatically use selected namespace
+Kubernetes cluster visualization and management tool. Angular frontend + Express backend that supports both **realtime** (live kubectl) and **snapshot** (offline export) modes.
 
 ## Quick Start
-
-### 1. Setup Kubernetes Test Environment
-
-**Optional** - Skip this if you already have kubectl + cluster access
-
-```bash
-bash scripts/cluster-setup.sh
-```
-
-Creates kind cluster with test services. Perfect for demo/testing.
-
-### 2. Start the Application
 
 ```bash
 npm run dev
 ```
 
-This starts both frontend (Angular) and backend (Express) servers. Open `http://localhost:4200` to access the interface.
+Opens at `http://localhost:4200`. Backend runs on port 3000.
 
-> For detailed cluster setup instructions, see [cluster-setup-readme.md](./cluster-setup-readme.md)
+## Data Modes
 
-### 3. Cleanup Environment
+- **Realtime** — executes kubectl commands against a live cluster
+- **Snapshot** — reads from `k8s-snapshot/` directory (exported via the home page or `scripts/k8s-export.sh`)
 
-```bash
-bash scripts/cleanup.sh
+The home page auto-detects available modes and lets you toggle between them.
+
+## Project Structure
+
+```
+├── server.js                  # Express entry point — middleware, route mounting
+├── routes/                    # API route handlers
+│   ├── execute.js             #   POST /api/execute — run kubectl commands
+│   ├── graph.js               #   GET  /api/graph — resource topology (nodes + edges)
+│   ├── k8s-export.js          #   POST/GET /api/k8s-export/* — snapshot export control + progress
+│   ├── resource-counts.js     #   GET  /api/resource-counts — per-namespace resource counts
+│   ├── status.js              #   GET  /api/realtime/ping, /api/snapshot/ping
+│   └── ecr.js                 #   ECR image-related endpoints
+├── utils/
+│   └── snapshot-handler.js    #   Snapshot mode data provider (reads k8s-snapshot/ YAML files)
+├── scripts/                   # CLI tools (bash + node)
+│   ├── k8s-export.sh          #   Dump cluster resources to k8s-snapshot/ (parallel batched kubectl)
+│   ├── split-resources.js     #   Splits combined kubectl JSON output into per-kind YAML files
+│   └── kind-map.json          #   Kind → filename mapping for split-resources.js
+├── src/app/                   # Angular frontend
+│   ├── core/services/         #   Shared services (kubectl, data-mode, export, websocket)
+│   └── features/
+│       ├── home/              #   Landing page — mode toggle, snapshot export UI
+│       ├── dashboard/         #   Command execution terminal
+│       ├── universe/          #   GPU-accelerated resource graph (@cosmograph/cosmos)
+│       └── k8s/               #   K8s resource views
+└── k8s-snapshot/              # Exported cluster data (gitignored)
 ```
 
-This will safely remove the test cluster and optionally clean Docker images.
+### routes/
 
-## Code scaffolding
+Express API handlers, each file exports a router mounted by `server.js`.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+| File | Endpoints | Description |
+|------|-----------|-------------|
+| `execute.js` | `POST /api/execute` | Runs kubectl commands, supports streaming via WebSocket |
+| `graph.js` | `GET /api/graph` | Builds resource topology graph (9 parallel kubectl calls in realtime, YAML parsing in snapshot) |
+| `k8s-export.js` | `POST /api/k8s-export/start`, `GET .../progress`, `POST .../stop` | Spawns `k8s-export.sh`, streams progress via stdout parsing |
+| `resource-counts.js` | `GET /api/resource-counts` | Counts resources per namespace (parallel `execFile`, no shell injection) |
+| `status.js` | `GET /api/realtime/ping`, `GET /api/snapshot/ping` | Kubectl availability check and snapshot completeness check |
+| `ecr.js` | `GET /api/ecr/*` | ECR image listing and profile mapping |
+
+### utils/
+
+| File | Description |
+|------|-------------|
+| `snapshot-handler.js` | Not a router. Provides functions to read snapshot YAML and simulate kubectl responses |
+
+### scripts/
+
+CLI tools for cluster data export. Designed for macOS (bash 3.2 compatible).
+
+| File | Description |
+|------|-------------|
+| `k8s-export.sh` | Main export script. Discovers namespaces, fetches resources in 4 parallel batches per namespace, supports `--resume` and `--cluster-scoped` |
+| `split-resources.js` | Node helper piped from kubectl. Reads combined JSON from stdin, splits by Kind, writes per-kind `.yaml` files |
+| `kind-map.json` | Maps Kubernetes Kind names (e.g. `Deployment`) to filenames (e.g. `deployments`) |
+
+Export batches per namespace:
+1. `pods` — usually the most objects
+2. `deployments,statefulsets,daemonsets,cronjobs,jobs` — core workloads
+3. `configmaps,secrets,serviceaccounts,persistentvolumeclaims,roles,rolebindings` — config & auth
+4. `services,ingresses,endpoints,networkpolicies,horizontalpodautoscalers,poddisruptionbudgets` — networking & scaling
+5. CRD resources (if available): gateways, httproutes, tcproutes
+6. `pods-snapshot.txt` — `kubectl get pods -o wide`
+7. `pods-images.txt` — pod-to-image mapping
+
+## Development
 
 ```bash
-ng generate component component-name
+npm run dev          # Start frontend + backend
+ng build             # Production build → dist/
+ng test              # Unit tests (Karma)
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+### Optional: Test Cluster
 
 ```bash
-ng generate --help
+bash scripts/cluster-setup.sh   # Create kind cluster with test services
+bash scripts/cleanup.sh          # Remove cluster
 ```
 
-## Building
+## Tech Stack
 
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- **Frontend**: Angular 20+, standalone components, signals, `@cosmograph/cosmos` (WebGL graph)
+- **Backend**: Express.js, `child_process.execFile` (no shell injection)
+- **Theme**: Soft Gold cyberpunk — `#e8b866` accent on `#0e0b08` background

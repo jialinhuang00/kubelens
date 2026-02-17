@@ -1,99 +1,68 @@
 # kubecmds-viz Project Context
 
 ## Architecture
-- Angular 18+ standalone components with signals
-- Express.js backend for kubectl command execution
+- Angular 20+ standalone components with signals
+- Express.js backend (`server.js` + `routes/`)
 - TypeScript with strict compilation
-- Tailwind CSS for styling (cyberpunk theme)
-- Three template categories: general, deployment-specific, pod-specific
+- Soft Gold cyberpunk theme (`#e8b866` accent on `#0e0b08` background)
+- Dual data mode: **Realtime** (live kubectl) and **Snapshot** (offline `k8s-snapshot/`)
 
-## Current Features
-- **Accordion Sidebar**: Collapsible command templates organized by resource type
-- **Dynamic Resource Loading**: Auto-loads namespaces, deployments, pods on selection
-- **Smart Output Parsing**: Handles tabular data, YAML, JSON, and Kubernetes events
-- **Template System**: Placeholder-based commands with `{namespace}` substitution
-- **Fixed Layout**: 350px sidebar + scrollable main content area
+## Key Patterns
+- `inject()` pattern (no constructor DI)
+- `DestroyRef` + `takeUntilDestroyed()` for subscription cleanup
+- `execFile` instead of `exec` to prevent shell injection
+- `fs.promises` (async) for all file I/O in polled endpoints
+- Snapshot mode: per-request `?snapshot=true` via HTTP interceptor
 
 ## File Structure
 ```
-src/app/
-├── app.ts          # Main component (NEEDS REFACTORING)
-├── app.html        # Template with accordion UI
-├── app.scss        # Component styles
-└── app.config.ts   # App configuration
-
-scripts/
-├── cluster-setup.sh  # Create kind cluster with test services
-└── cleanup.sh        # Remove cluster and cleanup Docker
-
-demo-microservices/   # Mock services for testing (v1,v2,v3 versions)
-k8s-manifests/        # Kubernetes deployment files
+├── server.js                  # Express entry point
+├── routes/                    # API route handlers
+│   ├── execute.js             #   POST /api/execute — run kubectl
+│   ├── graph.js               #   GET  /api/graph — resource topology
+│   ├── k8s-export.js          #   /api/k8s-export/* — export control + progress
+│   ├── resource-counts.js     #   GET  /api/resource-counts
+│   ├── status.js              #   GET  /api/realtime/ping, /api/snapshot/ping
+│   └── ecr.js                 #   ECR image endpoints
+├── utils/
+│   └── snapshot-handler.js    #   Reads k8s-snapshot/ YAML, simulates kubectl responses
+├── scripts/                   # CLI tools (bash 3.2 compatible)
+│   ├── k8s-export.sh          #   Parallel batched cluster export
+│   ├── split-resources.js     #   Splits kubectl JSON into per-kind YAML files
+│   └── kind-map.json          #   Kind → filename mapping
+├── src/app/
+│   ├── core/services/         #   kubectl, data-mode, k8s-export, websocket, execution-context
+│   └── features/
+│       ├── home/              #   Landing page — mode toggle, export UI
+│       ├── dashboard/         #   Command execution terminal
+│       ├── universe/          #   GPU-accelerated graph (@cosmograph/cosmos)
+│       └── k8s/               #   K8s resource views
+└── k8s-snapshot/              # Exported cluster data (gitignored)
 ```
 
-## Current State Issues
-- **app.ts too complex**: 600+ lines with mixed responsibilities
-- **No service separation**: HTTP calls, parsing, state management all in one component
-- **Hard to test**: Tightly coupled logic
-- **Scalability concerns**: Adding new resource types requires modifying main component
+## Data Flow
 
-## Planned Refactoring
+### Realtime Mode
+Frontend → `routes/execute.js` → `execFile('kubectl', ...)` → live cluster
 
-### 1. Service Layer Separation
-```typescript
-services/
-├── kubectl.service.ts       # HTTP calls to backend
-├── template.service.ts      # Template generation and management
-├── resource.service.ts      # Namespace/deployment/pod loading
-└── output-parser.service.ts # Command output parsing logic
-```
+### Snapshot Mode
+Frontend → `routes/execute.js` → `snapshot-handler.js` → reads `k8s-snapshot/*.yaml`
 
-### 2. Component Splitting
-```typescript
-components/
-├── command-sidebar/
-│   ├── namespace-selector/
-│   ├── template-accordion/
-│   └── template-card/
-├── output-display/
-│   ├── table-output/
-│   ├── events-display/
-│   └── raw-output/
-└── command-input/
-```
-
-### 3. State Management
-- Consider NgRx for complex state
-- Or create simple state services with signals
-- Separate UI state from data state
-
-### 4. Type Safety Improvements
-- Better interfaces for API responses
-- Generic types for resource handling
-- Stricter typing for template system
-
-## Technical Debt
-- Remove hardcoded values (default namespace, etc.)
-- Add error handling for failed kubectl commands
-- Implement loading states for resource discovery
-- Add unit tests for parsing logic
-
-## Next Session Priorities
-1. **Extract KubectlService**: Move all HTTP calls and command execution
-2. **Extract TemplateService**: Handle template generation and management
-3. **Split OutputParserService**: Separate complex parsing logic
-4. **Create ResourceService**: Handle namespace/deployment/pod loading
-5. **Component splitting**: Break down large template into smaller components
-6. **Add proper error boundaries**: Handle kubectl command failures gracefully
-7. ngrx
+### Export
+Home page → `routes/k8s-export.js` → spawns `scripts/k8s-export.sh` → writes `k8s-snapshot/`
+- 4 parallel resource batches + CRD batch + 2 pod txt files per namespace
+- Progress streamed via stdout parsing, polled by frontend every 1s
+- `.export-complete` marker = snapshot available
 
 ## Development Commands
-- `npm run dev` - Start both frontend and backend
-- `bash scripts/cluster-setup.sh` - Setup test environment
-- `bash scripts/cleanup.sh` - Cleanup test environment
+- `npm run dev` — Start frontend (4200) + backend (3000)
+- `bash scripts/k8s-export.sh` — CLI export (independent of server)
+- `bash scripts/k8s-export.sh --resume` — Resume interrupted export
+- `ng build` — Production build
+- `ng test` — Unit tests
 
-## Known Working Features
-- Template execution with namespace substitution
-- Accordion UI with collapsible sections  
-- Dynamic resource loading per namespace
-- Multiple output format parsing (tables, YAML, events)
-- Responsive layout that handles long commands
+## Important Constraints
+- bash scripts must work on macOS bash 3.2 (no `declare -A`, empty arrays + `set -u` crash)
+- `snapshot-handler.js` uses in-memory cache — only blocks on first call per resource
+- Build warnings for regl/seedrandom CommonJS modules are expected (cosmos dependency)
+- Graph endpoint runs 9 parallel kubectl calls in realtime mode
