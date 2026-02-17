@@ -2,6 +2,7 @@ import { Injectable, signal, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { K8sExportService } from './k8s-export.service';
+import { API_BASE } from '../constants/api';
 
 @Injectable({ providedIn: 'root' })
 export class DataModeService {
@@ -30,7 +31,7 @@ export class DataModeService {
   private async checkSnapshot(): Promise<void> {
     try {
       const res = await firstValueFrom(
-        this.http.get<{ available: boolean }>('http://localhost:3000/api/snapshot/ping')
+        this.http.get<{ available: boolean }>(`${API_BASE}/snapshot/ping`)
       );
       this.snapshotAvailable.set(res.available);
     } catch {
@@ -41,7 +42,7 @@ export class DataModeService {
   private async checkRealtime(): Promise<void> {
     try {
       const res = await firstValueFrom(
-        this.http.get<{ status: string; kubectl?: { version: string } }>('http://localhost:3000/api/realtime/ping')
+        this.http.get<{ status: string; kubectl?: { version: string } }>(`${API_BASE}/realtime/ping`)
       );
       const healthy = res.status === 'healthy';
       this.realtimeAvailable.set(healthy);

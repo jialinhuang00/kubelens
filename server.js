@@ -1,27 +1,17 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: ['http://localhost:4200', 'https://kubevisualize.jialin00.com'],
-    methods: ['GET', 'POST']
-  }
-});
-const PORT = 3000;
+const io = new Server(server);
+const PORT = process.env.PORT || 3000;
 
 // Always load snapshot handler — per-request snapshot mode via ?snapshot=true
 require('./utils/snapshot-handler');
 console.log('snapshot-handler loaded — use ?snapshot=true on requests to enable snapshot mode');
 
-app.use(cors({
-  origin: ['http://localhost:4200', 'https://kubevisualize.jialin00.com'],
-  credentials: true
-}));
 app.use(express.json());
 
 // Mount routes

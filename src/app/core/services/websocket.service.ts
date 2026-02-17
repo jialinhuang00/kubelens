@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
 import { Observable, Subject } from 'rxjs';
+import { WS_BASE } from '../constants/api';
 
 export interface StreamData {
   streamId: string;
@@ -39,7 +40,7 @@ export class WebSocketService {
   isConnected = signal<boolean>(false);
 
   constructor() {
-    this.socket = io('http://localhost:3000', {
+    this.socket = io(WS_BASE, {
       autoConnect: false
     });
 

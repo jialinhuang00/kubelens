@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { API_BASE } from '../constants/api';
 
 interface ExportProgress {
   running: boolean;
@@ -50,7 +51,7 @@ export class K8sExportService {
 
     try {
       const data = await firstValueFrom(
-        this.http.get<ExportProgress>('http://localhost:3000/api/k8s-export/progress')
+        this.http.get<ExportProgress>(`${API_BASE}/k8s-export/progress`)
       );
       this.applyProgress(data);
 
@@ -81,7 +82,7 @@ export class K8sExportService {
 
     try {
       await firstValueFrom(
-        this.http.post('http://localhost:3000/api/k8s-export/start', { resume })
+        this.http.post(`${API_BASE}/k8s-export/start`, { resume })
       );
       this.isRunning.set(true);
       this.startPolling();
@@ -94,7 +95,7 @@ export class K8sExportService {
   async pauseExport(): Promise<void> {
     try {
       await firstValueFrom(
-        this.http.post('http://localhost:3000/api/k8s-export/stop', {})
+        this.http.post(`${API_BASE}/k8s-export/stop`, {})
       );
     } catch {
       // ignore
@@ -158,7 +159,7 @@ export class K8sExportService {
   private async fetchProgress(): Promise<void> {
     try {
       const data = await firstValueFrom(
-        this.http.get<ExportProgress>('http://localhost:3000/api/k8s-export/progress')
+        this.http.get<ExportProgress>(`${API_BASE}/k8s-export/progress`)
       );
 
       this.applyProgress(data);

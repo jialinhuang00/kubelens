@@ -2,6 +2,7 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Subject, takeUntil, finalize } from 'rxjs';
 import { GraphDataResponse, GraphNode, GraphEdge } from '../models/graph.models';
+import { API_BASE } from '../../../core/constants/api';
 
 @Injectable({ providedIn: 'root' })
 export class GraphDataService {
@@ -25,7 +26,7 @@ export class GraphDataService {
     this._loading.set(true);
     this._error.set(null);
 
-    this.http.get<GraphDataResponse>('http://localhost:3000/api/graph')
+    this.http.get<GraphDataResponse>(`${API_BASE}/graph`)
       .pipe(
         takeUntil(this.cancel$),
         finalize(() => this._loading.set(false)),

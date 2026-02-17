@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { API_BASE } from '../../../core/constants/api';
 
 interface EcrTagsResponse {
   tags: string[];
@@ -13,7 +14,7 @@ interface EcrTagsResponse {
 })
 export class EcrService {
   private http = inject(HttpClient);
-  private readonly API_BASE = 'http://localhost:3000/api';
+  private readonly API_BASE = API_BASE;
 
   tags = signal<string[]>([]);
   isLoading = signal(false);

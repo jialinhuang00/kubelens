@@ -1,13 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, merge, Subject } from 'rxjs';
+import { Observable, BehaviorSubject, merge, Subject, firstValueFrom, of } from 'rxjs';
 import { takeUntil, catchError } from 'rxjs/operators';
-import { of } from 'rxjs';
 import { KubectlResponse } from '../../shared/models/kubectl.models';
 import { WebSocketService } from './websocket.service';
 import { ExecutionContextService } from './execution-context.service';
 import { ExecutionGroupUtils } from '../../shared/constants/execution-groups.constants';
 import { ExecutionDialogService } from './execution-dialog.service';
+import { API_BASE } from '../constants/api';
 
 export interface CommandExecution {
   id: string;
@@ -33,7 +33,7 @@ export class KubectlService {
   private websocketService = inject(WebSocketService);
   private executionContext = inject(ExecutionContextService);
   private executionDialog = inject(ExecutionDialogService);
-  private readonly API_BASE = 'http://localhost:3000/api';
+  private readonly API_BASE = API_BASE;
   
   // Request cancellation and tracking
   private cancelSubjects = new Map<string, Subject<void>>();
@@ -116,7 +116,7 @@ export class KubectlService {
     console.log(`📊 Active executions: ${this.activeExecutions.size}, Current execution registered: ${this.activeExecutions.has(executionId)}`);;
 
     try {
-      const response = await this.http.post<KubectlResponse>(`${this.API_BASE}/execute`, {
+      const response = await firstValueFrom(this.http.post<KubectlResponse>(`${this.API_BASE}/execute`, {
         command: command
       }).pipe(
         takeUntil(cancelSubject),
@@ -128,7 +128,7 @@ export class KubectlService {
             error: `Network error: ${error.message}`
           });
         })
-      ).toPromise();
+      ));
 
       // Mark as completed and cleanup if this execution is still active
       const activeExecution = this.activeExecutions.get(executionId);
@@ -201,10 +201,10 @@ export class KubectlService {
 
     try {
       // 開始串流
-      const response = await this.http.post<any>(`${this.API_BASE}/execute/stream`, {
+      const response = await firstValueFrom(this.http.post<any>(`${this.API_BASE}/execute/stream`, {
         command,
         streamId
-      }).toPromise();
+      }));
 
       if (!response?.success) {
         throw new Error(response?.error || 'Failed to start stream');
@@ -239,9 +239,9 @@ export class KubectlService {
       // 停止函數
       const stop = async () => {
         try {
-          await this.http.post(`${this.API_BASE}/execute/stream/stop`, {
+          await firstValueFrom(this.http.post(`${this.API_BASE}/execute/stream/stop`, {
             streamId
-          }).toPromise();
+          }));
 
           dataSubscription.unsubscribe();
           endSubscription.unsubscribe();
@@ -310,10 +310,10 @@ export class KubectlService {
 
   async getResourceCounts(namespace: string): Promise<Record<string, number>> {
     try {
-      const response = await this.http.get<{ success: boolean; counts: Record<string, number> }>(
+      const response = await firstValueFrom(this.http.get<{ success: boolean; counts: Record<string, number> }>(
         `${this.API_BASE}/resource-counts`, { params: { namespace } }
-      ).toPromise();
-      return response?.counts || {};
+      ));
+      return response.counts || {};
     } catch (error) {
       console.error('Failed to load resource counts:', error);
       return {};
