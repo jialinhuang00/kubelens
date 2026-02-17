@@ -1,36 +1,31 @@
 const express = require('express');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
+const util = require('util');
 const path = require('path');
 const fs = require('fs');
 const fsp = fs.promises;
 
+const execFileAsync = util.promisify(execFile);
+
 const router = express.Router();
 
 // GET /api/realtime/ping
-router.get('/realtime/ping', (req, res) => {
-  exec('which kubectl && kubectl version --client -o json', (error, stdout, stderr) => {
-    const env_info = {
-      PATH: process.env.PATH,
-      HOME: process.env.HOME,
-      KUBECONFIG: process.env.KUBECONFIG,
-      working_directory: process.cwd()
-    };
+router.get('/realtime/ping', async (req, res) => {
+  const env_info = {
+    PATH: process.env.PATH,
+    HOME: process.env.HOME,
+    KUBECONFIG: process.env.KUBECONFIG,
+    working_directory: process.cwd()
+  };
 
-    if (error) {
-      return res.json({
-        status: 'kubectl not available',
-        error: error.message,
-        environment: env_info,
-        stderr: stderr
-      });
-    }
+  try {
+    const { stdout: whichOut } = await execFileAsync('which', ['kubectl']);
+    const kubectlPath = whichOut.trim();
 
-    const lines = stdout.split('\n');
-    const kubectlPath = lines[0];
-    const versionJson = lines.slice(1).join('\n');
+    const { stdout: versionOut } = await execFileAsync('kubectl', ['version', '--client', '-o', 'json']);
 
     try {
-      const version = JSON.parse(versionJson);
+      const version = JSON.parse(versionOut);
       res.json({
         status: 'healthy',
         kubectl: {
@@ -44,10 +39,17 @@ router.get('/realtime/ping', (req, res) => {
         status: 'kubectl found but version parse failed',
         kubectl_path: kubectlPath,
         environment: env_info,
-        raw_output: versionJson
+        raw_output: versionOut
       });
     }
-  });
+  } catch (error) {
+    res.json({
+      status: 'kubectl not available',
+      error: error.message,
+      environment: env_info,
+      stderr: error.stderr || ''
+    });
+  }
 });
 
 // GET /api/snapshot/ping

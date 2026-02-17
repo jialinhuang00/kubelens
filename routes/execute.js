@@ -1,10 +1,9 @@
 const express = require('express');
-const { exec, spawn } = require('child_process');
-const path = require('path');
-const os = require('os');
-const fs = require('fs');
-const { v4: uuidv4 } = require('uuid');
+const { execFile, spawn } = require('child_process');
+const util = require('util');
 const snapshotK8s = require('../utils/snapshot-handler');
+
+const execFileAsync = util.promisify(execFile);
 
 const router = express.Router();
 
@@ -90,7 +89,7 @@ function splitGetAllTables(output) {
 }
 
 // POST /api/execute
-router.post('/execute', (req, res) => {
+router.post('/execute', async (req, res) => {
   const { command } = req.body;
 
   if (!command || !command.startsWith('kubectl')) {
@@ -111,45 +110,34 @@ router.post('/execute', (req, res) => {
     });
   }
 
-  const tempFile = path.join(os.tmpdir(), `kubectl-${uuidv4()}.txt`);
-  const fullCommand = `${command} > ${tempFile} 2>&1`;
+  // Parse "kubectl <args...>" into execFile arguments
+  const args = command.split(/\s+/).slice(1);
 
   console.log(`Executing: ${command}`);
 
-  exec(fullCommand, { timeout: 30000 }, (error) => {
-    fs.readFile(tempFile, 'utf8', (readErr, data) => {
-      fs.unlink(tempFile, () => { });
+  try {
+    const { stdout } = await execFileAsync('kubectl', args, { timeout: 30000 });
 
-      if (readErr) {
-        return res.status(500).json({
-          success: false,
-          error: 'Failed to read command output file',
-          file: tempFile
-        });
-      }
+    let processedOutput = stdout;
+    if (command.includes('get all')) {
+      processedOutput = splitGetAllTables(stdout);
+    }
 
-      if (error) {
-        const actualErrorMessage = data.trim() || error.message;
-        return res.json({
-          success: false,
-          error: actualErrorMessage,
-          stdout: '',
-          command: command
-        });
-      }
-
-      let processedOutput = data;
-      if (command.includes('get all')) {
-        processedOutput = splitGetAllTables(data);
-      }
-
-      res.json({
-        success: true,
-        stdout: processedOutput,
-        command: command
-      });
+    res.json({
+      success: true,
+      stdout: processedOutput,
+      command: command
     });
-  });
+  } catch (error) {
+    // execFile rejects with error.stderr and error.stdout on non-zero exit
+    const errorMessage = (error.stderr || error.stdout || '').trim() || error.message;
+    res.json({
+      success: false,
+      error: errorMessage,
+      stdout: '',
+      command: command
+    });
+  }
 });
 
 // POST /api/execute/stream — needs io passed in
@@ -192,7 +180,7 @@ function mountStream(router, io) {
       streamId: streamId
     });
 
-    const args = command.split(' ').slice(1);
+    const args = command.split(/\s+/).slice(1);
     const kubectlProcess = spawn('kubectl', args);
 
     global.runningProcesses = global.runningProcesses || new Map();
