@@ -11,7 +11,9 @@
 set -euo pipefail
 
 # --- Colors ---
+YELLOW='\033[33m'
 GREEN='\033[32m'
+RED='\033[31m'
 GRAY='\033[90m'
 RESET='\033[0m'
 
@@ -23,15 +25,17 @@ RESUME=false
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BASE_DIR="${SCRIPT_DIR}/../k8s-snapshot"
 
-# Namespaced resource types to export
-# Resource batches — grouped to minimize kubectl calls
-# Each batch is one kubectl call with comma-separated types
-BATCH_1="deployments,services,configmaps,secrets,ingresses"
-BATCH_2="statefulsets,daemonsets,cronjobs,jobs"
-BATCH_3="serviceaccounts,roles,rolebindings"
-BATCH_4="persistentvolumeclaims,networkpolicies,horizontalpodautoscalers,poddisruptionbudgets,endpoints"
-
-NS_BATCHES=("$BATCH_1" "$BATCH_2" "$BATCH_3" "$BATCH_4")
+# Namespaced resource types to export — split into parallel batches
+# Batch 1: Pods (usually the most objects, benefits from running alone)
+# Batch 2: Core workloads
+# Batch 3: Config, auth & storage
+# Batch 4: Networking & scaling (typically few objects each)
+NS_BATCHES=(
+  "pods"
+  "deployments,statefulsets,daemonsets,cronjobs,jobs"
+  "configmaps,secrets,serviceaccounts,persistentvolumeclaims,roles,rolebindings,resourcequotas,limitranges"
+  "services,ingresses,endpoints,networkpolicies,horizontalpodautoscalers,poddisruptionbudgets"
+)
 
 # CRD resource types — checked once at startup, skipped if CRDs not installed
 CRD_RESOURCES=(
@@ -137,43 +141,38 @@ for ns in "${NAMESPACES[@]}"; do
   # Run all batches in parallel — each batch is one kubectl call
   for batch in "${NS_BATCHES[@]}"; do
     (
-      echo -e "  ${GREEN}${batch} (fetching)${RESET}"
-      kubectl get "$batch" -n "$ns" -o json 2>/dev/null \
-        | node "${SCRIPT_DIR}/split-resources.js" "$NS_DIR" "$RESUME" || true
-      echo "  ${batch} (done)"
-    ) &
-  done
-  wait
-
-  # Export pod YAML + reference snapshots (also parallel, max 3 jobs)
-  pod_jobs=0
-
-  if [[ "$RESUME" == "true" && -f "${NS_DIR}/pods.yaml" ]]; then
-    echo -e "  ${GRAY}pods (exists, skipped)${RESET}"
-  else
-    (
-      echo -e "  ${GREEN}pods (fetching)${RESET}"
-      output=$(kubectl get pods -n "$ns" -o yaml 2>/dev/null) || true
-      count=$(echo "$output" | grep -c '^- ' 2>/dev/null || echo "0")
-      if [[ "$count" -gt 0 ]]; then
-        echo "$output" > "${NS_DIR}/pods.yaml.tmp" && mv "${NS_DIR}/pods.yaml.tmp" "${NS_DIR}/pods.yaml"
-        echo "  pods ($count objects, done)"
+      echo -e "  ${YELLOW}→ fetching ${batch}${RESET}"
+      if kubectl get "$batch" -n "$ns" -o json 2>/dev/null \
+        | node "${SCRIPT_DIR}/split-resources.js" "$NS_DIR" "$RESUME"; then
+        echo -e "  ${GREEN}← ${batch} done${RESET}"
       else
-        echo "  pods (done)"
+        echo -e "  ${RED}← ${batch} failed${RESET}"
       fi
     ) &
-    pod_jobs=$((pod_jobs + 1))
-  fi
+  done
+
+  # Export pod reference snapshots (pod YAML is handled by the batch above)
   if [[ "$RESUME" != "true" || ! -f "${NS_DIR}/pods-snapshot.txt" ]]; then
     (
-      kubectl get pods -n "$ns" -o wide > "${NS_DIR}/pods-snapshot.txt.tmp" 2>/dev/null && mv "${NS_DIR}/pods-snapshot.txt.tmp" "${NS_DIR}/pods-snapshot.txt" || true
+      echo -e "  ${YELLOW}→ fetching pods-snapshot${RESET}"
+      if kubectl get pods -n "$ns" -o wide > "${NS_DIR}/pods-snapshot.txt.tmp" 2>/dev/null \
+        && mv "${NS_DIR}/pods-snapshot.txt.tmp" "${NS_DIR}/pods-snapshot.txt"; then
+        echo -e "  ${GREEN}← pods-snapshot done${RESET}"
+      else
+        echo -e "  ${RED}← pods-snapshot failed${RESET}"
+      fi
     ) &
-    pod_jobs=$((pod_jobs + 1))
   fi
   if [[ "$RESUME" != "true" || ! -f "${NS_DIR}/pods-images.txt" ]]; then
     (
-      kubectl get pods -n "$ns" -o custom-columns="POD:metadata.name,IMAGE:spec.containers[*].image" \
-        > "${NS_DIR}/pods-images.txt.tmp" 2>/dev/null && mv "${NS_DIR}/pods-images.txt.tmp" "${NS_DIR}/pods-images.txt" || true
+      echo -e "  ${YELLOW}→ fetching pods-images${RESET}"
+      if kubectl get pods -n "$ns" -o custom-columns="POD:metadata.name,IMAGE:spec.containers[*].image" \
+        > "${NS_DIR}/pods-images.txt.tmp" 2>/dev/null \
+        && mv "${NS_DIR}/pods-images.txt.tmp" "${NS_DIR}/pods-images.txt"; then
+        echo -e "  ${GREEN}← pods-images done${RESET}"
+      else
+        echo -e "  ${RED}← pods-images failed${RESET}"
+      fi
     ) &
   fi
   wait
@@ -191,10 +190,16 @@ if [[ "$CLUSTER_SCOPED" == "true" ]]; then
 
   for resource in "${CLUSTER_RESOURCES[@]}"; do
     OUT_FILE="${CLUSTER_DIR}/${resource}.yaml"
+    echo -e "  ${YELLOW}→ fetching ${resource}${RESET}"
     count=$(kubectl get "$resource" --no-headers 2>/dev/null | wc -l | tr -d ' ')
     if [[ "$count" -gt 0 ]]; then
-      echo "  $resource ($count objects)"
-      kubectl get "$resource" -o yaml > "${OUT_FILE}.tmp" && mv "${OUT_FILE}.tmp" "$OUT_FILE"
+      if kubectl get "$resource" -o yaml > "${OUT_FILE}.tmp" && mv "${OUT_FILE}.tmp" "$OUT_FILE"; then
+        echo -e "  ${GREEN}← ${resource} done ($count objects)${RESET}"
+      else
+        echo -e "  ${RED}← ${resource} failed${RESET}"
+      fi
+    else
+      echo -e "  ${GREEN}← ${resource} done (empty)${RESET}"
     fi
   done
   echo ""

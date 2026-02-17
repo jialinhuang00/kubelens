@@ -15,7 +15,10 @@
   "NetworkPolicy": "networkpolicies",
   "HorizontalPodAutoscaler": "horizontalpodautoscalers",
   "PodDisruptionBudget": "poddisruptionbudgets",
+  "Pod": "pods",
   "Endpoints": "endpoints",
+  "ResourceQuota": "resourcequotas",
+  "LimitRange": "limitranges",
   "Gateway": "gateways.gateway.networking.k8s.io",
   "HTTPRoute": "httproutes.gateway.networking.k8s.io",
   "TCPRoute": "tcproutes.gateway.networking.k8s.io"

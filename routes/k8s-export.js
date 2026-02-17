@@ -95,7 +95,10 @@ router.post('/k8s-export/start', (req, res) => {
     const raw = data.toString();
     process.stdout.write(raw);
     const text = raw.replace(/\x1b\[[0-9;]*m/g, '');
-    exportState.output += text;
+    // Cap output buffer to prevent memory bloat on long exports
+    if (exportState.output.length < 200000) {
+      exportState.output += text;
+    }
 
     // Parse "Discovered N namespaces"
     const discoveredMatch = text.match(/Discovered (\d+) namespaces/);
@@ -120,18 +123,16 @@ router.post('/k8s-export/start', (req, res) => {
       }
     }
 
-    // Parse "  resource (fetching)" — resource/batch started downloading
-    // Batch names contain commas: "deployments,services,configmaps (fetching)"
-    const fetchMatches = text.matchAll(/^\s{2}(\S+)\s+\(fetching\)/gm);
+    // Parse "→ fetching xxx" — resource/batch started downloading
+    const fetchMatches = text.matchAll(/→ fetching (\S+)/gm);
     for (const m of fetchMatches) {
-      // Batch name may contain commas — add each type separately
       for (const r of m[1].split(',')) {
         exportState.activeResources.add(r);
       }
     }
 
-    // Parse "  resource (done)" / "  resource (N objects, done)" / "  resource (exists, skipped)" — remove from active
-    const doneResMatches = text.matchAll(/^\s{2}(\S+)\s+\((?:\d+ objects, done|done|exists, skipped)\)/gm);
+    // Parse "← xxx done" / "← xxx failed" — remove from active
+    const doneResMatches = text.matchAll(/← (\S+) (?:done|failed)/gm);
     for (const m of doneResMatches) {
       for (const r of m[1].split(',')) {
         exportState.activeResources.delete(r);
