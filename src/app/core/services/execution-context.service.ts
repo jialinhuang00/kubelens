@@ -42,18 +42,7 @@ export class ExecutionContextService {
     return currentContext?.group;
   }
 
-  /**
-   * get current context
-   */
-  getCurrentContext(): ExecutionContext | undefined {
+  private getCurrentContext(): ExecutionContext | undefined {
     return this.contextStack[this.contextStack.length - 1];
-  }
-
-
-  /**
-   * check if exist
-   */
-  isInGroup(group: string): boolean {
-    return this.contextStack.some(ctx => ctx.group === group);
   }
 }

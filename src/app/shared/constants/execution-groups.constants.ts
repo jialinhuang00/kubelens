@@ -93,9 +93,6 @@ export class ExecutionGroupGenerator {
    * @param namespace - Namespace name
    * @returns Pod operations group name
    */
-  static podOperations(pod: string, namespace: string): string {
-    return `${EXECUTION_GROUPS.POD.OPERATIONS}-${pod}-${namespace}-${Date.now()}`;
-  }
 }
 
 /**

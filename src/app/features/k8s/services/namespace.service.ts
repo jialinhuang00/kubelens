@@ -30,13 +30,4 @@ export class NamespaceService {
     this.currentNamespace.set(namespace);
   }
 
-  async getCurrentContext(): Promise<string> {
-    try {
-      const response = await this.kubectlService.executeCommand('kubectl config current-context');
-      return response.success ? response.stdout.trim() : 'unknown';
-    } catch (error) {
-      console.error('Failed to get current context:', error);
-      return 'unknown';
-    }
-  }
 }

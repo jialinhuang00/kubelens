@@ -8,7 +8,7 @@ import { DeploymentService } from '../../k8s/services/deployment.service';
 import { PodService } from '../../k8s/services/pod.service';
 import { SvcService } from '../../k8s/services/svc.service';
 import { GenericResourceService } from '../../k8s/services/generic-resource.service';
-import { ResourceType } from '../../../shared/models/kubectl.models';
+import { ResourceType, OutputType } from '../../../shared/models/kubectl.models';
 import { KubectlService } from '../../../core/services/kubectl.service';
 import { DashboardExecutorService } from '../services/dashboard-executor.service';
 import { OutputParserService } from '../services/output-parser.service';
@@ -78,7 +78,7 @@ export class DashboardComponent implements OnInit {
   headers = signal<string[]>([]);
   hasEventsTable = signal<boolean>(false);
   yamlContent = signal<string>('');
-  outputType = signal<string>('raw');
+  outputType = signal<OutputType>('raw');
   podDescribeData = signal<PodDescribeData[]>([]);
   multipleTables = signal<TableData[]>([]);
   multipleYamls = signal<YamlItem[]>([]);
@@ -336,7 +336,6 @@ export class DashboardComponent implements OnInit {
 
   async onLoadEcrTags() {
     const image = this.deploymentImage();
-    console.log(image)
     if (!image) return;
     await this.ecrService.fetchTags(image);
   }
@@ -468,7 +467,7 @@ export class DashboardComponent implements OnInit {
   }
 
   outputData = computed<OutputData>(() => ({
-    outputType: this.outputType() as any,
+    outputType: this.outputType(),
     isLoading: this.isLoading(),
     results: this.results(),
     headers: this.headers(),

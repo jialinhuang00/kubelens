@@ -32,11 +32,6 @@ export class WebSocketService {
   private streamEndSubject = new Subject<StreamEnd>();
   private streamErrorSubject = new Subject<StreamError>();
 
-  // public Observable
-  streamData$ = this.streamDataSubject.asObservable();
-  streamEnd$ = this.streamEndSubject.asObservable();
-  streamError$ = this.streamErrorSubject.asObservable();
-
   isConnected = signal<boolean>(false);
 
   constructor() {
@@ -77,16 +72,10 @@ export class WebSocketService {
     }
   }
 
-  disconnect() {
-    if (this.socket.connected) {
-      this.socket.disconnect();
-    }
-  }
-
   // filtering data for specific streamId
   getStreamData(streamId: string): Observable<StreamData> {
     return new Observable(observer => {
-      const subscription = this.streamData$.subscribe(data => {
+      const subscription = this.streamDataSubject.subscribe(data => {
         if (data.streamId === streamId) {
           observer.next(data);
         }
@@ -98,7 +87,7 @@ export class WebSocketService {
 
   getStreamEnd(streamId: string): Observable<StreamEnd> {
     return new Observable(observer => {
-      const subscription = this.streamEnd$.subscribe(data => {
+      const subscription = this.streamEndSubject.subscribe(data => {
         if (data.streamId === streamId) {
           observer.next(data);
           observer.complete();
@@ -111,7 +100,7 @@ export class WebSocketService {
 
   getStreamError(streamId: string): Observable<StreamError> {
     return new Observable(observer => {
-      const subscription = this.streamError$.subscribe(data => {
+      const subscription = this.streamErrorSubject.subscribe(data => {
         if (data.streamId === streamId) {
           observer.next(data);
           observer.complete();

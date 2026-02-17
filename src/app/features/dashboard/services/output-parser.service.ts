@@ -1,8 +1,6 @@
 import { Injectable } from '@angular/core';
 import { KubeResource, PodDescribeData, ParsedOutput, TableData, YamlItem } from '../../../shared/models/kubectl.models';
 
-export type { KubeResource, PodDescribeData, ParsedOutput, TableData, YamlItem };
-
 @Injectable({
   providedIn: 'root'
 })
@@ -445,7 +443,6 @@ export class OutputParserService {
         const line = lines[i];
         // 檢查是否是新的物件開始 (- apiVersion:)
         if (line.startsWith('- apiVersion:')) {
-          // console.log(lines)
           // 保存前一個物件
           if (inItem && currentYaml && currentTitle) {
             yamls.push({

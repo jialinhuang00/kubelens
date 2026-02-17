@@ -75,7 +75,7 @@ export function discoverNamespaces(dataPaths: string[]): Map<string, string> {
   return namespaces;
 }
 
-export function loadYamlFile(nsDir: string, filename: string): Record<string, unknown> | null {
+function loadYamlFile(nsDir: string, filename: string): Record<string, unknown> | null {
   const filePath = path.join(nsDir, filename);
   if (!fs.existsSync(filePath)) return null;
   try {

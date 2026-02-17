@@ -118,12 +118,13 @@ export class KubectlService {
         command: command
       }).pipe(
         takeUntil(cancelSubject),
-        catchError((error: any) => {
-          console.log(`❌ Command error: ${command} (ID: ${execution.id}) - ${error.message}`);
+        catchError((error: unknown) => {
+          const message = error instanceof Error ? error.message : String(error);
+          console.log(`❌ Command error: ${command} (ID: ${execution.id}) - ${message}`);
           return of({
             success: false,
             stdout: '',
-            error: `Network error: ${error.message}`
+            error: `Network error: ${message}`
           });
         })
       ));
@@ -145,13 +146,13 @@ export class KubectlService {
         throw new Error('REQUEST_CANCELLED');
       }
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Cleanup first
       this.cancelSubjects.delete(executionId);
       this.activeExecutions.delete(executionId);
 
       // If it's a cancellation, don't treat as error and re-throw
-      if (error.message === 'REQUEST_CANCELLED') {
+      if (error instanceof Error && error.message === 'REQUEST_CANCELLED') {
         const activeExecution = this.activeExecutions.get(executionId);
         if (activeExecution) {
           activeExecution.status = 'cancelled';
@@ -165,14 +166,16 @@ export class KubectlService {
       const activeExecution = this.activeExecutions.get(executionId);
       if (activeExecution?.status === 'pending') {
         activeExecution.status = 'error';
+        const message = error instanceof Error ? error.message : String(error);
         this.executionDialog.updateExecution(executionId, 'error');
-        console.log(`❌ Command error: ${command} (ID: ${execution.id}) - ${error.message}`);
+        console.log(`❌ Command error: ${command} (ID: ${execution.id}) - ${message}`);
       }
 
+      const message = error instanceof Error ? error.message : String(error);
       return {
         success: false,
         stdout: '',
-        error: `Network error: ${error.message}`
+        error: `Network error: ${message}`
       };
     }
   }

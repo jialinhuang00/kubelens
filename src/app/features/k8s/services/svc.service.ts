@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { KubectlService } from '../../../core/services/kubectl.service';
 import { TemplateService } from '../../dashboard/services/template.service';
-import { CommandTemplate } from '../../../shared/models/kubectl.models';
+import { CommandTemplate, K8sServicePort, K8sEndpointSubset } from '../../../shared/models/kubectl.models';
 import { ExecutionContextService } from '../../../core/services/execution-context.service';
 import { ExecutionGroupGenerator } from '../../../shared/constants/execution-groups.constants';
 
@@ -124,17 +124,17 @@ export class SvcService {
     return null;
   }
 
-  private parseServicePorts(ports: any[]): ServicePort[] {
+  private parseServicePorts(ports: K8sServicePort[]): ServicePort[] {
     return ports.map(port => ({
       name: port.name || '',
       port: port.port,
       targetPort: port.targetPort,
-      protocol: port.protocol || 'TCP',
+      protocol: (port.protocol || 'TCP') as ServicePort['protocol'],
       nodePort: port.nodePort
     }));
   }
 
-  private parseEndpoints(subsets: any[]): Endpoint[] {
+  private parseEndpoints(subsets: K8sEndpointSubset[]): Endpoint[] {
     const endpoints: Endpoint[] = [];
     
     for (const subset of subsets) {
@@ -164,87 +164,12 @@ export class SvcService {
     return endpoints;
   }
 
-  private parseEndpointPorts(ports: any[]): EndpointPort[] {
+  private parseEndpointPorts(ports: NonNullable<K8sEndpointSubset['ports']>): EndpointPort[] {
     return ports.map(port => ({
       name: port.name || '',
       port: port.port,
-      protocol: port.protocol || 'TCP'
+      protocol: (port.protocol || 'TCP') as EndpointPort['protocol']
     }));
   }
 
-  async portForward(service: string, namespace: string, localPort: number, servicePort: number): Promise<boolean> {
-    try {
-      // Port forward to service
-      const response = await this.kubectlService.executeCommand(
-        `kubectl port-forward service/${service} -n ${namespace} ${localPort}:${servicePort}`
-      );
-      return response.success;
-    } catch (error) {
-      console.error('Failed to port forward to service:', error);
-      return false;
-    }
-  }
-
-  async getServiceEvents(service: string, namespace: string): Promise<any[]> {
-    try {
-      const response = await this.kubectlService.executeCommand(
-        `kubectl get events -n ${namespace} --field-selector involvedObject.name=${service} --sort-by=.metadata.creationTimestamp -o json`
-      );
-      
-      if (response.success) {
-        const data = JSON.parse(response.stdout);
-        return data.items || [];
-      }
-    } catch (error) {
-      console.error('Failed to get service events:', error);
-    }
-    
-    return [];
-  }
-
-  async testServiceConnection(service: string, namespace: string, port: number): Promise<{ success: boolean; message: string }> {
-    try {
-      // Try to create a temporary pod to test connection
-      const testPod = `service-test-${Date.now()}`;
-      const createResponse = await this.kubectlService.executeCommand(
-        `kubectl run ${testPod} -n ${namespace} --image=busybox --rm -i --restart=Never -- nc -z ${service} ${port}`
-      );
-      
-      return {
-        success: createResponse.success,
-        message: createResponse.success ? 
-          `Connection to ${service}:${port} successful` :
-          `Connection failed: ${createResponse.stderr}`
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: `Test failed: ${error}`
-      };
-    }
-  }
-
-  async deleteService(service: string, namespace: string): Promise<boolean> {
-    try {
-      const response = await this.kubectlService.executeCommand(
-        `kubectl delete service ${service} -n ${namespace}`
-      );
-      return response.success;
-    } catch (error) {
-      console.error('Failed to delete service:', error);
-      return false;
-    }
-  }
-
-  async getServiceYaml(service: string, namespace: string): Promise<string | null> {
-    try {
-      const response = await this.kubectlService.executeCommand(
-        `kubectl get service ${service} -n ${namespace} -o yaml`
-      );
-      return response.success ? response.stdout : null;
-    } catch (error) {
-      console.error('Failed to get service YAML:', error);
-      return null;
-    }
-  }
 }

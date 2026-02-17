@@ -41,11 +41,6 @@ export class TemplateService {
     ];
   }
 
-  // Combined (kept for backward compat)
-  getGeneralTemplates(): CommandTemplate[] {
-    return [...this.getGlobalTemplates(), ...this.getNamespaceTemplates()];
-  }
-
   generateDeploymentTemplates(selectedDeployment: string): CommandTemplate[] {
     if (!selectedDeployment) return [];
 
@@ -65,11 +60,6 @@ export class TemplateService {
         name: `Details`,
         command: `kubectl describe deployment ${selectedDeployment} -n {namespace}`
       },
-      // {
-      //   id: `deploy-${selectedDeployment}-rollback`,
-      //   name: `Rollback`,
-      //   command: `kubectl rollout undo deployment/${selectedDeployment} -n {namespace}`
-      // }
     ];
   }
 
@@ -266,10 +256,6 @@ export class TemplateService {
       { id: `hr-${selected}-describe`, name: 'Details', command: `kubectl describe httproute ${selected} -n {namespace}` },
       { id: `hr-${selected}-yaml`, name: 'YAML', command: `kubectl get httproute ${selected} -n {namespace} -o yaml` },
     ];
-  }
-
-  replaceNamespacePlaceholder(command: string, namespace: string): string {
-    return command.replace(/{namespace}/g, namespace);
   }
 
   substituteTemplate(

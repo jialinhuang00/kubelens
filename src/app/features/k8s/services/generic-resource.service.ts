@@ -92,7 +92,4 @@ export class GenericResourceService {
     }
   }
 
-  getAllTypes(): ResourceType[] {
-    return this.resourceTypes;
-  }
 }

@@ -206,9 +206,6 @@ export function handleCommand(command: string): CommandResult {
     return { success: false, error: 'Failed to parse command' };
   }
 
-  console.log(`[SNAPSHOT] Handling: ${command}`);
-  console.log(`[SNAPSHOT] Parsed:`, JSON.stringify(parsed, null, 2));
-
   try {
     switch (parsed.action) {
       case 'get':

@@ -1,9 +1,11 @@
+import { OutputType } from '../models/kubectl.models';
+
 export interface OutputData {
-  outputType: 'table' | 'yaml' | 'multiple-tables' | 'multiple-yamls' | 'pod-describe' | 'events' | 'raw';
+  outputType: OutputType;
   isLoading: boolean;
   
   // Table data (required for components)
-  results: any[];
+  results: Record<string, string>[];
   headers: string[];
   
   // YAML data
@@ -13,7 +15,7 @@ export interface OutputData {
   multipleTables: Array<{
     title: string;
     headers: string[];
-    data: any[];
+    data: Record<string, string>[];
   }>;
   
   // Multiple YAMLs
@@ -26,7 +28,7 @@ export interface OutputData {
   podDescribeData: Array<{
     name: string;
     details: string;
-    events: any[];
+    events: Record<string, string>[];
     headers: string[];
   }>;
   

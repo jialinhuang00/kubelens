@@ -1,8 +1,6 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { CommandExecution } from '../../../../core/services/kubectl.service';
-
 @Component({
   selector: 'app-command-input',
   imports: [CommonModule, FormsModule],

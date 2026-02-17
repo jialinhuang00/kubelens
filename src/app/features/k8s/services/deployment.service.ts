@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { KubectlService } from '../../../core/services/kubectl.service';
 import { TemplateService } from '../../dashboard/services/template.service';
-import { CommandTemplate } from '../../../shared/models/kubectl.models';
+import { CommandTemplate, K8sCondition } from '../../../shared/models/kubectl.models';
 import { ExecutionContextService } from '../../../core/services/execution-context.service';
 import { ExecutionGroupGenerator } from '../../../shared/constants/execution-groups.constants';
 
@@ -15,7 +15,7 @@ export interface DeploymentStatus {
     available: number;
   };
   status: 'Progressing' | 'Complete' | 'Failed';
-  conditions: any[];
+  conditions: K8sCondition[];
   isPaused: boolean;
   progressingReason?: string; // DeploymentPaused, ReplicaSetUpdated, NewReplicaSetAvailable, etc.
   containerImage?: string; // first container image URL
@@ -176,7 +176,6 @@ export class DeploymentService {
     for (let i = dataStartIndex; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
-      console.log('line', line)
       const parts = line.split(/\s+/);
       if (parts.length >= 2) {
         const revision = parseInt(parts[0]);
@@ -191,7 +190,6 @@ export class DeploymentService {
           image: image || 'Unknown',
           created: 'Unknown' // kubectl rollout history doesn't provider createdAt
         });
-        console.log(historyItems)
       }
     }
 
@@ -245,61 +243,11 @@ export class DeploymentService {
     this.isMonitoringRollout.set(false);
   }
 
-  private async updateRolloutStatus(deployment: string, namespace: string): Promise<RolloutStatus | null> {
-    try {
-      // Get rollout status
-      const rolloutResponse = await this.kubectlService.executeCommand(
-        `kubectl rollout status deployment/${deployment} -n ${namespace} --timeout=1s`
-      );
-
-      // Get deployment details for progress calculation
-      const deploymentStatus = await this.getDeploymentStatus(deployment, namespace);
-
-      if (deploymentStatus) {
-        let status: RolloutStatus['status'] = 'InProgress';
-        let progress = 0;
-        let message = rolloutResponse.stdout || rolloutResponse.stderr || '';
-
-        // Calculate progress based on replica status
-        const { ready, desired } = deploymentStatus.replicas;
-        if (desired > 0) {
-          progress = Math.round((ready / desired) * 100);
-        }
-
-        // Determine status
-        if (rolloutResponse.success && message.includes('successfully rolled out')) {
-          status = 'Complete';
-          progress = 100;
-        } else if (deploymentStatus.status === 'Failed') {
-          status = 'Failed';
-        } else if (message.includes('paused')) {
-          status = 'Paused';
-        }
-
-        const rolloutStatus: RolloutStatus = {
-          deployment,
-          namespace,
-          revision: this.extractRevision(deploymentStatus.conditions),
-          status,
-          progress,
-          message: message.trim()
-        };
-
-        this.rolloutStatus.set(rolloutStatus);
-        return rolloutStatus;
-      }
-    } catch (error) {
-      console.error('Failed to get rollout status:', error);
-    }
-
-    return null;
-  }
-
-  private findProgressingCondition(conditions: any[]): any | null {
+  private findProgressingCondition(conditions: K8sCondition[]): K8sCondition | null {
     return conditions.find(condition => condition.type === 'Progressing') || null;
   }
 
-  private determineDeploymentStatus(conditions: any[]): DeploymentStatus['status'] {
+  private determineDeploymentStatus(conditions: K8sCondition[]): DeploymentStatus['status'] {
     for (const condition of conditions) {
       if (condition.type === 'Progressing') {
         if (condition.status === 'True' && condition.reason === 'NewReplicaSetAvailable') {
@@ -387,11 +335,6 @@ export class DeploymentService {
     };
   }
 
-  private extractRevision(conditions: any[]): number {
-    // Try to extract revision from deployment annotations or conditions
-    return 1; // Placeholder - would need to implement proper revision detection
-  }
-
   // Rollout control methods
   async pauseRollout(deployment: string, namespace: string): Promise<boolean> {
     try {
@@ -449,8 +392,4 @@ export class DeploymentService {
     }
   }
 
-  // Cleanup method
-  destroy() {
-    this.clearRolloutMonitoring();
-  }
 }

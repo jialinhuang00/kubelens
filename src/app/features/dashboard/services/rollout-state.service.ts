@@ -68,8 +68,4 @@ export class RolloutStateService {
     }
   }
 
-  private async refreshRolloutHistory(deployment: string, namespace: string) {
-    // This method is now handled in refreshDeploymentStatus
-    // Keeping it for backward compatibility or if needed separately later
-  }
 }

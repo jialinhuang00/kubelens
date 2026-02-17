@@ -41,10 +41,6 @@ export class GraphDataService {
       });
   }
 
-  getNodeById(id: string): GraphNode | undefined {
-    return this.nodes().find((n) => n.id === id);
-  }
-
   getConnectedEdges(nodeId: string): GraphEdge[] {
     return this.edges().filter((e) => e.source === nodeId || e.target === nodeId);
   }
