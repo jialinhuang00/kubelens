@@ -6,8 +6,8 @@ const fsp = fs.promises;
 
 const router = express.Router();
 
-// GET /api/health
-router.get('/health', (req, res) => {
+// GET /api/realtime/ping
+router.get('/realtime/ping', (req, res) => {
   exec('which kubectl && kubectl version --client -o json', (error, stdout, stderr) => {
     const env_info = {
       PATH: process.env.PATH,
@@ -50,16 +50,16 @@ router.get('/health', (req, res) => {
   });
 });
 
-// GET /api/snapshot-status
-router.get('/snapshot-status', async (req, res) => {
+// GET /api/snapshot/ping
+router.get('/snapshot/ping', async (req, res) => {
   const backupDir = path.join(__dirname, '..', 'k8s-snapshot');
   let available = false;
 
   try {
-    const entries = await fsp.readdir(backupDir, { withFileTypes: true });
-    available = entries.some(e => e.isDirectory() && !e.name.startsWith('.'));
+    await fsp.access(path.join(backupDir, '.export-complete'));
+    available = true;
   } catch {
-    // directory doesn't exist or can't be read
+    // .export-complete doesn't exist — no complete snapshot
   }
 
   res.json({ available });

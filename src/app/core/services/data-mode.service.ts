@@ -30,7 +30,7 @@ export class DataModeService {
   private async checkSnapshot(): Promise<void> {
     try {
       const res = await firstValueFrom(
-        this.http.get<{ available: boolean }>('http://localhost:3000/api/snapshot-status')
+        this.http.get<{ available: boolean }>('http://localhost:3000/api/snapshot/ping')
       );
       this.snapshotAvailable.set(res.available);
     } catch {
@@ -41,7 +41,7 @@ export class DataModeService {
   private async checkRealtime(): Promise<void> {
     try {
       const res = await firstValueFrom(
-        this.http.get<{ status: string; kubectl?: { version: string } }>('http://localhost:3000/api/health')
+        this.http.get<{ status: string; kubectl?: { version: string } }>('http://localhost:3000/api/realtime/ping')
       );
       const healthy = res.status === 'healthy';
       this.realtimeAvailable.set(healthy);
