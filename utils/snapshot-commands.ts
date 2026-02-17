@@ -3,19 +3,37 @@
  * Processes parsed commands against cached snapshot data.
  */
 
-const yaml = require('js-yaml');
-const { loadYaml, loadText, listBackupNamespaces, DEFAULT_NAMESPACE } = require('./snapshot-loader');
-const {
+import yaml from 'js-yaml';
+import { loadYaml, loadText, listBackupNamespaces, DEFAULT_NAMESPACE } from './snapshot-loader';
+import type { K8sItem, K8sList } from './snapshot-loader';
+import {
   extractNames, findItem, pad, getAge,
   generateDeploymentTable, generateServiceTable, generateCronjobTable,
   generateStatefulsetTable, generateJobTable, generateConfigmapTable,
   generateEndpointTable,
   generateDeploymentDescribe, generatePodDescribe, generateServiceDescribe,
   generateGenericDescribe,
-} = require('./snapshot-parsers');
+} from './snapshot-parsers';
+
+export interface CommandResult {
+  success: boolean;
+  stdout?: string;
+  error?: string;
+}
+
+export interface ParsedCommand {
+  action: string | null;
+  subAction: string | null;
+  resource: string | null;
+  resourceName: string | null;
+  namespace: string | undefined;
+  output: string | null;
+  flags: Record<string, unknown>;
+  raw: string;
+}
 
 // --- Resource mapping ---
-const RESOURCE_FILE_MAP = {
+const RESOURCE_FILE_MAP: Record<string, string | null> = {
   'deployments': 'deployments.yaml',
   'deployment': 'deployments.yaml',
   'deploy': 'deployments.yaml',
@@ -69,7 +87,7 @@ const RESOURCE_FILE_MAP = {
   'rolebinding': 'rolebindings.yaml',
 };
 
-const TABLE_GENERATORS = {
+const TABLE_GENERATORS: Record<string, (items: K8sItem[]) => string> = {
   'deployments.yaml': generateDeploymentTable,
   'services.yaml': generateServiceTable,
   'cronjobs.yaml': generateCronjobTable,
@@ -81,16 +99,16 @@ const TABLE_GENERATORS = {
 
 // --- Command parser ---
 
-function parseKubectlCommand(command) {
+export function parseKubectlCommand(command: string): ParsedCommand | null {
   const parts = command.trim().split(/\s+/);
   if (parts[0] !== 'kubectl') return null;
 
-  const result = {
+  const result: ParsedCommand = {
     action: null,
     subAction: null,
     resource: null,
     resourceName: null,
-    namespace: null,
+    namespace: undefined,
     output: null,
     flags: {},
     raw: command,
@@ -182,7 +200,7 @@ function parseKubectlCommand(command) {
 
 // --- Main handler ---
 
-function handleCommand(command) {
+export function handleCommand(command: string): CommandResult {
   const parsed = parseKubectlCommand(command);
   if (!parsed) {
     return { success: false, error: 'Failed to parse command' };
@@ -220,40 +238,41 @@ function handleCommand(command) {
       default:
         return { success: false, error: `[SNAPSHOT] Unsupported action: ${parsed.action}` };
     }
-  } catch (err) {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
     console.error('[SNAPSHOT] Error:', err);
-    return { success: false, error: `[SNAPSHOT] Error: ${err.message}` };
+    return { success: false, error: `[SNAPSHOT] Error: ${msg}` };
   }
 }
 
 // --- GET handler ---
 
-function handleGet(parsed) {
+function handleGet(parsed: ParsedCommand): CommandResult {
   if (parsed.flags.getAll) {
     return handleGetAll(parsed);
   }
 
-  if (['namespaces', 'namespace', 'ns'].includes(parsed.resource)) {
+  if (['namespaces', 'namespace', 'ns'].includes(parsed.resource!)) {
     return handleGetNamespaces(parsed);
   }
 
-  if (['nodes', 'node'].includes(parsed.resource)) {
+  if (['nodes', 'node'].includes(parsed.resource!)) {
     return handleGetNodes(parsed);
   }
 
-  if (['events', 'event', 'ev'].includes(parsed.resource)) {
+  if (['events', 'event', 'ev'].includes(parsed.resource!)) {
     return handleGetEvents(parsed);
   }
 
-  if (['pods', 'pod'].includes(parsed.resource)) {
+  if (['pods', 'pod'].includes(parsed.resource!)) {
     return handleGetPods(parsed);
   }
 
-  if (['replicasets', 'replicaset', 'rs'].includes(parsed.resource)) {
+  if (['replicasets', 'replicaset', 'rs'].includes(parsed.resource!)) {
     return handleGetReplicasets(parsed);
   }
 
-  const yamlFile = RESOURCE_FILE_MAP[parsed.resource];
+  const yamlFile = RESOURCE_FILE_MAP[parsed.resource!];
   if (!yamlFile) {
     return { success: false, error: `[SNAPSHOT] Unknown resource type: ${parsed.resource}` };
   }
@@ -279,15 +298,15 @@ function handleGet(parsed) {
     if (parsed.output && parsed.output.startsWith('jsonpath=')) {
       const jp = parsed.output.replace('jsonpath=', '').replace(/^"|"$/g, '');
       if (jp === '{.data}' && item.data) {
-        const decoded = {};
+        const decoded: Record<string, string> = {};
         for (const [k, v] of Object.entries(item.data)) {
           try { decoded[k] = Buffer.from(v, 'base64').toString('utf-8'); }
           catch { decoded[k] = v; }
         }
         return { success: true, stdout: JSON.stringify(decoded, null, 2) };
       }
-      const path = jp.replace(/^\{\.?/, '').replace(/\}$/, '');
-      const val = resolveJsonPath(item, path);
+      const jsonPath = jp.replace(/^\{\.?/, '').replace(/\}$/, '');
+      const val = resolveJsonPath(item, jsonPath);
       return { success: true, stdout: typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val || '') };
     }
     const generator = TABLE_GENERATORS[yamlFile];
@@ -331,7 +350,7 @@ function handleGet(parsed) {
   return { success: true, stdout: extractNames(data).join('\n') };
 }
 
-function handleGetNamespaces(parsed) {
+function handleGetNamespaces(parsed: ParsedCommand): CommandResult {
   const namespaces = listBackupNamespaces();
 
   if (parsed.output && parsed.output.startsWith('jsonpath=')) {
@@ -354,7 +373,7 @@ function handleGetNamespaces(parsed) {
   return { success: true, stdout: output };
 }
 
-function handleGetNodes(parsed) {
+function handleGetNodes(parsed: ParsedCommand): CommandResult {
   const node = {
     name: 'ip-10-0-1-50.ec2.internal',
     status: 'Ready',
@@ -396,7 +415,27 @@ function handleGetNodes(parsed) {
   return { success: true, stdout: output };
 }
 
-function handleGetPods(parsed) {
+interface PodJson {
+  apiVersion: string;
+  kind: string;
+  metadata: { name: string; namespace: string };
+  spec?: { containers: Array<{ name: string; image: string }> };
+  status: {
+    phase: string;
+    podIP: string;
+    hostIP: string;
+    containerStatuses: Array<{
+      name: string;
+      ready: boolean;
+      restartCount: number;
+      state?: { running: { startedAt: string } };
+      image?: string;
+      imageID?: string;
+    }>;
+  };
+}
+
+function handleGetPods(parsed: ParsedCommand): CommandResult {
   const ns = parsed.namespace;
   const snapshot = loadText('pods-snapshot.txt', ns);
   const images = loadText('pods-images.txt', ns);
@@ -411,7 +450,7 @@ function handleGetPods(parsed) {
   const dataLines = lines.slice(1);
 
   if (parsed.resourceName) {
-    const podLine = dataLines.find(l => l.trim().startsWith(parsed.resourceName));
+    const podLine = dataLines.find(l => l.trim().startsWith(parsed.resourceName!));
     if (!podLine) return { success: false, error: `Error from server (NotFound): pods "${parsed.resourceName}" not found` };
 
     if (parsed.output === 'json') {
@@ -441,9 +480,9 @@ function handleGetPods(parsed) {
   return { success: true, stdout: output };
 }
 
-function buildPodJson(podLine, ns, imagesText) {
+function buildPodJson(podLine: string, ns: string | undefined, imagesText: string | null): PodJson {
   const parts = podLine.trim().split(/\s+/);
-  const podJson = {
+  const podJson: PodJson = {
     apiVersion: 'v1',
     kind: 'Pod',
     metadata: { name: parts[0], namespace: ns || DEFAULT_NAMESPACE },
@@ -481,7 +520,7 @@ function buildPodJson(podLine, ns, imagesText) {
   return podJson;
 }
 
-function handleGetReplicasets(parsed) {
+function handleGetReplicasets(parsed: ParsedCommand): CommandResult {
   const data = loadYaml('deployments.yaml', parsed.namespace);
   if (!data) return { success: true, stdout: 'No resources found.' };
 
@@ -493,8 +532,13 @@ function handleGetReplicasets(parsed) {
   if (parsed.output && parsed.output.startsWith('custom-columns=')) {
     const header = 'REPLICASET                                    DEPLOYMENT                          DESIRED   CURRENT   READY';
     const rows = (data.items || []).map(d => {
-      const rsName = `${d.metadata.name}-${(d.spec?.template?.metadata?.labels?.['pod-template-hash'] || 'abc123').substring(0, 10)}`;
-      return `${pad(rsName, 46)}${pad(d.metadata.name, 36)}${pad(String(d.spec?.replicas || 1), 10)}${pad(String(d.status?.replicas || 0), 10)}${d.status?.readyReplicas || 0}`;
+      const spec = (d.spec || {}) as Record<string, unknown>;
+      const template = (spec.template || {}) as Record<string, unknown>;
+      const templateMeta = (template.metadata || {}) as Record<string, unknown>;
+      const templateLabels = (templateMeta.labels || {}) as Record<string, string>;
+      const status = (d.status || {}) as Record<string, unknown>;
+      const rsName = `${d.metadata.name}-${(templateLabels['pod-template-hash'] || 'abc123').substring(0, 10)}`;
+      return `${pad(rsName, 46)}${pad(d.metadata.name, 36)}${pad(String((spec.replicas as number) || 1), 10)}${pad(String((status.replicas as number) || 0), 10)}${(status.readyReplicas as number) || 0}`;
     });
     let output = [header, ...rows].join('\n');
     if (parsed.flags.noHeaders) output = rows.join('\n');
@@ -503,15 +547,17 @@ function handleGetReplicasets(parsed) {
 
   const header = 'NAME                                          DESIRED   CURRENT   READY   AGE';
   const rows = (data.items || []).map(d => {
+    const spec = (d.spec || {}) as Record<string, unknown>;
+    const status = (d.status || {}) as Record<string, unknown>;
     const rsName = `${d.metadata.name}-${String(d.metadata.generation || '1').padStart(2, '0')}`;
-    return `${pad(rsName, 46)}${pad(String(d.spec?.replicas || 1), 10)}${pad(String(d.status?.replicas || 0), 10)}${pad(String(d.status?.readyReplicas || 0), 8)}${getAge(d.metadata.creationTimestamp)}`;
+    return `${pad(rsName, 46)}${pad(String((spec.replicas as number) || 1), 10)}${pad(String((status.replicas as number) || 0), 10)}${pad(String((status.readyReplicas as number) || 0), 8)}${getAge(d.metadata.creationTimestamp)}`;
   });
   let output = [header, ...rows].join('\n');
   if (parsed.flags.noHeaders) output = rows.join('\n');
   return { success: true, stdout: output };
 }
 
-function handleGetEvents(parsed) {
+function handleGetEvents(parsed: ParsedCommand): CommandResult {
   const events = [
     `LAST SEEN   TYPE      REASON              OBJECT                                        MESSAGE`,
     `3m          Normal    Scheduled           pod/web-app-7449d97884-j7bt5                    Successfully assigned ${DEFAULT_NAMESPACE}/web-app-7449d97884-j7bt5 to ip-10-0-2-80.ec2.internal`,
@@ -537,9 +583,9 @@ function handleGetEvents(parsed) {
   return { success: true, stdout: events.join('\n') };
 }
 
-function handleGetAll(parsed) {
+function handleGetAll(parsed: ParsedCommand): CommandResult {
   const ns = parsed.namespace || DEFAULT_NAMESPACE;
-  const parts = [];
+  const parts: string[] = [];
 
   const snapshot = loadText('pods-snapshot.txt', ns);
   if (snapshot) {
@@ -577,8 +623,8 @@ function handleGetAll(parsed) {
   return { success: true, stdout: parts.join('\n\n') };
 }
 
-function handleCustomColumns(parsed, items) {
-  const spec = parsed.output.replace('custom-columns=', '').replace(/^"|"$/g, '');
+function handleCustomColumns(parsed: ParsedCommand, items: K8sItem[]): CommandResult {
+  const spec = parsed.output!.replace('custom-columns=', '').replace(/^"|"$/g, '');
   const columns = spec.split(',').map(col => {
     const [label, jsonPath] = col.split(':');
     return { label: label.trim(), path: jsonPath?.trim() };
@@ -597,23 +643,23 @@ function handleCustomColumns(parsed, items) {
   return { success: true, stdout: output };
 }
 
-function resolveJsonPath(obj, pathStr) {
+function resolveJsonPath(obj: unknown, pathStr: string | undefined): unknown {
   if (!pathStr) return '';
-  const path = pathStr.replace(/^\.(.*)/,'$1');
-  const parts = path.split('.');
-  let current = obj;
+  const cleanPath = pathStr.replace(/^\.(.*)/,'$1');
+  const parts = cleanPath.split('.');
+  let current: unknown = obj;
   for (const part of parts) {
     if (!current) return '<none>';
     const arrayMatch = part.match(/^(.+)\[\*\]$/);
     if (arrayMatch) {
       const key = arrayMatch[1];
-      current = current[key];
+      current = (current as Record<string, unknown>)[key];
       if (Array.isArray(current)) {
         const nextParts = parts.slice(parts.indexOf(part) + 1);
         if (nextParts.length > 0) {
           return current.map(item => {
-            let val = item;
-            for (const np of nextParts) val = val?.[np];
+            let val: unknown = item;
+            for (const np of nextParts) val = (val as Record<string, unknown>)?.[np];
             return val || '<none>';
           }).join(',');
         }
@@ -623,21 +669,21 @@ function resolveJsonPath(obj, pathStr) {
     }
     const indexMatch = part.match(/^(.+)\[(\d+)\]$/);
     if (indexMatch) {
-      current = current[indexMatch[1]]?.[parseInt(indexMatch[2])];
+      current = ((current as Record<string, unknown>)[indexMatch[1]] as unknown[])?.[parseInt(indexMatch[2])];
       continue;
     }
-    current = current[part];
+    current = (current as Record<string, unknown>)[part];
   }
   return current !== undefined && current !== null ? current : '<none>';
 }
 
 // --- DESCRIBE handler ---
 
-function handleDescribe(parsed) {
+function handleDescribe(parsed: ParsedCommand): CommandResult {
   const resource = parsed.resource;
   const name = parsed.resourceName;
 
-  if (['deployment', 'deployments', 'deploy'].includes(resource)) {
+  if (['deployment', 'deployments', 'deploy'].includes(resource!)) {
     const data = loadYaml('deployments.yaml', parsed.namespace);
     if (!data) return { success: false, error: 'No deployment data' };
     if (name) {
@@ -650,7 +696,7 @@ function handleDescribe(parsed) {
     };
   }
 
-  if (['pod', 'pods'].includes(resource)) {
+  if (['pod', 'pods'].includes(resource!)) {
     const ns = parsed.namespace;
     if (name) {
       return { success: true, stdout: generatePodDescribe(name, ns) };
@@ -664,7 +710,7 @@ function handleDescribe(parsed) {
     };
   }
 
-  if (['service', 'services', 'svc'].includes(resource)) {
+  if (['service', 'services', 'svc'].includes(resource!)) {
     const data = loadYaml('services.yaml', parsed.namespace);
     if (!data) return { success: false, error: 'No service data' };
     if (name) {
@@ -677,7 +723,7 @@ function handleDescribe(parsed) {
     };
   }
 
-  const fileMap = {
+  const fileMap: Record<string, string> = {
     'secret': 'secrets.yaml', 'secrets': 'secrets.yaml',
     'configmap': 'configmaps.yaml', 'configmaps': 'configmaps.yaml', 'cm': 'configmaps.yaml',
     'serviceaccount': 'serviceaccounts.yaml', 'serviceaccounts': 'serviceaccounts.yaml', 'sa': 'serviceaccounts.yaml',
@@ -690,7 +736,7 @@ function handleDescribe(parsed) {
     'httproute': 'httproutes.yaml', 'httproutes': 'httproutes.yaml',
   };
 
-  const yamlFile = fileMap[resource];
+  const yamlFile = fileMap[resource!];
   if (yamlFile) {
     const data = loadYaml(yamlFile, parsed.namespace);
     if (!data) return { success: false, error: `No ${resource} data` };
@@ -706,9 +752,9 @@ function handleDescribe(parsed) {
 
 // --- ROLLOUT handler ---
 
-function handleRollout(parsed) {
+function handleRollout(parsed: ParsedCommand): CommandResult {
   const deployment = parsed.resource;
-  let deploymentName = deployment;
+  let deploymentName = deployment!;
   if (deployment && deployment.includes('/')) {
     deploymentName = deployment.split('/')[1];
   }
@@ -720,18 +766,24 @@ function handleRollout(parsed) {
       if (!data) return { success: true, stdout: `deployment "${deploymentName}" successfully rolled out` };
       const item = findItem(data, deploymentName);
       if (!item) return { success: false, error: `Error from server (NotFound): deployments.apps "${deploymentName}" not found` };
-      const ready = item.status?.readyReplicas || 0;
-      const desired = item.spec?.replicas || 1;
+      const status = (item.status || {}) as Record<string, unknown>;
+      const spec = (item.spec || {}) as Record<string, unknown>;
+      const ready = (status.readyReplicas as number) || 0;
+      const desired = (spec.replicas as number) || 1;
       if (ready >= desired) {
         return { success: true, stdout: `deployment "${deploymentName}" successfully rolled out` };
       }
       return { success: true, stdout: `Waiting for deployment "${deploymentName}" rollout to finish: ${ready} of ${desired} updated replicas are available...` };
     }
     case 'history': {
-      const revision = parsed.flags.revision;
+      const revision = parsed.flags.revision as string | undefined;
       if (revision) {
         const item = data ? findItem(data, deploymentName) : null;
-        const image = item?.spec?.template?.spec?.containers?.[0]?.image || 'unknown:latest';
+        const spec = (item?.spec || {}) as Record<string, unknown>;
+        const template = (spec.template || {}) as Record<string, unknown>;
+        const templateSpec = (template.spec || {}) as Record<string, unknown>;
+        const containers = (templateSpec.containers || []) as Array<Record<string, unknown>>;
+        const image = (containers[0]?.image as string) || 'unknown:latest';
         return {
           success: true,
           stdout: `deployment.apps/${deploymentName} with revision #${revision}\nPod Template:\n  Labels:  app=${deploymentName}\n  Containers:\n   ${deploymentName}:\n    Image: ${image}\n    Port:  <none>\n    Host Port: <none>\n    Environment: <none>\n    Mounts: <none>\n  Volumes: <none>`
@@ -757,7 +809,7 @@ function handleRollout(parsed) {
 
 // --- CONFIG handler ---
 
-function handleConfig(parsed) {
+function handleConfig(parsed: ParsedCommand): CommandResult {
   switch (parsed.subAction) {
     case 'current-context':
       return { success: true, stdout: 'snapshot-context' };
@@ -773,7 +825,7 @@ function handleConfig(parsed) {
 
 // --- LOGS handler ---
 
-function handleLogs(parsed) {
+function handleLogs(parsed: ParsedCommand): CommandResult {
   const podName = parsed.resource;
   return {
     success: true,
@@ -789,11 +841,9 @@ function handleLogs(parsed) {
 
 // --- SET handler ---
 
-function handleSet(parsed) {
+function handleSet(parsed: ParsedCommand): CommandResult {
   if (parsed.subAction === 'image') {
     return { success: true, stdout: `deployment.apps/${parsed.resource || 'unknown'} image updated (snapshot)` };
   }
   return { success: false, error: `[SNAPSHOT] Unsupported set action: ${parsed.subAction}` };
 }
-
-module.exports = { parseKubectlCommand, handleCommand };

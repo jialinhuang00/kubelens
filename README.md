@@ -29,7 +29,11 @@ The home page auto-detects available modes and lets you toggle between them.
 │   ├── status.js              #   GET  /api/realtime/ping, /api/snapshot/ping
 │   └── ecr.js                 #   ECR image-related endpoints
 ├── utils/
-│   └── snapshot-handler.js    #   Snapshot mode data provider (reads k8s-snapshot/ YAML files)
+│   ├── snapshot-handler.js    #   Re-export shim + getResourceCounts
+│   ├── snapshot-loader.js     #   Constants, cache, YAML/text file loading
+│   ├── snapshot-parsers.js    #   Table generators, describe generators, helpers
+│   ├── snapshot-commands.js   #   Command parser + all kubectl action handlers
+│   └── graph-builder.js       #   Graph construction logic (buildGraph, extractWorkloadEdges)
 ├── scripts/                   # CLI tools (bash + node)
 │   ├── k8s-export.sh          #   Dump cluster resources to k8s-snapshot/ (parallel batched kubectl)
 │   ├── split-resources.js     #   Splits combined kubectl JSON output into per-kind YAML files
@@ -51,7 +55,7 @@ Express API handlers, each file exports a router mounted by `server.js`.
 | File | Endpoints | Description |
 |------|-----------|-------------|
 | `execute.js` | `POST /api/execute` | Runs kubectl commands, supports streaming via WebSocket |
-| `graph.js` | `GET /api/graph` | Builds resource topology graph (9 parallel kubectl calls in realtime, YAML parsing in snapshot) |
+| `graph.js` | `GET /api/graph` | Route handler + `fetchLiveData`; graph logic delegated to `utils/graph-builder.js` |
 | `k8s-export.js` | `POST /api/k8s-export/start`, `GET .../progress`, `POST .../stop` | Spawns `k8s-export.sh`, streams progress via stdout parsing |
 | `resource-counts.js` | `GET /api/resource-counts` | Counts resources per namespace (parallel `execFile`, no shell injection) |
 | `status.js` | `GET /api/realtime/ping`, `GET /api/snapshot/ping` | Kubectl availability check and snapshot completeness check |
@@ -59,9 +63,15 @@ Express API handlers, each file exports a router mounted by `server.js`.
 
 ### utils/
 
+Snapshot dependencies: `parsers` → `loader`, `commands` → `loader` + `parsers`, `handler` → `loader` + `commands`
+
 | File | Description |
 |------|-------------|
-| `snapshot-handler.js` | Not a router. Provides functions to read snapshot YAML and simulate kubectl responses |
+| `snapshot-loader.js` | Constants (`BACKUP_PATH`, `DEFAULT_NAMESPACE`), in-memory cache, YAML/text file loading |
+| `snapshot-parsers.js` | Helpers (`pad`, `getAge`), table generators (deployment, service, etc.), describe generators |
+| `snapshot-commands.js` | `parseKubectlCommand` parser, `handleCommand` dispatcher, all action sub-handlers |
+| `snapshot-handler.js` | Re-export shim: re-exports `handleCommand`/`parseKubectlCommand`, owns `getResourceCounts` |
+| `graph-builder.js` | Pure graph logic: `discoverNamespaces`, `buildGraph`, `extractWorkloadEdges` (no Express) |
 
 ### scripts/
 

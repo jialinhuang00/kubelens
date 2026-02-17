@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject, merge, Subject, firstValueFrom, of } from 'rxjs';
 import { takeUntil, catchError } from 'rxjs/operators';
-import { KubectlResponse } from '../../shared/models/kubectl.models';
+import { KubectlResponse, ResourceType } from '../../shared/models/kubectl.models';
 import { WebSocketService } from './websocket.service';
 import { ExecutionContextService } from './execution-context.service';
 import { ExecutionGroupUtils } from '../../shared/constants/execution-groups.constants';
@@ -291,7 +291,7 @@ export class KubectlService {
     }
   }
 
-  async getResourceNames(resourceType: string, namespace: string): Promise<string[]> {
+  async getResourceNames(resourceType: ResourceType, namespace: string): Promise<string[]> {
     try {
       const response = await this.executeCommand(
         `kubectl get ${resourceType} -n ${namespace} -o jsonpath="{.items[*].metadata.name}"`
@@ -322,54 +322,4 @@ export class KubectlService {
     }
   }
 
-  async getDeployments(namespace: string): Promise<string[]> {
-    try {
-      const response = await this.executeCommand(
-        `kubectl get deployments -n ${namespace} -o jsonpath="{.items[*].metadata.name}"`
-      );
-
-      if (response.success) {
-        return response.stdout.trim().split(' ').filter(d => d);
-      }
-
-      return [];
-    } catch (error) {
-      console.error(`Failed to load deployments for namespace ${namespace}:`, error);
-      return [];
-    }
-  }
-
-  async getPods(namespace: string): Promise<string[]> {
-    try {
-      const response = await this.executeCommand(
-        `kubectl get pods -n ${namespace} -o jsonpath="{.items[*].metadata.name}"`
-      );
-
-      if (response.success) {
-        return response.stdout.trim().split(' ').filter(p => p);
-      }
-
-      return [];
-    } catch (error) {
-      console.error(`Failed to load pods for namespace ${namespace}:`, error);
-      return [];
-    }
-  }
-
-  async getServices(namespace: string): Promise<string[]> {
-    try {
-      const response = await this.executeCommand(
-        `kubectl get services -n ${namespace} -o jsonpath="{.items[*].metadata.name}"`
-      );
-
-      if (response.success) {
-        return response.stdout.trim().split(' ').filter(s => s);
-      }
-
-      return [];
-    } catch (error) {
-      console.error(`Failed to load services for namespace ${namespace}:`, error);
-      return [];
-    }
-  }
 }

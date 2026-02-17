@@ -3,26 +3,27 @@
  * for formatting kubectl-like output from snapshot data.
  */
 
-const { loadText, DEFAULT_NAMESPACE } = require('./snapshot-loader');
+import { loadText, DEFAULT_NAMESPACE } from './snapshot-loader';
+import type { K8sItem, K8sList } from './snapshot-loader';
 
 // --- Helpers ---
 
-function extractNames(yamlData) {
+export function extractNames(yamlData: K8sList | null): string[] {
   if (!yamlData || !yamlData.items) return [];
-  return yamlData.items.map(item => item.metadata?.name).filter(Boolean);
+  return yamlData.items.map(item => item.metadata?.name).filter(Boolean) as string[];
 }
 
-function findItem(yamlData, name) {
+export function findItem(yamlData: K8sList | null, name: string): K8sItem | null {
   if (!yamlData || !yamlData.items) return null;
   return yamlData.items.find(item => item.metadata?.name === name) || null;
 }
 
-function pad(str, len) {
-  str = String(str || '');
-  return str.length >= len ? str : str + ' '.repeat(len - str.length);
+export function pad(str: unknown, len: number): string {
+  const s = String(str || '');
+  return s.length >= len ? s : s + ' '.repeat(len - s.length);
 }
 
-function getAge(timestamp) {
+export function getAge(timestamp: string | undefined): string {
   if (!timestamp) return '<unknown>';
   const diff = Date.now() - new Date(timestamp).getTime();
   const days = Math.floor(diff / 86400000);
@@ -33,7 +34,7 @@ function getAge(timestamp) {
   return `${minutes}m`;
 }
 
-function getDuration(start, end) {
+export function getDuration(start: string, end: string): string {
   const diff = new Date(end).getTime() - new Date(start).getTime();
   const secs = Math.floor(diff / 1000);
   if (secs < 60) return `${secs}s`;
@@ -44,30 +45,32 @@ function getDuration(start, end) {
 
 // --- Tabular generators ---
 
-function generateDeploymentTable(items) {
+export function generateDeploymentTable(items: K8sItem[]): string {
   const header = 'NAME                                  READY   UP-TO-DATE   AVAILABLE   AGE';
   const rows = items.map(d => {
     const name = d.metadata.name;
-    const desired = d.spec?.replicas || 1;
-    const ready = d.status?.readyReplicas || 0;
-    const upToDate = d.status?.updatedReplicas || 0;
-    const available = d.status?.availableReplicas || 0;
+    const desired = (d.spec as Record<string, unknown>)?.replicas as number || 1;
+    const status = d.status as Record<string, unknown> || {};
+    const ready = (status.readyReplicas as number) || 0;
+    const upToDate = (status.updatedReplicas as number) || 0;
+    const available = (status.availableReplicas as number) || 0;
     const age = getAge(d.metadata.creationTimestamp);
     return `${pad(name, 38)}${pad(`${ready}/${desired}`, 8)}${pad(String(upToDate), 13)}${pad(String(available), 12)}${age}`;
   });
   return [header, ...rows].join('\n');
 }
 
-function generateServiceTable(items) {
+export function generateServiceTable(items: K8sItem[]): string {
   const header = 'NAME                            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE';
   const rows = items.map(s => {
     const name = s.metadata.name;
-    const type = s.spec?.type || 'ClusterIP';
-    const clusterIP = s.spec?.clusterIP || '<none>';
-    const externalIP = (s.spec?.externalIPs || []).join(',') || '<none>';
-    const ports = (s.spec?.ports || []).map(p => {
-      if (p.nodePort) return `${p.port}:${p.nodePort}/${p.protocol || 'TCP'}`;
-      return `${p.port}/${p.protocol || 'TCP'}`;
+    const spec = (s.spec || {}) as Record<string, unknown>;
+    const type = (spec.type as string) || 'ClusterIP';
+    const clusterIP = (spec.clusterIP as string) || '<none>';
+    const externalIP = ((spec.externalIPs as string[]) || []).join(',') || '<none>';
+    const ports = ((spec.ports as Array<Record<string, unknown>>) || []).map(p => {
+      if (p.nodePort) return `${p.port}:${p.nodePort}/${(p.protocol as string) || 'TCP'}`;
+      return `${p.port}/${(p.protocol as string) || 'TCP'}`;
     }).join(',') || '<none>';
     const age = getAge(s.metadata.creationTimestamp);
     return `${pad(name, 32)}${pad(type, 12)}${pad(clusterIP, 17)}${pad(externalIP, 14)}${pad(ports, 29)}${age}`;
@@ -75,40 +78,44 @@ function generateServiceTable(items) {
   return [header, ...rows].join('\n');
 }
 
-function generateCronjobTable(items) {
+export function generateCronjobTable(items: K8sItem[]): string {
   const header = 'NAME                           SCHEDULE       SUSPEND   ACTIVE   LAST SCHEDULE   AGE';
   const rows = items.map(c => {
     const name = c.metadata.name;
-    const schedule = c.spec?.schedule || '* * * * *';
-    const suspend = c.spec?.suspend ? 'True' : 'False';
-    const active = (c.status?.active || []).length;
-    const lastSchedule = c.status?.lastScheduleTime ? getAge(c.status.lastScheduleTime) : '<none>';
+    const spec = (c.spec || {}) as Record<string, unknown>;
+    const status = (c.status || {}) as Record<string, unknown>;
+    const schedule = (spec.schedule as string) || '* * * * *';
+    const suspend = spec.suspend ? 'True' : 'False';
+    const active = ((status.active as unknown[]) || []).length;
+    const lastSchedule = status.lastScheduleTime ? getAge(status.lastScheduleTime as string) : '<none>';
     const age = getAge(c.metadata.creationTimestamp);
     return `${pad(name, 31)}${pad(schedule, 15)}${pad(suspend, 10)}${pad(String(active), 9)}${pad(lastSchedule, 16)}${age}`;
   });
   return [header, ...rows].join('\n');
 }
 
-function generateStatefulsetTable(items) {
+export function generateStatefulsetTable(items: K8sItem[]): string {
   const header = 'NAME                  READY   AGE';
   const rows = items.map(s => {
     const name = s.metadata.name;
-    const desired = s.spec?.replicas || 1;
-    const ready = s.status?.readyReplicas || 0;
+    const desired = (s.spec as Record<string, unknown>)?.replicas as number || 1;
+    const ready = (s.status as Record<string, unknown>)?.readyReplicas as number || 0;
     const age = getAge(s.metadata.creationTimestamp);
     return `${pad(name, 22)}${pad(`${ready}/${desired}`, 8)}${age}`;
   });
   return [header, ...rows].join('\n');
 }
 
-function generateJobTable(items) {
+export function generateJobTable(items: K8sItem[]): string {
   const header = 'NAME                               COMPLETIONS   DURATION   AGE';
   const rows = items.map(j => {
     const name = j.metadata.name;
-    const succeeded = j.status?.succeeded || 0;
-    const completions = j.spec?.completions || 1;
-    const duration = j.status?.completionTime && j.status?.startTime
-      ? getDuration(j.status.startTime, j.status.completionTime)
+    const spec = (j.spec || {}) as Record<string, unknown>;
+    const status = (j.status || {}) as Record<string, unknown>;
+    const succeeded = (status.succeeded as number) || 0;
+    const completions = (spec.completions as number) || 1;
+    const duration = status.completionTime && status.startTime
+      ? getDuration(status.startTime as string, status.completionTime as string)
       : '<none>';
     const age = getAge(j.metadata.creationTimestamp);
     return `${pad(name, 35)}${pad(`${succeeded}/${completions}`, 14)}${pad(duration, 11)}${age}`;
@@ -116,7 +123,7 @@ function generateJobTable(items) {
   return [header, ...rows].join('\n');
 }
 
-function generateConfigmapTable(items) {
+export function generateConfigmapTable(items: K8sItem[]): string {
   const header = 'NAME                              DATA   AGE';
   const rows = items.map(c => {
     const name = c.metadata.name;
@@ -127,7 +134,7 @@ function generateConfigmapTable(items) {
   return [header, ...rows].join('\n');
 }
 
-function generateEndpointTable(items) {
+export function generateEndpointTable(items: K8sItem[]): string {
   const header = 'NAME                            ENDPOINTS                          AGE';
   const rows = items.map(e => {
     const name = e.metadata.name;
@@ -145,21 +152,31 @@ function generateEndpointTable(items) {
 
 // --- Describe generators ---
 
-function generateDeploymentDescribe(item) {
+export function generateDeploymentDescribe(item: K8sItem | null): string {
   if (!item) return 'Error from server (NotFound): deployments.apps not found';
   const m = item.metadata;
-  const s = item.spec;
-  const st = item.status;
+  const s = (item.spec || {}) as Record<string, unknown>;
+  const st = (item.status || {}) as Record<string, unknown>;
   const labels = Object.entries(m.labels || {}).map(([k, v]) => `                   ${k}=${v}`).join('\n');
   const annotations = Object.entries(m.annotations || {}).map(([k, v]) => `                   ${k}: ${v}`).join('\n');
-  const containers = (s.template?.spec?.containers || []).map(c => {
-    const envLines = (c.env || []).map(e => `      ${e.name}:  ${e.value || '<set to the key>'}`).join('\n');
-    return `  ${c.name}:\n    Image:      ${c.image}\n    Port:       ${(c.ports || []).map(p => `${p.containerPort}/${p.protocol || 'TCP'}`).join(', ') || '<none>'}\n    Limits:     ${JSON.stringify(c.resources?.limits || {})}\n    Requests:   ${JSON.stringify(c.resources?.requests || {})}\n    Environment:\n${envLines || '      <none>'}`;
+  const template = (s.template || {}) as Record<string, unknown>;
+  const templateSpec = (template.spec || {}) as Record<string, unknown>;
+  const containers = ((templateSpec.containers || []) as Array<Record<string, unknown>>).map(c => {
+    const envLines = ((c.env || []) as Array<Record<string, unknown>>).map(e => `      ${e.name}:  ${e.value || '<set to the key>'}`).join('\n');
+    const resources = (c.resources || {}) as Record<string, unknown>;
+    const containerPorts = ((c.ports || []) as Array<Record<string, unknown>>).map(p => `${p.containerPort}/${(p.protocol as string) || 'TCP'}`).join(', ') || '<none>';
+    return `  ${c.name}:\n    Image:      ${c.image}\n    Port:       ${containerPorts}\n    Limits:     ${JSON.stringify(resources.limits || {})}\n    Requests:   ${JSON.stringify(resources.requests || {})}\n    Environment:\n${envLines || '      <none>'}`;
   }).join('\n');
 
-  const conditions = (st.conditions || []).map(c =>
-    `  ${pad(c.type, 20)}${pad(c.status, 8)}${pad(c.reason || '', 25)}${c.message || ''}`
+  const conditions = ((st.conditions || []) as Array<Record<string, unknown>>).map(c =>
+    `  ${pad(c.type, 20)}${pad(c.status, 8)}${pad((c.reason as string) || '', 25)}${(c.message as string) || ''}`
   ).join('\n');
+
+  const selector = (s.selector || {}) as Record<string, unknown>;
+  const matchLabels = (selector.matchLabels || {}) as Record<string, string>;
+  const templateMeta = (template.metadata || {}) as Record<string, unknown>;
+  const templateLabels = (templateMeta.labels || {}) as Record<string, string>;
+  const strategy = (s.strategy || {}) as Record<string, unknown>;
 
   return `Name:                   ${m.name}
 Namespace:              ${m.namespace}
@@ -168,11 +185,11 @@ Labels:
 ${labels}
 Annotations:
 ${annotations}
-Selector:               ${Object.entries(s.selector?.matchLabels || {}).map(([k, v]) => `${k}=${v}`).join(',')}
+Selector:               ${Object.entries(matchLabels).map(([k, v]) => `${k}=${v}`).join(',')}
 Replicas:               ${s.replicas} desired | ${st.updatedReplicas || 0} updated | ${st.replicas || 0} total | ${st.readyReplicas || 0} ready | ${st.unavailableReplicas || 0} unavailable
-StrategyType:           ${s.strategy?.type || 'RollingUpdate'}
+StrategyType:           ${(strategy.type as string) || 'RollingUpdate'}
 Pod Template:
-  Labels:  ${Object.entries(s.template?.metadata?.labels || {}).map(([k, v]) => `${k}=${v}`).join('\n           ')}
+  Labels:  ${Object.entries(templateLabels).map(([k, v]) => `${k}=${v}`).join('\n           ')}
   Containers:
 ${containers}
 Conditions:
@@ -184,7 +201,7 @@ NewReplicaSet:        ${m.name} (${st.readyReplicas || 0}/${s.replicas} replicas
 Events:               <none>`;
 }
 
-function generatePodDescribe(podName, namespace) {
+export function generatePodDescribe(podName: string, namespace?: string): string {
   const ns = namespace || DEFAULT_NAMESPACE;
   const snapshot = loadText('pods-snapshot.txt', ns);
   if (!snapshot) return `Error from server (NotFound): pods "${podName}" not found`;
@@ -210,28 +227,28 @@ Conditions:
 Events:             <none>`;
 }
 
-function generateServiceDescribe(item) {
+export function generateServiceDescribe(item: K8sItem | null): string {
   if (!item) return 'Error from server (NotFound): services not found';
   const m = item.metadata;
-  const s = item.spec;
-  const ports = (s.ports || []).map(p =>
-    `  Port:              ${p.name || '<unset>'}  ${p.port}/${p.protocol || 'TCP'}\n  TargetPort:        ${p.targetPort}/${p.protocol || 'TCP'}`
+  const s = (item.spec || {}) as Record<string, unknown>;
+  const sPorts = ((s.ports || []) as Array<Record<string, unknown>>).map(p =>
+    `  Port:              ${(p.name as string) || '<unset>'}  ${p.port}/${(p.protocol as string) || 'TCP'}\n  TargetPort:        ${p.targetPort}/${(p.protocol as string) || 'TCP'}`
   ).join('\n');
-  const selector = Object.entries(s.selector || {}).map(([k, v]) => `${k}=${v}`).join(',');
+  const selector = Object.entries((s.selector || {}) as Record<string, string>).map(([k, v]) => `${k}=${v}`).join(',');
   return `Name:              ${m.name}
 Namespace:         ${m.namespace}
 Labels:            ${Object.entries(m.labels || {}).map(([k, v]) => `${k}=${v}`).join('\n                   ')}
 Selector:          ${selector || '<none>'}
-Type:              ${s.type || 'ClusterIP'}
-IP:                ${s.clusterIP || '<none>'}
-${ports}
-Session Affinity:  ${s.sessionAffinity || 'None'}
+Type:              ${(s.type as string) || 'ClusterIP'}
+IP:                ${(s.clusterIP as string) || '<none>'}
+${sPorts}
+Session Affinity:  ${(s.sessionAffinity as string) || 'None'}
 Events:            <none>`;
 }
 
-function generateGenericDescribe(item) {
+export function generateGenericDescribe(item: K8sItem | null): string {
   if (!item) return 'Error from server (NotFound): resource not found';
-  const m = item.metadata || {};
+  const m = item.metadata || {} as Record<string, unknown>;
   const labels = Object.entries(m.labels || {}).map(([k, v]) => `${k}=${v}`).join('\n                   ') || '<none>';
   const annotations = Object.entries(m.annotations || {}).map(([k, v]) => `${k}: ${v}`).join('\n                   ') || '<none>';
   const dataKeys = item.data ? Object.keys(item.data).join('\n  ') : '';
@@ -244,22 +261,3 @@ Annotations:       ${annotations}
 CreationTimestamp: ${m.creationTimestamp || '<unknown>'}${item.type ? `\nType:              ${item.type}` : ''}${dataSection}
 Events:            <none>`;
 }
-
-module.exports = {
-  extractNames,
-  findItem,
-  pad,
-  getAge,
-  getDuration,
-  generateDeploymentTable,
-  generateServiceTable,
-  generateCronjobTable,
-  generateStatefulsetTable,
-  generateJobTable,
-  generateConfigmapTable,
-  generateEndpointTable,
-  generateDeploymentDescribe,
-  generatePodDescribe,
-  generateServiceDescribe,
-  generateGenericDescribe,
-};

@@ -74,7 +74,7 @@ export class DeploymentService {
 
     this.isLoading.set(true);
     try {
-      const deployments = await this.kubectlService.getDeployments(namespace);
+      const deployments = await this.kubectlService.getResourceNames('deployments', namespace);
       this.deployments.set(deployments);
 
       // Clear selection if current deployment is not in new list

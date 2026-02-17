@@ -25,7 +25,11 @@
 │   ├── status.js              #   GET  /api/realtime/ping, /api/snapshot/ping
 │   └── ecr.js                 #   ECR image endpoints
 ├── utils/
-│   └── snapshot-handler.js    #   Reads k8s-snapshot/ YAML, simulates kubectl responses
+│   ├── snapshot-handler.js    #   Re-export shim + getResourceCounts
+│   ├── snapshot-loader.js     #   Constants, cache, YAML/text file loading
+│   ├── snapshot-parsers.js    #   Table generators, describe generators, helpers
+│   ├── snapshot-commands.js   #   Command parser + all kubectl action handlers
+│   └── graph-builder.js       #   Graph construction logic (buildGraph, extractWorkloadEdges)
 ├── scripts/                   # CLI tools (bash 3.2 compatible)
 │   ├── k8s-export.sh          #   Parallel batched cluster export
 │   ├── split-resources.js     #   Splits kubectl JSON into per-kind YAML files
@@ -34,7 +38,7 @@
 │   ├── core/services/         #   kubectl, data-mode, k8s-export, websocket, execution-context
 │   └── features/
 │       ├── home/              #   Landing page — mode toggle, export UI
-│       ├── dashboard/         #   Command execution terminal
+│       ├── dashboard/         #   Command execution terminal (executor service extracted)
 │       ├── universe/          #   GPU-accelerated graph (@cosmograph/cosmos)
 │       └── k8s/               #   K8s resource views
 └── k8s-snapshot/              # Exported cluster data (gitignored)
@@ -63,6 +67,7 @@ Home page → `routes/k8s-export.js` → spawns `scripts/k8s-export.sh` → writ
 
 ## Important Constraints
 - bash scripts must work on macOS bash 3.2 (no `declare -A`, empty arrays + `set -u` crash)
-- `snapshot-handler.js` uses in-memory cache — only blocks on first call per resource
+- `snapshot-loader.js` uses in-memory cache — only blocks on first call per resource
+- Snapshot dependencies: `parsers` → `loader`, `commands` → `loader` + `parsers`, `handler` → `loader` + `commands`
 - Build warnings for regl/seedrandom CommonJS modules are expected (cosmos dependency)
 - Graph endpoint runs 9 parallel kubectl calls in realtime mode

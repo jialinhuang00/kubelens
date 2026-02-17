@@ -56,7 +56,7 @@ export class SvcService {
     
     this.isLoading.set(true);
     try {
-      const services = await this.kubectlService.getServices(namespace);
+      const services = await this.kubectlService.getResourceNames('services', namespace);
       this.services.set(services);
       
       // Clear selection if current service is not in new list

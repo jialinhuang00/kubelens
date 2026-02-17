@@ -9,16 +9,20 @@
  *   getResourceCounts(namespace) → { resourceType: count }
  */
 
-const { loadYaml, loadText } = require('./snapshot-loader');
-const { handleCommand, parseKubectlCommand } = require('./snapshot-commands');
+import { loadYaml, loadText } from './snapshot-loader';
+import { handleCommand, parseKubectlCommand } from './snapshot-commands';
+import type { CommandResult, ParsedCommand } from './snapshot-commands';
+
+export { handleCommand, parseKubectlCommand };
+export type { CommandResult, ParsedCommand };
 
 // --- Resource counts ---
 // Returns { resourceType: count } for all YAML-backed resources + pods in a namespace.
 // Used by GET /api/resource-counts?namespace=X to populate book spine badges without
 // loading full item lists.
 
-function getResourceCounts(namespace) {
-  const counts = {};
+export function getResourceCounts(namespace: string): Record<string, number> {
+  const counts: Record<string, number> = {};
 
   // Pods: count lines in pods-snapshot.txt (minus header)
   const snapshot = loadText('pods-snapshot.txt', namespace);
@@ -30,7 +34,7 @@ function getResourceCounts(namespace) {
   }
 
   // YAML-backed resources: count items array length
-  const yamlResources = {
+  const yamlResources: Record<string, string> = {
     deployment: 'deployments.yaml',
     service: 'services.yaml',
     statefulsets: 'statefulsets.yaml',
@@ -52,5 +56,3 @@ function getResourceCounts(namespace) {
 
   return counts;
 }
-
-module.exports = { handleCommand, parseKubectlCommand, getResourceCounts };

@@ -1,3 +1,18 @@
+export type ResourceType =
+  | 'deployments'
+  | 'pods'
+  | 'services'
+  | 'cronjobs'
+  | 'statefulsets'
+  | 'jobs'
+  | 'configmaps'
+  | 'secrets'
+  | 'persistentvolumeclaims'
+  | 'serviceaccounts'
+  | 'ingresses'
+  | 'gateways'
+  | 'httproutes';
+
 export interface KubeResource {
   [key: string]: any;
 }

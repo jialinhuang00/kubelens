@@ -47,7 +47,7 @@ export class PodService {
     
     this.isLoading.set(true);
     try {
-      const pods = await this.kubectlService.getPods(namespace);
+      const pods = await this.kubectlService.getResourceNames('pods', namespace);
       this.pods.set(pods);
       
       // Clear selection if current pod is not in new list

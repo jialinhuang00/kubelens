@@ -1,17 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { KubectlService } from '../../../core/services/kubectl.service';
-
-export type ResourceType =
-  | 'cronjobs'
-  | 'statefulsets'
-  | 'jobs'
-  | 'configmaps'
-  | 'secrets'
-  | 'persistentvolumeclaims'
-  | 'serviceaccounts'
-  | 'ingresses'
-  | 'gateways'
-  | 'httproutes';
+import { ResourceType } from '../../../shared/models/kubectl.models';
 
 export interface ResourceState {
   items: string[];
