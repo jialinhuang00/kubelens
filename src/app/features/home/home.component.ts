@@ -2,11 +2,12 @@ import { Component, inject, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DataModeService } from '../../core/services/data-mode.service';
 import { K8sExportService } from '../../core/services/k8s-export.service';
+import { TickFlashDirective } from '../../shared/directives/tick-flash.directive';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, TickFlashDirective],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
 })
@@ -14,6 +15,7 @@ export class HomeComponent implements OnInit {
   dataModeService = inject(DataModeService);
   exportService = inject(K8sExportService);
   showAllResources = false;
+
   ngOnInit() {
     this.dataModeService.checkAvailability();
     this.exportService.checkState();
@@ -31,8 +33,9 @@ export class HomeComponent implements OnInit {
     this.exportService.pauseExport();
   }
 
-  onExportDone() {
-    this.dataModeService.checkAvailability();
+  async onExportDone() {
+    await this.dataModeService.checkAvailability();
+    this.dataModeService.setSnapshotMode(true);
     this.exportService.done.set(false);
   }
 }

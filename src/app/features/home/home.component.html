@@ -49,11 +49,11 @@
         <div class="progress-fill animating" [style.width.%]="exportService.progress()"></div>
       </div>
       <div class="export-stats">
-        <span>{{ exportService.completedNs() }} / {{ exportService.totalNs() || '?' }} namespaces</span>
+        <span><span appTickFlash [tickValue]="exportService.completedNs()">{{ exportService.completedNs() }}</span> / {{ exportService.totalNs() || '?' }} namespaces</span>
         @if (exportService.eta()) {
           <span>{{ exportService.eta() }}</span>
         }
-        <span>{{ exportService.fileCount() }} files</span>
+        <span><span appTickFlash [tickValue]="exportService.fileCount()">{{ exportService.fileCount() }}</span> files</span>
       </div>
     </div>
   } @else if (exportService.paused()) {

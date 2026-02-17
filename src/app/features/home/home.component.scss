@@ -339,6 +339,21 @@
   font-size: 10px;
   color: #b8ac90;
   font-family: 'IBM Plex Mono', monospace;
+
+  .tick-flash {
+    animation: tickFlash 0.4s ease-out;
+  }
+}
+
+@keyframes tickFlash {
+  0% {
+    color: #f0d080;
+    text-shadow: 0 0 6px rgba(232, 184, 102, 0.8);
+  }
+  100% {
+    color: inherit;
+    text-shadow: none;
+  }
 }
 
 .export-success {
