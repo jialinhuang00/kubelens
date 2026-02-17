@@ -68,9 +68,6 @@ export class YamlParserService {
       level = spaces;
     }
 
-    // Debug: 顯示每行的空格數和計算出的層級
-    // console.log(`"${line}" -> ${spaces} spaces, hasColon: ${hasColon}, continuation: ${isLikelyContinuation}, arrayItem: ${isArrayItem} -> level ${level}`);
-
     return level;
   }
 
@@ -87,30 +84,21 @@ export class YamlParserService {
     const start = startIndex;
     let end = startIndex;
 
-    // Debug logging
-    const currentLine = lines[startIndex];
-    // console.log(`Calculating range for line ${startIndex}: "${currentLine.trim()}" at level ${level}`);
-
     // Include all lines that are children (higher level) of this line
     for (let i = startIndex + 1; i < lines.length; i++) {
       const line = lines[i];
       if (!line.trim()) continue; // Skip empty lines
 
       const lineLevel = this.getIndentationLevel(line);
-      // console.log(`  Line ${i}: "${line.trim()}" at level ${lineLevel}`);
 
       // If this line is at same or lower level than current, we've reached the end
       if (lineLevel <= level) {
-        // console.log(`  Stopping at line ${i} because ${lineLevel} <= ${level}`);
         break;
       }
 
       // This line is deeper than our level, so it belongs to our block
       end = i;
-      // console.log(`  Including line ${i} in range`);
     }
-
-    // console.log(`Final range: ${start} to ${end}`);
     return { start, end };
   }
 }

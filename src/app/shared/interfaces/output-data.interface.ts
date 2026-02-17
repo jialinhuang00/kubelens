@@ -41,11 +41,3 @@ export interface OutputData {
   // expandedTables, expandedYamls, expandedPods, isResourceDetailsExpanded
   // are now handled internally by components using UiStateService
 }
-
-export interface OutputEvents {
-  copyText: (event: { text: string; event: Event }) => void;
-  toggleTable: (title: string) => void;
-  toggleYaml: (title: string) => void;
-  togglePod: (name: string) => void;
-  toggleResourceDetails: () => void;
-}

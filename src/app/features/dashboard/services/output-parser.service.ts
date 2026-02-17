@@ -48,18 +48,6 @@ export class OutputParserService {
       };
     }
 
-    // Check for single pod describe with events - use "yaml"
-    // if (this.hasEventsTableInOutput(trimmedOutput)) {
-    //   const { beforeEvents, headers, events } = this.parseEventsFromDescribe(trimmedOutput);
-    //   return {
-    //     type: 'events',
-    //     rawOutput: beforeEvents,
-    //     headers,
-    //     data: events,
-    //     hasEventsTable: true
-    //   };
-    // }
-
     // Check if output is YAML-like (describe commands)
     if (this.isYamlLikeOutput(trimmedOutput, command)) {
       return {

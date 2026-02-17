@@ -38,7 +38,6 @@ export class KubectlService {
   // Request cancellation and tracking
   private cancelSubjects = new Map<string, Subject<void>>();
   private activeExecutions = new Map<string, CommandExecution>();
-  private executionHistory: CommandExecution[] = [];
 
   async executeCommand(command: string, group?: string): Promise<KubectlResponse> {
     const uuid = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -61,7 +60,6 @@ export class KubectlService {
     const cancelSubject = new Subject<void>();
     this.cancelSubjects.set(executionId, cancelSubject);
     this.activeExecutions.set(executionId, execution);
-    this.executionHistory.push(execution);
 
     // Notify dialog
     this.executionDialog.addExecution({
@@ -279,33 +277,6 @@ export class KubectlService {
     ];
 
     return streamingCommands.some(cmd => command.includes(cmd));
-  }
-
-  // Execution tracking methods
-  getCurrentExecution(): CommandExecution | undefined {
-    // Return the most recent pending execution
-    for (const [id, execution] of this.activeExecutions) {
-      if (execution.status === 'pending') {
-        return execution;
-      }
-    }
-    return undefined;
-  }
-
-  getActiveExecutions(): CommandExecution[] {
-    return Array.from(this.activeExecutions.values()).filter(exec => exec.status === 'pending');
-  }
-
-  getExecutionHistory(): CommandExecution[] {
-    return [...this.executionHistory];
-  }
-
-  clearExecutionHistory(): void {
-    this.executionHistory = [];
-  }
-
-  removeHistoryItem(id: string): void {
-    this.executionHistory = this.executionHistory.filter(cmd => cmd.id !== id);
   }
 
   async getResourceCounts(namespace: string): Promise<Record<string, number>> {

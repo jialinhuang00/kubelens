@@ -504,7 +504,6 @@ export class DashboardComponent implements OnInit {
         }
       });
 
-      (window as any).currentStreamStop = streamResponse.stop;
     } catch (error) {
       await this.executeCommandNormal(command);
     }
