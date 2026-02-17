@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 
-const BACKUP_PATH = process.env.K8S_SNAPSHOT_PATH || path.join(__dirname, 'k8s-snapshot');
+const BACKUP_PATH = process.env.K8S_SNAPSHOT_PATH || path.join(__dirname, '..', 'k8s-snapshot');
 const DEFAULT_NAMESPACE = 'demo';
 
 // File aliases (same as graph endpoint)

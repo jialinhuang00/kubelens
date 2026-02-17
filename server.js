@@ -15,7 +15,7 @@ const io = new Server(server, {
 const PORT = 3000;
 
 // Always load snapshot handler — per-request snapshot mode via ?snapshot=true
-require('./snapshot-handler');
+require('./utils/snapshot-handler');
 console.log('snapshot-handler loaded — use ?snapshot=true on requests to enable snapshot mode');
 
 app.use(cors({
@@ -30,6 +30,7 @@ const graphRouter = require('./routes/graph');
 const statusRouter = require('./routes/status');
 const resourceCountsRouter = require('./routes/resource-counts');
 const ecrRouter = require('./routes/ecr');
+const k8sExportRouter = require('./routes/k8s-export');
 
 // Stream routes need io reference, mount them onto the router before app.use
 mountStream(executeRouter, io);
@@ -39,6 +40,7 @@ app.use('/api', graphRouter);
 app.use('/api', statusRouter);
 app.use('/api', resourceCountsRouter);
 app.use('/api', ecrRouter);
+app.use('/api', k8sExportRouter);
 
 // WebSocket connection
 io.on('connection', (socket) => {
@@ -50,7 +52,7 @@ io.on('connection', (socket) => {
 
 server.listen(PORT, () => {
   console.log(`kubecmds-viz server running on http://localhost:${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/api/health`);
+  console.log(`Realtime ping: http://localhost:${PORT}/api/realtime/ping`);
   console.log(`Graph endpoint: http://localhost:${PORT}/api/graph`);
   console.log(`WebSocket server ready for streaming`);
 });

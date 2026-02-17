@@ -4,7 +4,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
-const snapshotK8s = require('../snapshot-handler');
+const snapshotK8s = require('../utils/snapshot-handler');
 
 const router = express.Router();
 

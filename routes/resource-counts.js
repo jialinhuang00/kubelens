@@ -2,7 +2,7 @@ const express = require('express');
 const { execFile } = require('child_process');
 const util = require('util');
 const execFileAsync = util.promisify(execFile);
-const snapshotK8s = require('../snapshot-handler');
+const snapshotK8s = require('../utils/snapshot-handler');
 
 const router = express.Router();
 
@@ -23,25 +23,22 @@ router.get('/resource-counts', async (req, res) => {
 
   // Real mode: use kubectl to count resources
   const resourceTypes = [
-    'deployments', 'pods', 'services', 'statefulsets', 'cronjobs', 'jobs',
-    'configmaps', 'secrets', 'serviceaccounts', 'persistentvolumeclaims',
-    'ingresses', 'gateways.gateway.networking.k8s.io', 'httproutes.gateway.networking.k8s.io'
+    'deployments', 'pods', 'services', 'statefulsets', 'daemonsets',
+    'cronjobs', 'jobs', 'configmaps', 'secrets', 'serviceaccounts',
+    'persistentvolumeclaims', 'roles', 'rolebindings', 'ingresses',
+    'endpoints', 'networkpolicies', 'horizontalpodautoscalers',
+    'poddisruptionbudgets', 'resourcequotas', 'limitranges',
+    'gateways.gateway.networking.k8s.io', 'httproutes.gateway.networking.k8s.io',
+    'tcproutes.gateway.networking.k8s.io'
   ];
 
   const keyMap = {
     'deployments': 'deployment',
     'pods': 'pod',
     'services': 'service',
-    'statefulsets': 'statefulsets',
-    'cronjobs': 'cronjobs',
-    'jobs': 'jobs',
-    'configmaps': 'configmaps',
-    'secrets': 'secrets',
-    'serviceaccounts': 'serviceaccounts',
-    'persistentvolumeclaims': 'persistentvolumeclaims',
-    'ingresses': 'ingresses',
     'gateways.gateway.networking.k8s.io': 'gateways',
     'httproutes.gateway.networking.k8s.io': 'httproutes',
+    'tcproutes.gateway.networking.k8s.io': 'tcproutes',
   };
 
   try {
