@@ -46,8 +46,8 @@ export interface TableData {
 }
 
 export interface YamlItem {
-  title: string;        // 從 metadata.name 提取
-  yamlContent: string;  // 個別物件的 YAML
+  title: string;        // extracted from metadata.name
+  yamlContent: string;  // individual object YAML
 }
 
 // K8s API response types (kubectl JSON output shapes)

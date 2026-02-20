@@ -421,7 +421,7 @@ export class OutputParserService {
     const yamls: YamlItem[] = [];
 
     try {
-      // 找到 items: 行
+      // Find the items: line
       const lines = output.split('\n');
       let itemsStartIndex = -1;
 
@@ -434,16 +434,16 @@ export class OutputParserService {
 
       if (itemsStartIndex === -1) return yamls;
 
-      // 解析每個 YAML 物件
+      // Parse each YAML object
       let currentYaml = '';
       let currentTitle = '';
       let inItem = false;
 
       for (let i = itemsStartIndex + 1; i < lines.length; i++) {
         const line = lines[i];
-        // 檢查是否是新的物件開始 (- apiVersion:)
+        // Check if this is the start of a new object (- apiVersion:)
         if (line.startsWith('- apiVersion:')) {
-          // 保存前一個物件
+          // Save previous object
           if (inItem && currentYaml && currentTitle) {
             yamls.push({
               title: currentTitle,
@@ -451,14 +451,14 @@ export class OutputParserService {
             });
           }
 
-          // 開始新物件
-          currentYaml = line.substring(2) + '\n'; // 移除 "- " 前綴
+          // Start new object
+          currentYaml = line.substring(2) + '\n'; // strip "- " prefix
           currentTitle = '';
           inItem = true;
         } else if (inItem) {
           currentYaml += line + '\n';
 
-          // 提取物件名稱 (從 metadata.name)
+          // Extract object name (from metadata.name)
           if (!currentTitle && line.includes('name:') && line.includes('  ')) {
             const nameMatch = line.match(/^\s+name:\s+(.+)$/);
             if (nameMatch) {
@@ -468,7 +468,7 @@ export class OutputParserService {
         }
       }
 
-      // 保存最後一個物件
+      // Save last object
       if (inItem && currentYaml && currentTitle) {
         yamls.push({
           title: currentTitle,
@@ -484,16 +484,16 @@ export class OutputParserService {
   }
 
   private isYamlLikeOutput(output: string, command: string = ''): boolean {
-    // 優先檢查命令類型 - 所有 describe 命令都當作 YAML 處理
+    // Check command type first — all describe commands are treated as YAML
     if (command.includes('describe') || command.includes('-o yaml')) {
       return true;
     }
 
-    // 檢查典型的 kubectl describe 輸出特徵
+    // Check for typical kubectl describe output patterns
     const lines = output.split('\n').filter(line => line.trim());
     if (lines.length < 3) return false;
 
-    // kubectl describe 的典型特徵
+    // Typical kubectl describe markers
     const hasNameAndNamespace = output.includes('Name:') && output.includes('Namespace:');
     const hasLabelsOrAnnotations = output.includes('Labels:') || output.includes('Annotations:');
     const hasIndentedStructure = lines.some(line => line.match(/^\s{2,}\w+:/));

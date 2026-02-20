@@ -15,10 +15,7 @@ export class DataModeService {
   kubectlVersion = signal('');
 
   async checkAvailability(): Promise<void> {
-    await Promise.all([
-      this.checkSnapshot(),
-      this.checkRealtime(),
-    ]);
+    await this.refreshAvailability();
 
     // Auto-select: prefer realtime, fallback to snapshot
     if (this.realtimeAvailable()) {
@@ -26,6 +23,14 @@ export class DataModeService {
     } else if (this.snapshotAvailable()) {
       this.isSnapshotMode.set(true);
     }
+  }
+
+  /** Re-check both endpoints without changing the current mode. */
+  async refreshAvailability(): Promise<void> {
+    await Promise.all([
+      this.checkSnapshot(),
+      this.checkRealtime(),
+    ]);
   }
 
   private async checkSnapshot(): Promise<void> {

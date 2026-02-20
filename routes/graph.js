@@ -11,25 +11,27 @@ const router = express.Router();
 
 // --- Realtime (kubectl) helpers ---
 
-async function execKubectl(args) {
+async function execKubectl(args, signal) {
   try {
     const argList = args.split(/\s+/);
     const { stdout } = await execFileAsync('kubectl', argList, {
       encoding: 'utf8',
       timeout: 30000,
       maxBuffer: 50 * 1024 * 1024,
+      signal,
     });
     const bytes = Buffer.byteLength(stdout, 'utf8');
     const parsed = JSON.parse(stdout);
     console.log(`[graph] kubectl ${args.split(' -')[0]}: ${(bytes / 1024).toFixed(1)}KB, ${parsed.items?.length ?? 0} items`);
     return parsed;
   } catch (e) {
+    if (e.code === 'ABORT_ERR') return { items: [] };
     console.warn(`[graph] kubectl ${args}: ${e.message?.split('\n')[0]}`);
     return { items: [] };
   }
 }
 
-async function fetchLiveData() {
+async function fetchLiveData(signal) {
   const batches = [
     { resources: 'deployments,statefulsets,daemonsets,cronjobs', keys: ['deployments', 'statefulsets', 'daemonsets', 'cronjobs'] },
     { resources: 'services,configmaps,ingresses', keys: ['services', 'configmaps', 'ingresses'] },
@@ -88,7 +90,7 @@ async function fetchLiveData() {
 
   const allBatches = [...batches, ...optionalBatches];
   const results = await Promise.all(
-    allBatches.map(batch => execKubectl(`get ${batch.resources} -A -o json`))
+    allBatches.map(batch => execKubectl(`get ${batch.resources} -A -o json`, signal))
   );
 
   for (let i = 0; i < allBatches.length; i++) {
@@ -121,7 +123,11 @@ router.get('/graph', async (req, res) => {
 
       res.json(buildGraph(getItemsFn, namespaceList));
     } else {
-      const { nsData, namespaces } = await fetchLiveData();
+      // Abort kubectl processes if client disconnects (e.g. mode switch)
+      const ac = new AbortController();
+      req.on('close', () => ac.abort());
+
+      const { nsData, namespaces } = await fetchLiveData(ac.signal);
 
       const getItemsFn = (ns, resourceKey) => {
         const nsMap = nsData.get(ns);

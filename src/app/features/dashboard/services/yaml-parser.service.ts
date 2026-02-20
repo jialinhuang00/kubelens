@@ -48,23 +48,22 @@ export class YamlParserService {
     const spaces = match[1].length;
     const trimmedLine = line.trim();
 
-    // kubectl describe 格式檢測：
-    // 如果一行只有值沒有key（沒有冒號），這通常是多行值的延續
+    // kubectl describe format detection:
+    // A line without a colon is likely a multi-line value continuation
     const hasColon = trimmedLine.includes(':');
     const isLikelyContinuation = !hasColon && spaces > 0;
     const isArrayItem = trimmedLine.startsWith('- ');
 
     let level = 0;
     if (isArrayItem) {
-      // Array item 應該比同樣縮排的 parent 更深一層
-      // 例如：clusterIPs: (2 spaces) 和 - 10.96.96.125 (2 spaces) 
-      // - 10.96.96.125 應該是 level 2.5，這樣它會被視為 clusterIPs: 的子項
+      // Array items sit half a level deeper than their parent at the same indent
+      // e.g. "clusterIPs:" (2 spaces) and "- 10.96.96.125" (2 spaces)
       level = spaces + 0.5;
     } else if (isLikelyContinuation) {
-      // 延續行設為適度的子層級，避免過深
-      level = Math.min(spaces, 10); // 限制最大層級為 10
+      // Continuation lines get a moderate sub-level, capped to avoid deep nesting
+      level = Math.min(spaces, 10);
     } else {
-      // 直接用空格數作為層級
+      // Use raw indent as level
       level = spaces;
     }
 

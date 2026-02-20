@@ -1,6 +1,6 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Subject, takeUntil, finalize } from 'rxjs';
+import { Subscription } from 'rxjs';
 import { GraphDataResponse, GraphNode, GraphEdge } from '../models/graph.models';
 import { API_BASE } from '../../../core/constants/api';
 
@@ -10,7 +10,7 @@ export class GraphDataService {
   private readonly _data = signal<GraphDataResponse | null>(null);
   private readonly _loading = signal(false);
   private readonly _error = signal<string | null>(null);
-  private cancel$ = new Subject<void>();
+  private inflight: Subscription | null = null;
 
   readonly data = this._data.asReadonly();
   readonly loading = this._loading.asReadonly();
@@ -22,23 +22,23 @@ export class GraphDataService {
   readonly pods = computed(() => this._data()?.pods ?? {});
 
   fetchGraph(): void {
-    this.cancel$.next();
+    // Cancel previous in-flight request (server detects client disconnect)
+    this.inflight?.unsubscribe();
+
     this._loading.set(true);
     this._error.set(null);
 
-    this.http.get<GraphDataResponse>(`${API_BASE}/graph`)
-      .pipe(
-        takeUntil(this.cancel$),
-        finalize(() => this._loading.set(false)),
-      )
-      .subscribe({
-        next: (data) => {
-          this._data.set(data);
-        },
-        error: (err) => {
-          this._error.set(err.message || 'Failed to load graph data');
-        },
-      });
+    this.inflight = this.http.get<GraphDataResponse>(`${API_BASE}/graph`).subscribe({
+      next: (data) => {
+        this._data.set(data);
+        this._loading.set(false);
+      },
+      error: (err: unknown) => {
+        const message = err instanceof Error ? err.message : 'Failed to load graph data';
+        this._error.set(message);
+        this._loading.set(false);
+      },
+    });
   }
 
   getConnectedEdges(nodeId: string): GraphEdge[] {

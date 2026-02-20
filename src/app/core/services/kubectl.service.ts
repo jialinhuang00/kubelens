@@ -180,14 +180,14 @@ export class KubectlService {
     }
   }
 
-  // 串流執行 kubectl 指令 (適用於 rollout status 等長時間運行的指令)
+  // Stream a long-running kubectl command (e.g. rollout status) via WebSocket
   async executeCommandStream(command: string): Promise<StreamingResponse> {
     const streamId = `stream_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    // 確保 WebSocket 已連線
+    // Ensure WebSocket is connected
     if (!this.websocketService.isConnected()) {
       this.websocketService.connect();
-      // 等待連線建立
+      // Wait for connection
       await new Promise(resolve => {
         const checkConnection = () => {
           if (this.websocketService.isConnected()) {
@@ -201,7 +201,7 @@ export class KubectlService {
     }
 
     try {
-      // 開始串流
+      // Start stream
       const response = await firstValueFrom(this.http.post<any>(`${this.API_BASE}/execute/stream`, {
         command,
         streamId
@@ -211,17 +211,17 @@ export class KubectlService {
         throw new Error(response?.error || 'Failed to start stream');
       }
 
-      // 建立輸出流
+      // Create output stream
       const outputSubject = new BehaviorSubject<string>('');
       let fullOutput = '';
 
-      // 監聽串流數據
+      // Listen for stream data
       const dataSubscription = this.websocketService.getStreamData(streamId).subscribe(data => {
         fullOutput += data.data;
         outputSubject.next(fullOutput);
       });
 
-      // 監聽串流結束
+      // Listen for stream end
       const endSubscription = this.websocketService.getStreamEnd(streamId).subscribe(endData => {
         outputSubject.next(endData.fullOutput);
         outputSubject.complete();
@@ -229,7 +229,7 @@ export class KubectlService {
         endSubscription.unsubscribe();
       });
 
-      // 監聽錯誤
+      // Listen for errors
       const errorSubscription = this.websocketService.getStreamError(streamId).subscribe(errorData => {
         outputSubject.error(new Error(errorData.error));
         dataSubscription.unsubscribe();
@@ -237,7 +237,7 @@ export class KubectlService {
         errorSubscription.unsubscribe();
       });
 
-      // 停止函數
+      // Stop function
       const stop = async () => {
         try {
           await firstValueFrom(this.http.post(`${this.API_BASE}/execute/stream/stop`, {
@@ -270,7 +270,7 @@ export class KubectlService {
     }
   }
 
-  // 判斷指令是否需要串流執行
+  // Check if command requires streaming execution
   shouldUseStream(command: string): boolean {
     const streamingCommands = [
       'rollout status',

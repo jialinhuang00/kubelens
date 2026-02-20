@@ -7,6 +7,8 @@ const execFileAsync = util.promisify(execFile);
 
 const router = express.Router();
 
+global.runningProcesses = global.runningProcesses || new Map();
+
 // Split kubectl get all output into separate tables
 function splitGetAllTables(output) {
   const lines = output.split('\n');
@@ -183,7 +185,6 @@ function mountStream(router, io) {
     const args = command.split(/\s+/).slice(1);
     const kubectlProcess = spawn('kubectl', args);
 
-    global.runningProcesses = global.runningProcesses || new Map();
     global.runningProcesses.set(streamId, kubectlProcess);
 
     let outputBuffer = '';

@@ -36,12 +36,12 @@ export class YamlDisplayComponent {
   hoveredRange = signal<{ start: number, end: number, level: number } | null>(null);
 
   private levelColors = [
-    'rgba(255, 59, 48, 0.08)',   // Red - Level 0 (更淡)
-    'rgba(0, 122, 255, 0.08)',   // Blue - Level 1  (更淡)
-    'rgba(52, 199, 89, 0.08)',   // Green - Level 2 (更淡)
-    'rgba(175, 82, 222, 0.08)',  // Purple - Level 3 (更淡)
-    'rgba(255, 149, 0, 0.08)',   // Orange - Level 4 (更淡)
-    'rgba(255, 204, 0, 0.08)',   // Yellow - Level 5 (更淡)
+    'rgba(255, 59, 48, 0.08)',   // Red - Level 0
+    'rgba(0, 122, 255, 0.08)',   // Blue - Level 1
+    'rgba(52, 199, 89, 0.08)',   // Green - Level 2
+    'rgba(175, 82, 222, 0.08)',  // Purple - Level 3
+    'rgba(255, 149, 0, 0.08)',   // Orange - Level 4
+    'rgba(255, 204, 0, 0.08)',   // Yellow - Level 5
   ];
 
   private levelBorderColors = [
