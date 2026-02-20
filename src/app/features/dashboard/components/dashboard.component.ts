@@ -241,8 +241,26 @@ export class DashboardComponent implements OnInit {
   constructor() {
   }
 
+  private prevMode: boolean | null = null;
+  private modeEffect = effect(() => {
+    const mode = this.dataModeService.isSnapshotMode();
+    // Skip initial run and only reload when mode actually changes
+    if (this.prevMode !== null && mode !== this.prevMode) {
+      this.reloadAfterModeSwitch();
+    }
+    this.prevMode = mode;
+  });
+
+  private async reloadAfterModeSwitch(): Promise<void> {
+    this.selectedNamespace.set('');
+    this.selectedDeployment.set('');
+    this.selectedPod.set('');
+    this.selectedService.set('');
+    await this.namespaceService.loadNamespaces();
+  }
+
   async ngOnInit() {
-    this.dataModeService.checkAvailability();
+    this.dataModeService.refreshAvailability();
     await this.namespaceService.loadNamespaces();
 
     this.rolloutStateService.rolloutAction$.pipe(
