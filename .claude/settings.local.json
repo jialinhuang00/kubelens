@@ -36,7 +36,15 @@
       "Bash(git commit:*)",
       "Bash(aws ecr describe-images:*)",
       "Bash(chmod:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(git stash clear:*)",
+      "Bash(bash scripts/k8s-export.sh --resume)",
+      "Bash(npm uninstall:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run test:utils:*)",
+      "Bash(npm run test:utils:cov:*)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "deny": [],
     "ask": []

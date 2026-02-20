@@ -20,7 +20,7 @@ export class RolloutStateService {
   private deploymentService = inject(DeploymentService);
   private namespaceService = inject(NamespaceService);
   private executionContext = inject(ExecutionContextService);
-  
+
   private rolloutActionSubject = new Subject<RolloutActionEvent>();
   rolloutAction$ = this.rolloutActionSubject.asObservable();
 
@@ -34,13 +34,13 @@ export class RolloutStateService {
     }
 
     console.log(`🔄 Rollout action triggered: ${action} for ${deployment} in ${namespace}`);
-    
+
     const event: RolloutActionEvent = {
       action,
       deployment,
       namespace
     };
-    
+
     this.rolloutActionSubject.next(event);
 
     // Execute the rollout logic that was previously in dashboard.component

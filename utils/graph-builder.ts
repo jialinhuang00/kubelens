@@ -8,6 +8,7 @@ import path from 'path';
 import yaml from 'js-yaml';
 import { FILE_ALIASES, type K8sItem } from './snapshot-loader';
 
+/** A node in the K8s resource topology graph. */
 export interface GraphNode {
   id: string;
   name: string;
@@ -17,6 +18,7 @@ export interface GraphNode {
   metadata: Record<string, unknown>;
 }
 
+/** A directed edge in the topology graph (e.g. Service → Deployment). */
 export interface GraphEdge {
   source: string;
   target: string;
@@ -36,6 +38,7 @@ export interface PodNode extends GraphNode {
   };
 }
 
+/** Complete graph output from buildGraph(). */
 export interface GraphResult {
   nodes: GraphNode[];
   edges: GraphEdge[];
@@ -49,12 +52,21 @@ export interface GraphResult {
   };
 }
 
+/** Abstraction for fetching K8s items — allows swapping between realtime (kubectl) and snapshot (YAML). */
 export type GetItemsFn = (ns: string, resourceKey: string) => K8sItem[];
 type AddNodeFn = (ns: string, kind: string, name: string, category: string, metadata?: Record<string, unknown>) => string;
 type AddEdgeFn = (source: string, target: string, type: string, sourceField?: string) => void;
 
 // --- Snapshot helpers ---
 
+/**
+ * Scan directories to discover K8s namespaces.
+ * @param dataPaths - Array of directory paths to scan (e.g. `['./k8s-snapshot']`)
+ * @returns Map of `namespace → absolute directory path`
+ * @example
+ * discoverNamespaces(['./k8s-snapshot'])
+ * // → Map { 'demo' => '/app/k8s-snapshot/demo', 'kube-system' => '/app/k8s-snapshot/kube-system' }
+ */
 export function discoverNamespaces(dataPaths: string[]): Map<string, string> {
   const namespaces = new Map<string, string>();
   for (const dp of dataPaths) {
@@ -87,6 +99,13 @@ function loadYamlFile(nsDir: string, filename: string): Record<string, unknown> 
   }
 }
 
+/**
+ * Load K8s items from a snapshot namespace directory.
+ * Checks FILE_ALIASES first, then falls back to `${resourceKey}.yaml`.
+ * @param nsDir - Absolute path to namespace directory (e.g. `'/app/k8s-snapshot/demo'`)
+ * @param resourceKey - Resource type key (e.g. `'deployments'`, `'httproutes'`)
+ * @returns Array of K8sItems; empty array if file not found
+ */
 export function getItemsFromSnapshot(nsDir: string, resourceKey: string): K8sItem[] {
   const aliases = FILE_ALIASES[resourceKey];
   if (aliases) {
@@ -102,6 +121,21 @@ export function getItemsFromSnapshot(nsDir: string, resourceKey: string): K8sIte
 
 // --- Graph building ---
 
+/**
+ * Extract edges from a workload's podSpec — discovers references to ConfigMaps,
+ * Secrets, PVCs, and ServiceAccounts from envFrom, env.valueFrom, and volumes.
+ *
+ * Calls `addNode` / `addEdge` for each discovered reference. Does nothing if podSpec is undefined.
+ *
+ * @param ns - Namespace
+ * @param kind - Workload kind (e.g. `'Deployment'`, `'StatefulSet'`)
+ * @param name - Workload name
+ * @param podSpec - The `spec.template.spec` object from the workload
+ * @param addNode - Callback to register a new node; returns node ID
+ * @param addEdge - Callback to register a new edge
+ *
+ * Edge types produced: `'uses-configmap'`, `'uses-secret'`, `'uses-pvc'`, `'uses-serviceaccount'`
+ */
 export function extractWorkloadEdges(
   ns: string,
   kind: string,
@@ -184,6 +218,26 @@ export function extractWorkloadEdges(
   }
 }
 
+/**
+ * Build the complete K8s resource topology graph.
+ *
+ * Iterates over all namespaces and resource types (Deployments, StatefulSets,
+ * DaemonSets, CronJobs, Services, HTTPRoutes, TCPRoutes, Gateways, Ingresses,
+ * HPAs, RoleBindings, ConfigMaps), creating nodes and edges.
+ *
+ * Also parses Pods and groups them by parent workload (via ownerReferences).
+ *
+ * @param getItemsFn - Abstraction to fetch items; accepts `(namespace, resourceKey)`.
+ *   In realtime mode this runs kubectl; in snapshot mode it reads YAML files.
+ * @param namespaceList - Namespaces to process
+ * @returns `{ nodes, edges, pods, namespaces, stats }`
+ *
+ * @example
+ * const result = buildGraph(getItemsFromSnapshot.bind(null, nsDir), ['demo']);
+ * // result.nodes = [{ id: 'demo/Deployment/web', kind: 'Deployment', ... }, ...]
+ * // result.edges = [{ source: 'demo/Service/web-svc', target: 'demo/Deployment/web', type: 'exposes' }, ...]
+ * // result.stats = { totalNodes: 71, totalEdges: 78, byKind: { Deployment: 17, ... }, namespaceCount: 1 }
+ */
 export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): GraphResult {
   const nodes: GraphNode[] = [];
   const edges: GraphEdge[] = [];

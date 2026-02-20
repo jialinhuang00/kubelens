@@ -21,5 +21,9 @@
   "LimitRange": "limitranges",
   "Gateway": "gateways.gateway.networking.k8s.io",
   "HTTPRoute": "httproutes.gateway.networking.k8s.io",
-  "TCPRoute": "tcproutes.gateway.networking.k8s.io"
+  "TCPRoute": "tcproutes.gateway.networking.k8s.io",
+  "VirtualService": "virtualservices.networking.istio.io",
+  "DestinationRule": "destinationrules.networking.istio.io",
+  "ServiceEntry": "serviceentries.networking.istio.io",
+  "Application": "applications.argoproj.io"
 }

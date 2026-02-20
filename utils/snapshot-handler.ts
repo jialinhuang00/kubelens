@@ -16,11 +16,19 @@ import type { CommandResult, ParsedCommand } from './snapshot-commands';
 export { handleCommand, parseKubectlCommand };
 export type { CommandResult, ParsedCommand };
 
-// --- Resource counts ---
-// Returns { resourceType: count } for all YAML-backed resources + pods in a namespace.
-// Used by GET /api/resource-counts?namespace=X to populate book spine badges without
-// loading full item lists.
-
+/**
+ * Count all resources in a namespace without loading full item lists.
+ * Used by `GET /api/resource-counts?namespace=X` for dashboard badges.
+ *
+ * Pods are counted from `pods-snapshot.txt` line count.
+ * YAML resources are counted from `items.length` in each YAML file.
+ *
+ * @param namespace - K8s namespace
+ * @returns Map of resource type → count
+ * @example
+ * getResourceCounts('demo')
+ * // → { pod: 25, deployment: 17, service: 17, configmaps: 10, secrets: 201, ... }
+ */
 export function getResourceCounts(namespace: string): Record<string, number> {
   const counts: Record<string, number> = {};
 

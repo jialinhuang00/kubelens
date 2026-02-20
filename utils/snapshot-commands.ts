@@ -15,12 +15,28 @@ import {
   generateGenericDescribe,
 } from './snapshot-parsers';
 
+/** Result from handleCommand(). Either `{ success: true, stdout }` or `{ success: false, error }`. */
 export interface CommandResult {
   success: boolean;
   stdout?: string;
   error?: string;
 }
 
+/**
+ * Parsed representation of a kubectl command string.
+ * @example
+ * // 'kubectl get deployment web -n demo -o json' parses to:
+ * {
+ *   action: 'get',
+ *   subAction: null,
+ *   resource: 'deployment',
+ *   resourceName: 'web',
+ *   namespace: 'demo',
+ *   output: 'json',
+ *   flags: {},
+ *   raw: 'kubectl get deployment web -n demo -o json'
+ * }
+ */
 export interface ParsedCommand {
   action: string | null;
   subAction: string | null;
@@ -99,6 +115,20 @@ const TABLE_GENERATORS: Record<string, (items: K8sItem[]) => string> = {
 
 // --- Command parser ---
 
+/**
+ * Parse a kubectl command string into structured parts. Pure function, no I/O.
+ * @param command - Full command string starting with `'kubectl'`
+ * @returns Parsed command object, or `null` if not a kubectl command
+ * @example
+ * parseKubectlCommand('kubectl get pods -n kube-system')
+ * // → { action: 'get', resource: 'pods', namespace: 'kube-system', ... }
+ *
+ * parseKubectlCommand('kubectl rollout status deployment/web')
+ * // → { action: 'rollout', subAction: 'status', resource: 'deployment/web', ... }
+ *
+ * parseKubectlCommand('docker ps')
+ * // → null
+ */
 export function parseKubectlCommand(command: string): ParsedCommand | null {
   const parts = command.trim().split(/\s+/);
   if (parts[0] !== 'kubectl') return null;
@@ -200,6 +230,24 @@ export function parseKubectlCommand(command: string): ParsedCommand | null {
 
 // --- Main handler ---
 
+/**
+ * Execute a kubectl command against snapshot data. This is the main entry point
+ * for snapshot mode — it parses the command, dispatches to the appropriate handler
+ * (get/describe/rollout/config/logs/set), and returns the result.
+ *
+ * **No real kubectl is executed.** Read-only commands (get, describe) return data
+ * from `k8s-snapshot/` YAML files. Mutating commands (apply, patch) return
+ * hardcoded success strings. Unsupported commands (exec, delete) return errors.
+ *
+ * @param command - Full kubectl command string
+ * @returns `{ success: true, stdout: '...' }` or `{ success: false, error: '...' }`
+ * @example
+ * handleCommand('kubectl get deployments -n demo')
+ * // → { success: true, stdout: 'NAME ... READY ...\napi-server ... 2/2 ...' }
+ *
+ * handleCommand('kubectl delete pod foo')
+ * // → { success: false, error: '[SNAPSHOT] delete is not supported in snapshot mode (read-only)' }
+ */
 export function handleCommand(command: string): CommandResult {
   const parsed = parseKubectlCommand(command);
   if (!parsed) {

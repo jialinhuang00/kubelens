@@ -4,6 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const yaml = require('js-yaml');
 
 const dir = process.argv[2];
 const resume = process.argv[3] === 'true';
@@ -31,7 +32,7 @@ process.stdin.on('end', () => {
       continue;
     }
 
-    const out = JSON.stringify({ apiVersion: 'v1', kind: 'List', items }, null, 2);
+    const out = yaml.dump({ apiVersion: 'v1', kind: 'List', items }, { lineWidth: -1 });
     fs.writeFileSync(fpath + '.tmp', out);
     fs.renameSync(fpath + '.tmp', fpath);
     console.log('  ' + fname + ' (' + items.length + ' objects, done)');

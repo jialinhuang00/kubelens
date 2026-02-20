@@ -8,21 +8,57 @@ import type { K8sItem, K8sList } from './snapshot-loader';
 
 // --- Helpers ---
 
+/**
+ * Extract resource names from a K8sList.
+ * @param yamlData - Parsed YAML list (e.g. from loadYaml)
+ * @returns Array of `metadata.name` strings; empty array if input is null/empty
+ * @example
+ * extractNames({ items: [{ metadata: { name: 'web' } }, { metadata: { name: 'api' } }] })
+ * // → ['web', 'api']
+ */
 export function extractNames(yamlData: K8sList | null): string[] {
   if (!yamlData || !yamlData.items) return [];
   return yamlData.items.map(item => item.metadata?.name).filter(Boolean) as string[];
 }
 
+/**
+ * Find a single item by name within a K8sList.
+ * @param yamlData - Parsed YAML list
+ * @param name - Resource name to match against `metadata.name`
+ * @returns The matching K8sItem, or `null` if not found
+ * @example
+ * findItem(list, 'web') // → { metadata: { name: 'web', ... }, spec: {...} }
+ * findItem(list, 'nope') // → null
+ */
 export function findItem(yamlData: K8sList | null, name: string): K8sItem | null {
   if (!yamlData || !yamlData.items) return null;
   return yamlData.items.find(item => item.metadata?.name === name) || null;
 }
 
+/**
+ * Right-pad a value to a fixed width with spaces. Used for table column alignment.
+ * @param str - Value to pad (coerced to string; null/undefined → '')
+ * @param len - Target width
+ * @returns Padded string. If input is already >= len, returned as-is (no truncation)
+ * @example
+ * pad('web', 10)   // → 'web       '
+ * pad('toolong', 3) // → 'toolong'
+ * pad(42, 5)        // → '42   '
+ * pad(null, 3)      // → '   '
+ */
 export function pad(str: unknown, len: number): string {
   const s = String(str || '');
   return s.length >= len ? s : s + ' '.repeat(len - s.length);
 }
 
+/**
+ * Calculate human-readable age from a timestamp to now.
+ * @param timestamp - ISO 8601 timestamp (e.g. from `metadata.creationTimestamp`)
+ * @returns Age string like `'5d'`, `'3h'`, `'12m'`, or `'<unknown>'` if undefined
+ * @example
+ * getAge('2026-02-13T00:00:00Z') // → '5d'  (if now is Feb 18)
+ * getAge(undefined)               // → '<unknown>'
+ */
 export function getAge(timestamp: string | undefined): string {
   if (!timestamp) return '<unknown>';
   const diff = Date.now() - new Date(timestamp).getTime();
@@ -34,6 +70,15 @@ export function getAge(timestamp: string | undefined): string {
   return `${minutes}m`;
 }
 
+/**
+ * Calculate duration between two timestamps.
+ * @param start - ISO 8601 start time
+ * @param end - ISO 8601 end time
+ * @returns Duration string: `'30s'`, `'5m30s'`, or `'2h30m'`
+ * @example
+ * getDuration('2026-01-01T00:00:00Z', '2026-01-01T00:05:30Z') // → '5m30s'
+ * getDuration('2026-01-01T00:00:00Z', '2026-01-01T02:30:00Z') // → '2h30m'
+ */
 export function getDuration(start: string, end: string): string {
   const diff = new Date(end).getTime() - new Date(start).getTime();
   const secs = Math.floor(diff / 1000);
@@ -45,6 +90,16 @@ export function getDuration(start: string, end: string): string {
 
 // --- Tabular generators ---
 
+/**
+ * Generate a kubectl-style deployment table.
+ * @param items - Array of Deployment K8sItems
+ * @returns Multi-line string:
+ * ```
+ * NAME                                  READY   UP-TO-DATE   AVAILABLE   AGE
+ * api-server                 2/2     2            2           5d
+ * web                                   3/3     3            3           10d
+ * ```
+ */
 export function generateDeploymentTable(items: K8sItem[]): string {
   const header = 'NAME                                  READY   UP-TO-DATE   AVAILABLE   AGE';
   const rows = items.map(d => {
@@ -60,6 +115,15 @@ export function generateDeploymentTable(items: K8sItem[]): string {
   return [header, ...rows].join('\n');
 }
 
+/**
+ * Generate a kubectl-style service table.
+ * @param items - Array of Service K8sItems
+ * @returns Multi-line string:
+ * ```
+ * NAME                            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
+ * api-server-svc              ClusterIP   10.0.0.1         <none>        80/TCP                       5d
+ * ```
+ */
 export function generateServiceTable(items: K8sItem[]): string {
   const header = 'NAME                            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE';
   const rows = items.map(s => {
@@ -78,6 +142,15 @@ export function generateServiceTable(items: K8sItem[]): string {
   return [header, ...rows].join('\n');
 }
 
+/**
+ * Generate a kubectl-style cronjob table.
+ * @param items - Array of CronJob K8sItems
+ * @returns Multi-line string:
+ * ```
+ * NAME                           SCHEDULE       SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+ * check-vault                    0 * * * *      False     0        45m             30d
+ * ```
+ */
 export function generateCronjobTable(items: K8sItem[]): string {
   const header = 'NAME                           SCHEDULE       SUSPEND   ACTIVE   LAST SCHEDULE   AGE';
   const rows = items.map(c => {
@@ -94,6 +167,15 @@ export function generateCronjobTable(items: K8sItem[]): string {
   return [header, ...rows].join('\n');
 }
 
+/**
+ * Generate a kubectl-style statefulset table.
+ * @param items - Array of StatefulSet K8sItems
+ * @returns Multi-line string:
+ * ```
+ * NAME                  READY   AGE
+ * scanner-worker          2/2     30d
+ * ```
+ */
 export function generateStatefulsetTable(items: K8sItem[]): string {
   const header = 'NAME                  READY   AGE';
   const rows = items.map(s => {
@@ -106,6 +188,15 @@ export function generateStatefulsetTable(items: K8sItem[]): string {
   return [header, ...rows].join('\n');
 }
 
+/**
+ * Generate a kubectl-style job table.
+ * @param items - Array of Job K8sItems
+ * @returns Multi-line string:
+ * ```
+ * NAME                               COMPLETIONS   DURATION   AGE
+ * check-vault-29510683               1/1           45s        2d
+ * ```
+ */
 export function generateJobTable(items: K8sItem[]): string {
   const header = 'NAME                               COMPLETIONS   DURATION   AGE';
   const rows = items.map(j => {
@@ -123,6 +214,15 @@ export function generateJobTable(items: K8sItem[]): string {
   return [header, ...rows].join('\n');
 }
 
+/**
+ * Generate a kubectl-style configmap table.
+ * @param items - Array of ConfigMap K8sItems
+ * @returns Multi-line string:
+ * ```
+ * NAME                              DATA   AGE
+ * app-config                        3      10d
+ * ```
+ */
 export function generateConfigmapTable(items: K8sItem[]): string {
   const header = 'NAME                              DATA   AGE';
   const rows = items.map(c => {
@@ -134,6 +234,15 @@ export function generateConfigmapTable(items: K8sItem[]): string {
   return [header, ...rows].join('\n');
 }
 
+/**
+ * Generate a kubectl-style endpoints table. Shows up to 3 addresses; adds "+ more..." if truncated.
+ * @param items - Array of Endpoints K8sItems
+ * @returns Multi-line string:
+ * ```
+ * NAME                            ENDPOINTS                          AGE
+ * api-server-svc              10.0.0.1:8080,10.0.0.2:8080       5d
+ * ```
+ */
 export function generateEndpointTable(items: K8sItem[]): string {
   const header = 'NAME                            ENDPOINTS                          AGE';
   const rows = items.map(e => {
@@ -152,6 +261,23 @@ export function generateEndpointTable(items: K8sItem[]): string {
 
 // --- Describe generators ---
 
+/**
+ * Generate `kubectl describe deployment` output.
+ * @param item - A single Deployment K8sItem, or `null`
+ * @returns Multi-line string mimicking real kubectl output:
+ * ```
+ * Name:                   web
+ * Namespace:              demo
+ * Replicas:               2 desired | 2 updated | 2 total | 2 ready | 0 unavailable
+ * Pod Template:
+ *   Containers:
+ *     web:
+ *       Image:      nginx:1.25
+ * Conditions:
+ *   ...
+ * ```
+ * Returns `'Error from server (NotFound): ...'` if item is null.
+ */
 export function generateDeploymentDescribe(item: K8sItem | null): string {
   if (!item) return 'Error from server (NotFound): deployments.apps not found';
   const m = item.metadata;
@@ -201,6 +327,22 @@ NewReplicaSet:        ${m.name} (${st.readyReplicas || 0}/${s.replicas} replicas
 Events:               <none>`;
 }
 
+/**
+ * Generate `kubectl describe pod` output by parsing pods-snapshot.txt.
+ * Unlike other describe functions, this reads from the text snapshot (not YAML).
+ * @param podName - Pod name to look up in pods-snapshot.txt
+ * @param namespace - K8s namespace (defaults to DEFAULT_NAMESPACE)
+ * @returns Multi-line string:
+ * ```
+ * Name:             web-abc-123
+ * Namespace:        demo
+ * Status:           Running
+ * Containers:
+ *   main:
+ *     Ready:          1/1
+ * ```
+ * Returns `'Error from server (NotFound): ...'` if pod not found.
+ */
 export function generatePodDescribe(podName: string, namespace?: string): string {
   const ns = namespace || DEFAULT_NAMESPACE;
   const snapshot = loadText('pods-snapshot.txt', ns);
@@ -227,6 +369,20 @@ Conditions:
 Events:             <none>`;
 }
 
+/**
+ * Generate `kubectl describe service` output.
+ * @param item - A single Service K8sItem, or `null`
+ * @returns Multi-line string:
+ * ```
+ * Name:              api-server-svc
+ * Namespace:         demo
+ * Type:              ClusterIP
+ * IP:                10.0.0.1
+ *   Port:            http  80/TCP
+ *   TargetPort:      8080/TCP
+ * ```
+ * Returns `'Error from server (NotFound): ...'` if item is null.
+ */
 export function generateServiceDescribe(item: K8sItem | null): string {
   if (!item) return 'Error from server (NotFound): services not found';
   const m = item.metadata;
@@ -246,6 +402,21 @@ Session Affinity:  ${(s.sessionAffinity as string) || 'None'}
 Events:            <none>`;
 }
 
+/**
+ * Generate a generic `kubectl describe` output for resources without a specialized formatter
+ * (ConfigMap, Secret, ServiceAccount, PVC, etc.).
+ * @param item - A single K8sItem, or `null`
+ * @returns Multi-line string:
+ * ```
+ * Name:              app-config
+ * Namespace:         demo
+ * Kind:              ConfigMap
+ * Labels:            app=web
+ * Data:
+ *   config.yaml
+ * ```
+ * Returns `'Error from server (NotFound): ...'` if item is null.
+ */
 export function generateGenericDescribe(item: K8sItem | null): string {
   if (!item) return 'Error from server (NotFound): resource not found';
   const m = item.metadata || {} as Record<string, unknown>;

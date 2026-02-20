@@ -71,12 +71,6 @@ export class GenericResourceService {
     }
   }
 
-  async loadAllResources(namespace: string) {
-    await Promise.all(
-      this.resourceTypes.map(type => this.loadResource(type, namespace))
-    );
-  }
-
   resetAllSelections() {
     for (const type of this.resourceTypes) {
       this.stateMap.get(type)!.selected.set('');

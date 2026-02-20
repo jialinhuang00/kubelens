@@ -42,6 +42,10 @@ CRD_RESOURCES=(
   gateways.gateway.networking.k8s.io
   httproutes.gateway.networking.k8s.io
   tcproutes.gateway.networking.k8s.io
+  virtualservices.networking.istio.io
+  destinationrules.networking.istio.io
+  serviceentries.networking.istio.io
+  applications.argoproj.io
 )
 
 # Cluster-scoped resource types
@@ -85,20 +89,22 @@ elif [[ ${#NAMESPACES[@]} -eq 0 ]]; then
   exit 1
 fi
 
-# --- Check CRDs (once, not per-namespace) ---
-CRD_BATCH=""
-for crd in "${CRD_RESOURCES[@]}"; do
-  if kubectl get "$crd" --all-namespaces --no-headers 2>/dev/null | head -1 | grep -q .; then
-    if [[ -n "$CRD_BATCH" ]]; then CRD_BATCH+=","; fi
-    CRD_BATCH+="$crd"
-    echo -e "${GREEN}CRD available: $crd${RESET}"
-  else
-    echo -e "${GRAY}CRD not found: $crd (skipping)${RESET}"
-  fi
-done
-if [[ -n "$CRD_BATCH" ]]; then
-  NS_BATCHES+=("$CRD_BATCH")
-fi
+# --- Check CRDs in background (runs while first namespace exports) ---
+CRD_RESULT_FILE=$(mktemp)
+(
+  CRD_BATCH=""
+  for crd in "${CRD_RESOURCES[@]}"; do
+    if kubectl get "$crd" --all-namespaces --no-headers 2>/dev/null | head -1 | grep -q .; then
+      if [[ -n "$CRD_BATCH" ]]; then CRD_BATCH+=","; fi
+      CRD_BATCH+="$crd"
+      echo -e "${GREEN}CRD available: $crd${RESET}"
+    else
+      echo -e "${GRAY}CRD not found: $crd (skipping)${RESET}"
+    fi
+  done
+  echo "$CRD_BATCH" > "$CRD_RESULT_FILE"
+) &
+CRD_CHECK_PID=$!
 
 # --- Preflight ---
 CONTEXT=$(kubectl config current-context)
@@ -133,6 +139,7 @@ else
 fi
 
 # --- Export namespaced resources ---
+CRD_MERGED=false
 for ns in "${NAMESPACES[@]}"; do
   echo "=== Namespace: $ns ==="
   NS_DIR="${BASE_DIR}/${ns}"
@@ -176,6 +183,27 @@ for ns in "${NAMESPACES[@]}"; do
     ) &
   fi
   wait
+
+  # After first namespace's core batches finish, merge CRD results and backfill
+  if [[ "$CRD_MERGED" == "false" ]]; then
+    wait "$CRD_CHECK_PID" 2>/dev/null || true
+    CRD_BATCH=$(cat "$CRD_RESULT_FILE" 2>/dev/null)
+    rm -f "$CRD_RESULT_FILE"
+    if [[ -n "$CRD_BATCH" ]]; then
+      NS_BATCHES+=("$CRD_BATCH")
+      # Backfill: export CRDs for this first namespace
+      (
+        echo -e "  ${YELLOW}→ fetching ${CRD_BATCH}${RESET}"
+        if kubectl get "$CRD_BATCH" -n "$ns" -o json 2>/dev/null \
+          | node "${SCRIPT_DIR}/split-resources.js" "$NS_DIR" "$RESUME"; then
+          echo -e "  ${GREEN}← ${CRD_BATCH} done${RESET}"
+        else
+          echo -e "  ${RED}← ${CRD_BATCH} failed${RESET}"
+        fi
+      )
+    fi
+    CRD_MERGED=true
+  fi
 
   # Mark namespace as complete
   touch "${NS_DIR}/.done"

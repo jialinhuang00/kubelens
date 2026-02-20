@@ -389,10 +389,6 @@ export class GraphLayoutService {
     this.graph.setConfig({ nodeColor: (n) => KIND_COLORS[n.data.kind] ?? '#888' });
   }
 
-  getZoomLevel(): number {
-    return this.graph?.getZoomLevel() ?? 1;
-  }
-
   spaceToScreen(pos: [number, number]): [number, number] {
     return this.graph?.spaceToScreenPosition(pos) ?? pos;
   }
