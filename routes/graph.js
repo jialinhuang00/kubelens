@@ -125,7 +125,12 @@ router.get('/graph', async (req, res) => {
     } else {
       // Abort kubectl processes if client disconnects (e.g. mode switch)
       const ac = new AbortController();
-      req.on('close', () => ac.abort());
+      req.on('close', () => {
+        if (!res.writableFinished) {
+          console.log('\x1b[31m[graph] Client disconnected — aborting kubectl processes\x1b[0m');
+          ac.abort();
+        }
+      });
 
       const { nsData, namespaces } = await fetchLiveData(ac.signal);
 
