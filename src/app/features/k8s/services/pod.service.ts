@@ -2,11 +2,12 @@ import { Injectable, inject, signal } from '@angular/core';
 import { KubectlService } from '../../../core/services/kubectl.service';
 import { TemplateService } from '../../dashboard/services/template.service';
 import { CommandTemplate, K8sCondition, K8sContainerStatus, K8sContainerState } from '../../../shared/models/kubectl.models';
+import { PodPhase } from '../../universe/models/graph.models';
 
 export interface PodStatus {
   name: string;
   namespace: string;
-  phase: 'Pending' | 'Running' | 'Succeeded' | 'Failed' | 'Unknown';
+  phase: PodPhase;
   conditions: K8sCondition[];
   containers: ContainerStatus[];
   nodeName: string;

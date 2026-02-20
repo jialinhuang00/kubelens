@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TableData } from '../../../../shared/models/kubectl.models';
 import { ClipboardService } from '../../../../shared/services/clipboard.service';
+import { PodPhase } from '../../../universe/models/graph.models';
 
 @Component({
   selector: 'app-multiple-tables',
@@ -11,7 +12,8 @@ import { ClipboardService } from '../../../../shared/services/clipboard.service'
 })
 export class MultipleTablesComponent {
   private clipboardService = inject(ClipboardService);
-  
+  readonly PodPhase = PodPhase;
+
   @Input() multipleTables: TableData[] = [];
   @Input() expandedTables: Set<string> = new Set();
 

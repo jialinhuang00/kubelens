@@ -8,80 +8,46 @@ import path from 'path';
 import yaml from 'js-yaml';
 import { FILE_ALIASES, type K8sItem } from './snapshot-loader';
 
-/** A node in the K8s resource topology graph. */
-export interface GraphNode {
-  id: string;
-  name: string;
-  kind: string;
-  category: string;
-  namespace: string;
-  metadata: Record<string, unknown>;
-}
+import {
+  type NodeKind, type NodeCategory, PodPhase,
+  EdgeType, SourceField,
+  type GraphNode, type GraphEdge, type PodNode, type GraphResult,
+} from '../shared/graph-types';
 
-/** A directed edge in the topology graph (e.g. Service → Deployment). */
-export interface GraphEdge {
-  source: string;
-  target: string;
-  type: string;
-  sourceField?: string;
-}
-
-export interface PodNode extends GraphNode {
-  metadata: {
-    status: string;
-    ownerKind: string;
-    ownerName: string;
-    image?: string;
-    node?: string;
-    restarts: number;
-    [key: string]: unknown;
-  };
-}
-
-/** Complete graph output from buildGraph(). */
-export interface GraphResult {
-  nodes: GraphNode[];
-  edges: GraphEdge[];
-  pods: Record<string, PodNode[]>;
-  namespaces: string[];
-  stats: {
-    totalNodes: number;
-    totalEdges: number;
-    byKind: Record<string, number>;
-    namespaceCount: number;
-  };
-}
+export {
+  type NodeKind, type NodeCategory, PodPhase,
+  EdgeType, SourceField,
+  type GraphNode, type GraphEdge, type PodNode, type GraphResult,
+} from '../shared/graph-types';
 
 /** Abstraction for fetching K8s items — allows swapping between realtime (kubectl) and snapshot (YAML). */
 export type GetItemsFn = (ns: string, resourceKey: string) => K8sItem[];
-type AddNodeFn = (ns: string, kind: string, name: string, category: string, metadata?: Record<string, unknown>) => string;
-type AddEdgeFn = (source: string, target: string, type: string, sourceField?: string) => void;
+type AddNodeFn = (ns: string, kind: NodeKind, name: string, category: NodeCategory, metadata?: Record<string, unknown>) => string;
+type AddEdgeFn = (source: string, target: string, type: EdgeType, sourceField?: SourceField) => void;
 
 // --- Snapshot helpers ---
 
 /**
- * Scan directories to discover K8s namespaces.
- * @param dataPaths - Array of directory paths to scan (e.g. `['./k8s-snapshot']`)
+ * Scan a directory to discover K8s namespaces.
+ * @param dataPath - Directory path to scan (e.g. `'./k8s-snapshot'`)
  * @returns Map of `namespace → absolute directory path`
  * @example
- * discoverNamespaces(['./k8s-snapshot'])
+ * discoverNamespaces('./k8s-snapshot')
  * // → Map { 'demo' => '/app/k8s-snapshot/demo', 'kube-system' => '/app/k8s-snapshot/kube-system' }
  */
-export function discoverNamespaces(dataPaths: string[]): Map<string, string> {
+export function discoverNamespaces(dataPath: string): Map<string, string> {
   const namespaces = new Map<string, string>();
-  for (const dp of dataPaths) {
-    if (!fs.existsSync(dp)) continue;
-    const entries = fs.readdirSync(dp, { withFileTypes: true });
-    const hasYaml = entries.some(e => e.isFile() && e.name.endsWith('.yaml'));
-    if (hasYaml && !entries.some(e => e.isDirectory() && !e.name.startsWith('.'))) {
-      const nsName = path.basename(dp);
-      namespaces.set(nsName, dp);
-    } else {
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
-        if (entry.name.startsWith('.') || entry.name === '_cluster') continue;
-        namespaces.set(entry.name, path.join(dp, entry.name));
-      }
+  if (!fs.existsSync(dataPath)) return namespaces;
+  const entries = fs.readdirSync(dataPath, { withFileTypes: true });
+  const hasYaml = entries.some(e => e.isFile() && e.name.endsWith('.yaml'));
+  if (hasYaml && !entries.some(e => e.isDirectory() && !e.name.startsWith('.'))) {
+    const nsName = path.basename(dataPath);
+    namespaces.set(nsName, dataPath);
+  } else {
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name.startsWith('.') || entry.name === '_cluster') continue;
+      namespaces.set(entry.name, path.join(dataPath, entry.name));
     }
   }
   return namespaces;
@@ -122,6 +88,9 @@ export function getItemsFromSnapshot(nsDir: string, resourceKey: string): K8sIte
 // --- Graph building ---
 
 /**
+ * "Workload" = K8s resources that manage Pods: Deployment, StatefulSet, DaemonSet, CronJob.
+ * They define a Pod template (`spec.template.spec`) which this function inspects.
+ *
  * Extract edges from a workload's podSpec — discovers references to ConfigMaps,
  * Secrets, PVCs, and ServiceAccounts from envFrom, env.valueFrom, and volumes.
  *
@@ -138,7 +107,7 @@ export function getItemsFromSnapshot(nsDir: string, resourceKey: string): K8sIte
  */
 export function extractWorkloadEdges(
   ns: string,
-  kind: string,
+  kind: NodeKind,
   name: string,
   podSpec: Record<string, unknown> | undefined,
   addNode: AddNodeFn,
@@ -150,7 +119,7 @@ export function extractWorkloadEdges(
   const sa = podSpec.serviceAccountName as string | undefined;
   if (sa && sa !== 'default') {
     addNode(ns, 'ServiceAccount', sa, 'rbac');
-    addEdge(sourceId, `${ns}/ServiceAccount/${sa}`, 'uses-serviceaccount', 'spec.serviceAccountName');
+    addEdge(sourceId, `${ns}/ServiceAccount/${sa}`, EdgeType.UsesServiceAccount, SourceField.ServiceAccountName);
   }
 
   const containers = (podSpec.containers || []) as Array<Record<string, unknown>>;
@@ -161,12 +130,12 @@ export function extractWorkloadEdges(
       const cmRef = ef.configMapRef as { name?: string } | undefined;
       if (cmRef?.name) {
         addNode(ns, 'ConfigMap', cmRef.name, 'abstract');
-        addEdge(sourceId, `${ns}/ConfigMap/${cmRef.name}`, 'uses-configmap', 'envFrom.configMapRef');
+        addEdge(sourceId, `${ns}/ConfigMap/${cmRef.name}`, EdgeType.UsesConfigMap, SourceField.EnvFromConfigMap);
       }
       const secRef = ef.secretRef as { name?: string } | undefined;
       if (secRef?.name) {
         addNode(ns, 'Secret', secRef.name, 'abstract');
-        addEdge(sourceId, `${ns}/Secret/${secRef.name}`, 'uses-secret', 'envFrom.secretRef');
+        addEdge(sourceId, `${ns}/Secret/${secRef.name}`, EdgeType.UsesSecret, SourceField.EnvFromSecret);
       }
     }
     for (const env of (container.env || []) as Array<Record<string, unknown>>) {
@@ -174,12 +143,12 @@ export function extractWorkloadEdges(
       const cmKeyRef = valueFrom?.configMapKeyRef as { name?: string } | undefined;
       if (cmKeyRef?.name) {
         addNode(ns, 'ConfigMap', cmKeyRef.name, 'abstract');
-        addEdge(sourceId, `${ns}/ConfigMap/${cmKeyRef.name}`, 'uses-configmap', 'env.valueFrom.configMapKeyRef');
+        addEdge(sourceId, `${ns}/ConfigMap/${cmKeyRef.name}`, EdgeType.UsesConfigMap, SourceField.EnvConfigMapKey);
       }
       const secKeyRef = valueFrom?.secretKeyRef as { name?: string } | undefined;
       if (secKeyRef?.name) {
         addNode(ns, 'Secret', secKeyRef.name, 'abstract');
-        addEdge(sourceId, `${ns}/Secret/${secKeyRef.name}`, 'uses-secret', 'env.valueFrom.secretKeyRef');
+        addEdge(sourceId, `${ns}/Secret/${secKeyRef.name}`, EdgeType.UsesSecret, SourceField.EnvSecretKey);
       }
     }
   }
@@ -188,17 +157,17 @@ export function extractWorkloadEdges(
     const pvc = vol.persistentVolumeClaim as { claimName?: string } | undefined;
     if (pvc?.claimName) {
       addNode(ns, 'PersistentVolumeClaim', pvc.claimName, 'storage');
-      addEdge(sourceId, `${ns}/PersistentVolumeClaim/${pvc.claimName}`, 'uses-pvc', 'volumes.persistentVolumeClaim');
+      addEdge(sourceId, `${ns}/PersistentVolumeClaim/${pvc.claimName}`, EdgeType.UsesPVC, SourceField.VolumePVC);
     }
     const cm = vol.configMap as { name?: string } | undefined;
     if (cm?.name) {
       addNode(ns, 'ConfigMap', cm.name, 'abstract');
-      addEdge(sourceId, `${ns}/ConfigMap/${cm.name}`, 'uses-configmap', 'volumes.configMap');
+      addEdge(sourceId, `${ns}/ConfigMap/${cm.name}`, EdgeType.UsesConfigMap, SourceField.VolumeConfigMap);
     }
     const sec = vol.secret as { secretName?: string } | undefined;
     if (sec?.secretName) {
       addNode(ns, 'Secret', sec.secretName, 'abstract');
-      addEdge(sourceId, `${ns}/Secret/${sec.secretName}`, 'uses-secret', 'volumes.secret');
+      addEdge(sourceId, `${ns}/Secret/${sec.secretName}`, EdgeType.UsesSecret, SourceField.VolumeSecret);
     }
     const projected = vol.projected as { sources?: Array<Record<string, unknown>> } | undefined;
     if (projected?.sources) {
@@ -206,12 +175,12 @@ export function extractWorkloadEdges(
         const projCm = src.configMap as { name?: string } | undefined;
         if (projCm?.name) {
           addNode(ns, 'ConfigMap', projCm.name, 'abstract');
-          addEdge(sourceId, `${ns}/ConfigMap/${projCm.name}`, 'uses-configmap', 'volumes.projected.configMap');
+          addEdge(sourceId, `${ns}/ConfigMap/${projCm.name}`, EdgeType.UsesConfigMap, SourceField.ProjectedConfigMap);
         }
         const projSec = src.secret as { name?: string } | undefined;
         if (projSec?.name) {
           addNode(ns, 'Secret', projSec.name, 'abstract');
-          addEdge(sourceId, `${ns}/Secret/${projSec.name}`, 'uses-secret', 'volumes.projected.secret');
+          addEdge(sourceId, `${ns}/Secret/${projSec.name}`, EdgeType.UsesSecret, SourceField.ProjectedSecret);
         }
       }
     }
@@ -244,7 +213,7 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
   const nodeIds = new Set<string>();
   const allNamespaces: string[] = [];
 
-  function addNode(ns: string, kind: string, name: string, category: string, metadata: Record<string, unknown> = {}): string {
+  function addNode(ns: string, kind: NodeKind, name: string, category: NodeCategory, metadata: Record<string, unknown> = {}): string {
     const id = `${ns}/${kind}/${name}`;
     if (nodeIds.has(id)) return id;
     nodeIds.add(id);
@@ -252,7 +221,7 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
     return id;
   }
 
-  function addEdge(source: string, target: string, type: string, sourceField?: string): void {
+  function addEdge(source: string, target: string, type: EdgeType, sourceField?: SourceField): void {
     edges.push({ source, target, type, ...(sourceField && { sourceField }) });
   }
 
@@ -340,7 +309,7 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
         const podLabels = (templateMeta?.labels || {}) as Record<string, string>;
         const matches = Object.entries(selector).every(([k, v]) => podLabels[k] === v);
         if (matches) {
-          addEdge(`${ns}/Service/${svcName}`, `${ns}/${w.kind}/${w.item.metadata.name}`, 'exposes', 'spec.selector');
+          addEdge(`${ns}/Service/${svcName}`, `${ns}/${w.kind}/${w.item.metadata.name}`, EdgeType.Exposes, SourceField.Selector);
         }
       }
     }
@@ -356,7 +325,7 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
         if (pr.name) {
           const gwNs = (pr.namespace as string) || ns;
           addNode(gwNs, 'Gateway', pr.name as string, 'abstract');
-          addEdge(`${ns}/HTTPRoute/${hrName}`, `${gwNs}/Gateway/${pr.name}`, 'parent-gateway', 'spec.parentRefs');
+          addEdge(`${ns}/HTTPRoute/${hrName}`, `${gwNs}/Gateway/${pr.name}`, EdgeType.ParentGateway, SourceField.ParentRefs);
         }
       }
 
@@ -366,7 +335,7 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
             const backendNs = (br.namespace as string) || ns;
             const svcId = `${backendNs}/Service/${br.name}`;
             if (nodeIds.has(svcId)) {
-              addEdge(`${ns}/HTTPRoute/${hrName}`, svcId, 'routes-to', 'spec.rules.backendRefs');
+              addEdge(`${ns}/HTTPRoute/${hrName}`, svcId, EdgeType.RoutesTo, SourceField.BackendRefs);
             }
           }
         }
@@ -384,7 +353,7 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
         if (pr.name) {
           const gwNs = (pr.namespace as string) || ns;
           addNode(gwNs, 'Gateway', pr.name as string, 'abstract');
-          addEdge(`${ns}/TCPRoute/${trName}`, `${gwNs}/Gateway/${pr.name}`, 'parent-gateway', 'spec.parentRefs');
+          addEdge(`${ns}/TCPRoute/${trName}`, `${gwNs}/Gateway/${pr.name}`, EdgeType.ParentGateway, SourceField.ParentRefs);
         }
       }
 
@@ -394,7 +363,7 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
             const backendNs = (br.namespace as string) || ns;
             const svcId = `${backendNs}/Service/${br.name}`;
             if (nodeIds.has(svcId)) {
-              addEdge(`${ns}/TCPRoute/${trName}`, svcId, 'routes-to', 'spec.rules.backendRefs');
+              addEdge(`${ns}/TCPRoute/${trName}`, svcId, EdgeType.RoutesTo, SourceField.BackendRefs);
             }
           }
         }
@@ -423,7 +392,7 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
           const backendName = (backend?.service as Record<string, unknown>)?.name as string | undefined
             || backend?.serviceName as string | undefined;
           if (backendName && nodeIds.has(`${ns}/Service/${backendName}`)) {
-            addEdge(`${ns}/Ingress/${ingName}`, `${ns}/Service/${backendName}`, 'routes-to', 'spec.rules.http.paths.backend');
+            addEdge(`${ns}/Ingress/${ingName}`, `${ns}/Service/${backendName}`, EdgeType.RoutesTo, SourceField.IngressBackend);
           }
         }
       }
@@ -444,7 +413,7 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
       if (targetName && targetKind) {
         const targetId = `${ns}/${targetKind}/${targetName}`;
         if (nodeIds.has(targetId)) {
-          addEdge(`${ns}/HorizontalPodAutoscaler/${hpaName}`, targetId, 'exposes', 'spec.scaleTargetRef');
+          addEdge(`${ns}/HorizontalPodAutoscaler/${hpaName}`, targetId, EdgeType.Exposes, SourceField.ScaleTargetRef);
         }
       }
     }
@@ -457,14 +426,14 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
 
       if (rb.roleRef?.name) {
         addNode(ns, 'Role', rb.roleRef.name, 'rbac');
-        addEdge(`${ns}/RoleBinding/${rbName}`, `${ns}/Role/${rb.roleRef.name}`, 'binds-role', 'roleRef');
+        addEdge(`${ns}/RoleBinding/${rbName}`, `${ns}/Role/${rb.roleRef.name}`, EdgeType.BindsRole, SourceField.RoleRef);
       }
 
       for (const subj of rb.subjects || []) {
         if (subj.kind === 'ServiceAccount' && subj.name) {
           const saId = `${ns}/ServiceAccount/${subj.name}`;
           if (nodeIds.has(saId)) {
-            addEdge(`${ns}/RoleBinding/${rbName}`, saId, 'binds-role', 'subjects');
+            addEdge(`${ns}/RoleBinding/${rbName}`, saId, EdgeType.BindsRole, SourceField.Subjects);
           }
         }
       }
@@ -490,14 +459,14 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
       if (!podName) continue;
 
       const podStatus = pod.status as Record<string, unknown> | undefined;
-      const phase = (podStatus?.phase as string) || 'Unknown';
+      const phase = (podStatus?.phase as string) || PodPhase.Unknown;
       const containerStatuses = (podStatus?.containerStatuses || []) as Array<Record<string, unknown>>;
-      let displayStatus = phase;
+      let displayStatus = phase as PodPhase;
       for (const cs of containerStatuses) {
         const state = cs.state as Record<string, unknown> | undefined;
         const waiting = state?.waiting as Record<string, unknown> | undefined;
-        if (waiting?.reason === 'CrashLoopBackOff') {
-          displayStatus = 'CrashLoopBackOff';
+        if (waiting?.reason === PodPhase.CrashLoopBackOff) {
+          displayStatus = PodPhase.CrashLoopBackOff;
           break;
         }
       }
@@ -507,7 +476,7 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
       const nodeName = podSpec?.nodeName as string | undefined;
       const restarts = containerStatuses.reduce((sum, cs) => sum + ((cs.restartCount as number) || 0), 0);
 
-      let ownerKind: string | null = null;
+      let ownerKind: NodeKind | null = null;
       let ownerName: string | null = null;
       const ownerRefs = pod.metadata?.ownerReferences || [];
       for (const ref of ownerRefs) {

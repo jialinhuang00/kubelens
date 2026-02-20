@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractWorkloadEdges, buildGraph } from './graph-builder';
+import { extractWorkloadEdges, buildGraph, EdgeType } from './graph-builder';
 import type { GetItemsFn } from './graph-builder';
 import type { K8sItem } from './snapshot-loader';
 import { makeDeploymentItem, makeServiceItem, makeConfigMapItem } from './test-fixtures';
@@ -30,7 +30,7 @@ describe('extractWorkloadEdges', () => {
       (s, t, type) => { edgesList.push({ source: s, target: t, type }); },
     );
     assert.ok(nodes.includes('ns/ServiceAccount/my-sa'));
-    assert.ok(edgesList.some(e => e.type === 'uses-serviceaccount'));
+    assert.ok(edgesList.some(e => e.type === EdgeType.UsesServiceAccount));
   });
 
   it('skips default serviceAccount', () => {
@@ -56,7 +56,7 @@ describe('extractWorkloadEdges', () => {
       (ns, kind, name) => `${ns}/${kind}/${name}`,
       (_s, _t, type) => { edgeTypes.push(type); },
     );
-    assert.ok(edgeTypes.includes('uses-configmap'));
+    assert.ok(edgeTypes.includes(EdgeType.UsesConfigMap));
   });
 
   it('extracts secret from envFrom', () => {
@@ -71,7 +71,7 @@ describe('extractWorkloadEdges', () => {
       (ns, kind, name) => `${ns}/${kind}/${name}`,
       (_s, _t, type) => { edgeTypes.push(type); },
     );
-    assert.ok(edgeTypes.includes('uses-secret'));
+    assert.ok(edgeTypes.includes(EdgeType.UsesSecret));
   });
 
   it('extracts configmap from env.valueFrom.configMapKeyRef', () => {
@@ -115,7 +115,7 @@ describe('extractWorkloadEdges', () => {
       (ns, kind, name) => `${ns}/${kind}/${name}`,
       (_s, _t, type) => { edgeTypes.push(type); },
     );
-    assert.ok(edgeTypes.includes('uses-pvc'));
+    assert.ok(edgeTypes.includes(EdgeType.UsesPVC));
   });
 
   it('extracts configmap and secret from volumes', () => {
@@ -214,7 +214,7 @@ describe('buildGraph', () => {
 
   it('creates exposes edge between service and deployment', () => {
     const result = buildGraph(createMockGetItems(), ['ns1']);
-    const exposesEdge = result.edges.find(e => e.type === 'exposes');
+    const exposesEdge = result.edges.find(e => e.type === EdgeType.Exposes);
     assert.ok(exposesEdge, 'should have an exposes edge');
     assert.equal(exposesEdge!.source, 'ns1/Service/web-svc');
     assert.equal(exposesEdge!.target, 'ns1/Deployment/web');

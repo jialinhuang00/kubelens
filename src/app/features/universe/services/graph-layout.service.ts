@@ -8,7 +8,8 @@ import {
   EDGE_COLORS,
   CATEGORY_SIZES,
   getCategory,
-  K8sResourceKind,
+  NodeKind,
+  EdgeType,
 } from '../models/graph.models';
 
 export interface CosmosNode extends CosmosInputNode {
@@ -27,7 +28,7 @@ export interface CosmosLink extends CosmosInputLink {
 export interface NodeLabel {
   id: string;
   text: string;
-  kind: K8sResourceKind;
+  kind: NodeKind;
   color: string;
   x: number;
   y: number;
@@ -85,7 +86,7 @@ export class GraphLayoutService {
         linkColor: (l) => EDGE_COLORS[l.data.type] ?? '#556677',
         linkWidth: (l) => {
           const t = l.data.type;
-          if (t === 'exposes' || t === 'routes-to' || t === 'parent-gateway') return 1.5;
+          if (t === EdgeType.Exposes || t === EdgeType.RoutesTo || t === EdgeType.ParentGateway) return 1.5;
           return 3;
         },
         linkArrows: true,
@@ -183,7 +184,7 @@ export class GraphLayoutService {
         x: screenPos[0],
         y: screenPos[1],
         size: CATEGORY_SIZES[getCategory(node.data.kind)] ?? 5,
-        orphan: !!node.data.metadata?.orphan,
+        orphan: !!node.data.metadata?.['orphan'],
       });
 
       // Accumulate positions for namespace boundaries
@@ -282,7 +283,7 @@ export class GraphLayoutService {
       const orphanNodes: GraphNode[] = [];
 
       for (const node of nsNodes) {
-        if (node.metadata?.orphan) {
+        if (node.metadata?.['orphan']) {
           orphanNodes.push(node);
         } else {
           const cat = getCategory(node.kind);
@@ -435,7 +436,7 @@ export class GraphLayoutService {
       this.cosmosLinks.push({
         source: parentId,
         target: podNodes[i].id,
-        data: { source: parentId, target: podNodes[i].id, type: 'owns' },
+        data: { source: parentId, target: podNodes[i].id, type: EdgeType.Owns },
       });
     }
 

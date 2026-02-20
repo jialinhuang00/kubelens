@@ -20,12 +20,14 @@ import {
   GraphEdge,
   GraphDataResponse,
   KIND_COLORS,
-  K8sResourceKind,
-  ResourceCategory,
+  NodeKind,
+  NodeCategory,
+  PodPhase,
   getCategory,
-  RelationshipType,
+  EdgeType,
   CATEGORY_LABELS,
   CATEGORY_ORDER,
+  POD_STATUS_COLORS,
 } from '../models/graph.models';
 
 @Component({
@@ -70,7 +72,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   // Pod drill-down
   readonly expandedPods = signal<GraphNode[]>([]);
   readonly expandedWorkloadId = signal<string | null>(null);
-  private readonly WORKLOAD_KINDS = new Set<K8sResourceKind>(['Deployment', 'StatefulSet', 'DaemonSet', 'CronJob']);
+  private readonly WORKLOAD_KINDS = new Set<NodeKind>(['Deployment', 'StatefulSet', 'DaemonSet', 'CronJob']);
   private dataCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   // Namespace list for overview panel
@@ -88,7 +90,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   });
 
   // Important kinds to show in overview (no namespace selected)
-  private readonly OVERVIEW_KINDS = new Set<K8sResourceKind>([
+  private readonly OVERVIEW_KINDS = new Set<NodeKind>([
     'Namespace', 'Deployment', 'StatefulSet', 'DaemonSet', 'Gateway',
   ]);
 
@@ -130,7 +132,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     return new Set<string>([selected.id, ...connected.map(n => n.id)]);
   });
 
-  readonly selectedKind = signal<K8sResourceKind | null>(null);
+  readonly selectedKind = signal<NodeKind | null>(null);
 
   readonly legendGroups = computed(() => {
     const ns = this.focusedNamespace();
@@ -161,13 +163,13 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     // Group by category
-    const groups: { category: ResourceCategory; label: string; items: { kind: K8sResourceKind; color: string; count: number }[] }[] = [];
+    const groups: { category: NodeCategory; label: string; items: { kind: NodeKind; color: string; count: number }[] }[] = [];
     for (const cat of CATEGORY_ORDER) {
       const items = Object.entries(byKind)
-        .filter(([kind]) => getCategory(kind as K8sResourceKind) === cat)
+        .filter(([kind]) => getCategory(kind as NodeKind) === cat)
         .map(([kind, count]) => ({
-          kind: kind as K8sResourceKind,
-          color: KIND_COLORS[kind as K8sResourceKind] ?? '#888',
+          kind: kind as NodeKind,
+          color: KIND_COLORS[kind as NodeKind] ?? '#888',
           count,
         }))
         .sort((a, b) => b.count - a.count);
@@ -184,7 +186,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!node) return [];
     const edges = this.selectedEdges();
     const connected = this.connectedNodes();
-    const groups = new Map<RelationshipType, { edge: GraphEdge; node: GraphNode }[]>();
+    const groups = new Map<EdgeType, { edge: GraphEdge; node: GraphNode }[]>();
 
     for (const edge of edges) {
       const otherId = edge.source === node.id ? edge.target : edge.source;
@@ -351,7 +353,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     }, 100);
   }
 
-  selectKind(kind: K8sResourceKind): void {
+  selectKind(kind: NodeKind): void {
     if (this.selectedKind() === kind) {
       // Toggle off
       this.selectedKind.set(null);
@@ -367,15 +369,13 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.graphLayout.selectNodesByIds(ids);
   }
 
-  getKindColor(kind: K8sResourceKind): string {
+  getKindColor(kind: NodeKind): string {
     return KIND_COLORS[kind] ?? '#888';
   }
 
   getPodStatusColor(pod: GraphNode): string {
-    const status = (pod.metadata?.['status'] as string) ?? '';
-    if (status === 'Running' || status === 'Succeeded') return '#6dca82';
-    if (status === 'Pending') return '#d4956a';
-    return '#e07070'; // Failed, CrashLoopBackOff, etc.
+    const status = (pod.metadata?.['status'] as PodPhase) ?? PodPhase.Unknown;
+    return POD_STATUS_COLORS[status] ?? '#e07070';
   }
 
   @HostListener('window:keydown', ['$event'])

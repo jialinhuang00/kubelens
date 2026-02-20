@@ -1,53 +1,13 @@
-export type K8sResourceKind =
-  | 'Namespace'
-  | 'Deployment'
-  | 'StatefulSet'
-  | 'DaemonSet'
-  | 'CronJob'
-  | 'Pod'
-  | 'Service'
-  | 'ConfigMap'
-  | 'Secret'
-  | 'ServiceAccount'
-  | 'PersistentVolumeClaim'
-  | 'Gateway'
-  | 'HTTPRoute'
-  | 'TCPRoute'
-  | 'Ingress'
-  | 'HorizontalPodAutoscaler'
-  | 'NetworkPolicy'
-  | 'Role'
-  | 'RoleBinding'
-  | 'PodDisruptionBudget';
+export {
+  type NodeKind, type NodeCategory, PodPhase,
+  EdgeType, SourceField,
+  type GraphNode, type GraphEdge, type PodNode, type GraphResult,
+} from '../../../../../shared/graph-types';
 
-export type ResourceCategory = 'namespace' | 'workload' | 'abstract' | 'storage' | 'rbac';
-
-export type RelationshipType =
-  | 'uses-configmap'
-  | 'uses-secret'
-  | 'uses-pvc'
-  | 'uses-serviceaccount'
-  | 'exposes'
-  | 'routes-to'
-  | 'binds-role'
-  | 'parent-gateway'
-  | 'owns';
-
-export interface GraphNode {
-  id: string;
-  name: string;
-  kind: K8sResourceKind;
-  category: ResourceCategory;
-  namespace: string;
-  metadata: Record<string, unknown> & { orphan?: boolean };
-}
-
-export interface GraphEdge {
-  source: string;
-  target: string;
-  type: RelationshipType;
-  sourceField?: string;
-}
+import {
+  type NodeKind, type NodeCategory, PodPhase, EdgeType,
+  type GraphNode, type GraphEdge, type PodNode,
+} from '../../../../../shared/graph-types';
 
 export interface GraphDataResponse {
   nodes: GraphNode[];
@@ -62,7 +22,7 @@ export interface GraphDataResponse {
   };
 }
 
-export const KIND_COLORS: Record<K8sResourceKind, string> = {
+export const KIND_COLORS: Record<NodeKind, string> = {
   // Namespace — soft amber anchor
   Namespace: '#e8b866',
   // Workload — muted jade family (runs containers)
@@ -71,6 +31,8 @@ export const KIND_COLORS: Record<K8sResourceKind, string> = {
   DaemonSet: '#5ab86d',
   CronJob: '#8cb866',
   Pod: '#88cc88',
+  ReplicaSet: '#78c488',
+  Job: '#82be78',
   // Abstract — warm grayscale (routes traffic, config, policy — not a workload)
   Service: '#d0c8b8',
   Gateway: '#b0a898',
@@ -90,19 +52,19 @@ export const KIND_COLORS: Record<K8sResourceKind, string> = {
   RoleBinding: '#b89050',
 };
 
-export const EDGE_COLORS: Record<RelationshipType, string> = {
-  'uses-configmap': '#b8b0a0',
-  'uses-secret': '#ccc4b4',
-  'uses-pvc': '#d4956a',
-  'uses-serviceaccount': '#c8a060',
-  'exposes': '#d0c8b8',
-  'routes-to': '#a09888',
-  'binds-role': '#f0d080',
-  'parent-gateway': '#b0a898',
-  'owns': '#88cc88',
+export const EDGE_COLORS: Record<EdgeType, string> = {
+  [EdgeType.UsesConfigMap]: '#b8b0a0',
+  [EdgeType.UsesSecret]: '#ccc4b4',
+  [EdgeType.UsesPVC]: '#d4956a',
+  [EdgeType.UsesServiceAccount]: '#c8a060',
+  [EdgeType.Exposes]: '#d0c8b8',
+  [EdgeType.RoutesTo]: '#a09888',
+  [EdgeType.BindsRole]: '#f0d080',
+  [EdgeType.ParentGateway]: '#b0a898',
+  [EdgeType.Owns]: '#88cc88',
 };
 
-export const CATEGORY_SIZES: Record<ResourceCategory, number> = {
+export const CATEGORY_SIZES: Record<NodeCategory, number> = {
   namespace: 30,
   workload: 8,
   abstract: 6,
@@ -110,7 +72,7 @@ export const CATEGORY_SIZES: Record<ResourceCategory, number> = {
   rbac: 5,
 };
 
-export const CATEGORY_LABELS: Record<ResourceCategory, string> = {
+export const CATEGORY_LABELS: Record<NodeCategory, string> = {
   namespace: 'Namespace',
   workload: 'Workload',
   abstract: 'Abstract',
@@ -118,11 +80,20 @@ export const CATEGORY_LABELS: Record<ResourceCategory, string> = {
   rbac: 'RBAC',
 };
 
-export const CATEGORY_ORDER: ResourceCategory[] = [
+export const CATEGORY_ORDER: NodeCategory[] = [
   'workload', 'abstract', 'storage', 'rbac', 'namespace',
 ];
 
-export function getCategory(kind: K8sResourceKind): ResourceCategory {
+export const POD_STATUS_COLORS: Record<PodPhase, string> = {
+  [PodPhase.Running]: '#6dca82',
+  [PodPhase.Succeeded]: '#6dca82',
+  [PodPhase.Pending]: '#d4956a',
+  [PodPhase.Failed]: '#e07070',
+  [PodPhase.Unknown]: '#e07070',
+  [PodPhase.CrashLoopBackOff]: '#e07070',
+};
+
+export function getCategory(kind: NodeKind): NodeCategory {
   switch (kind) {
     case 'Namespace':
       return 'namespace';
@@ -131,6 +102,8 @@ export function getCategory(kind: K8sResourceKind): ResourceCategory {
     case 'DaemonSet':
     case 'CronJob':
     case 'Pod':
+    case 'ReplicaSet':
+    case 'Job':
       return 'workload';
     case 'Service':
     case 'Gateway':

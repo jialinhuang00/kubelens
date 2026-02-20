@@ -1,9 +1,9 @@
 <!-- Cell Templates -->
 <ng-template #statusCell let-status>
   <span class="inline-flex px-1 py-0.5 text-xs font-medium rounded-sm"
-    [class]="status === 'Running' ? 'neon-border' : 'border border-subtle'"
-    [style]="status === 'Running' ? 'color: var(--accent-green); background: rgba(57, 255, 20, 0.1)' : 
-               status === 'Pending' ? 'color: var(--accent-purple); background: rgba(157, 78, 221, 0.1)' :
+    [class]="status === PodPhase.Running ? 'neon-border' : 'border border-subtle'"
+    [style]="status === PodPhase.Running ? 'color: var(--accent-green); background: rgba(57, 255, 20, 0.1)' : 
+               status === PodPhase.Pending ? 'color: var(--accent-purple); background: rgba(157, 78, 221, 0.1)' :
                'color: var(--text-secondary); background: rgba(255, 255, 255, 0.05)'">
     {{ status || '-' }}
   </span>

@@ -108,16 +108,9 @@ router.get('/graph', async (req, res) => {
       const localBackup = path.join(rootDir, 'k8s-snapshot');
       const fallbackPath = process.env.K8S_SNAPSHOT_PATH || localBackup;
 
-      let dataPaths;
-      if (req.query.path) {
-        dataPaths = [path.resolve(req.query.path)];
-      } else if (fs.existsSync(localBackup)) {
-        dataPaths = [localBackup];
-      } else {
-        dataPaths = [fallbackPath];
-      }
+      const dataPath = fs.existsSync(localBackup) ? localBackup : fallbackPath;
 
-      const namespaceDirs = discoverNamespaces(dataPaths);
+      const namespaceDirs = discoverNamespaces(dataPath);
       const namespaceList = [...namespaceDirs.keys()];
 
       const getItemsFn = (ns, resourceKey) => {

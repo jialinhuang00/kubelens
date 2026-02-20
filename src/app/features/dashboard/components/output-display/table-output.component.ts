@@ -2,6 +2,7 @@ import { Component, Input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { KubeResource } from '../../../../shared/models/kubectl.models';
 import { ClipboardService } from '../../../../shared/services/clipboard.service';
+import { PodPhase } from '../../../universe/models/graph.models';
 
 @Component({
   selector: 'app-table-output',
@@ -11,7 +12,8 @@ import { ClipboardService } from '../../../../shared/services/clipboard.service'
 })
 export class TableOutputComponent {
   private clipboardService = inject(ClipboardService);
-  
+  readonly PodPhase = PodPhase;
+
   @Input() results: KubeResource[] = [];
   @Input() headers: string[] = [];
   @Input() isLoading: boolean = false;
