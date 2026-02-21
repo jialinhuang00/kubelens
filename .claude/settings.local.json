@@ -44,7 +44,10 @@
       "Bash(npx tsc:*)",
       "Bash(npm run test:utils:*)",
       "Bash(npm run test:utils:cov:*)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(git log:*)",
+      "Bash(git:*)",
+      "Bash(cp:*)"
     ],
     "deny": [],
     "ask": []
