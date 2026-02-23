@@ -33,8 +33,10 @@ export class GraphDataService {
         this._data.set(data);
         this._loading.set(false);
       },
-      error: (err: unknown) => {
-        const message = err instanceof Error ? err.message : 'Failed to load graph data';
+      error: (err: any) => {
+        const body = typeof err?.error === 'object' ? err.error : null;
+        const message = body?.message || body?.error || err?.message || 'Failed to load graph data';
+        console.error('[graph-data] Error response:', err);
         this._error.set(message);
         this._loading.set(false);
       },

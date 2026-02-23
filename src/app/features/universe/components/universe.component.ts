@@ -13,6 +13,7 @@ import {
 import { Router } from '@angular/router';
 import { DecimalPipe, KeyValuePipe } from '@angular/common';
 import { DataModeService } from '../../../core/services/data-mode.service';
+import { ModeToggleComponent } from '../../../shared/components/mode-toggle/mode-toggle.component';
 import { GraphDataService } from '../services/graph-data.service';
 import { GraphLayoutService, NodeLabel, NamespaceBoundary } from '../services/graph-layout.service';
 import {
@@ -32,7 +33,7 @@ import {
 
 @Component({
   selector: 'app-universe',
-  imports: [DecimalPipe, KeyValuePipe],
+  imports: [DecimalPipe, KeyValuePipe, ModeToggleComponent],
   templateUrl: './universe.component.html',
   styleUrls: ['./universe.component.scss'],
 })
@@ -335,8 +336,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.router.navigate(['/']);
   }
 
-  switchMode(snapshot: boolean): void {
-    this.dataModeService.setSnapshotMode(snapshot);
+  onModeChanged(): void {
     this.graphLayout.destroy();
     this.graphData.fetchGraph();
     this.clearDataCheck();

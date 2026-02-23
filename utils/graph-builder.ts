@@ -85,6 +85,34 @@ export function getItemsFromSnapshot(nsDir: string, resourceKey: string): K8sIte
   return data?.items || [];
 }
 
+// --- Helpers ---
+
+/** Strip registry prefix, keep just `name:tag`. */
+function shortenImage(img: string): string {
+  const i = img.lastIndexOf('/');
+  return i >= 0 ? img.substring(i + 1) : img;
+}
+
+/** Find the longest common prefix up to the last `/`. */
+function commonRegistry(images: string[]): string {
+  if (images.length < 2) return '';
+  const parts = images.map(img => {
+    const i = img.lastIndexOf('/');
+    return i >= 0 ? img.substring(0, i + 1) : '';
+  });
+  const first = parts[0];
+  if (!first || !parts.every(p => p === first)) return '';
+  return first;
+}
+
+/** Extract all container images from a pod spec. */
+function getContainerImages(podSpec: Record<string, unknown> | undefined): { full: string[]; short: string[]; registry: string } {
+  if (!podSpec) return { full: [], short: [], registry: '' };
+  const containers = (podSpec.containers || []) as Array<Record<string, unknown>>;
+  const full = containers.map(c => c.image as string).filter(Boolean);
+  return { full, short: full.map(shortenImage), registry: commonRegistry(full) };
+}
+
 // --- Graph building ---
 
 /**
@@ -232,13 +260,13 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
     for (const d of deployments) {
       const name = d.metadata?.name;
       if (!name) continue;
+      const deployPodSpec = ((d.spec as Record<string, unknown>)?.template as Record<string, unknown>)?.spec as Record<string, unknown> | undefined;
+      const deployImages = getContainerImages(deployPodSpec);
       addNode(ns, 'Deployment', name, 'workload', {
         replicas: (d.spec as Record<string, unknown>)?.replicas,
-        image: ((d.spec as Record<string, unknown>)?.template as Record<string, unknown>)
-          ? (((d.spec as Record<string, unknown>)?.template as Record<string, unknown>)?.spec as Record<string, unknown>)
-            ? ((((d.spec as Record<string, unknown>)?.template as Record<string, unknown>)?.spec as Record<string, unknown>)?.containers as Array<Record<string, unknown>>)?.[0]?.image
-            : undefined
-          : undefined,
+        image: deployImages.full[0],
+        containers: deployImages.short,
+        registry: deployImages.registry,
       });
       extractWorkloadEdges(ns, 'Deployment', name, ((d.spec as Record<string, unknown>)?.template as Record<string, unknown>)?.spec as Record<string, unknown> | undefined, addNode, addEdge);
     }
@@ -247,13 +275,13 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
     for (const s of statefulsets) {
       const name = s.metadata?.name;
       if (!name) continue;
+      const ssPodSpec = ((s.spec as Record<string, unknown>)?.template as Record<string, unknown>)?.spec as Record<string, unknown> | undefined;
+      const ssImages = getContainerImages(ssPodSpec);
       addNode(ns, 'StatefulSet', name, 'workload', {
         replicas: (s.spec as Record<string, unknown>)?.replicas,
-        image: ((s.spec as Record<string, unknown>)?.template as Record<string, unknown>)
-          ? (((s.spec as Record<string, unknown>)?.template as Record<string, unknown>)?.spec as Record<string, unknown>)
-            ? ((((s.spec as Record<string, unknown>)?.template as Record<string, unknown>)?.spec as Record<string, unknown>)?.containers as Array<Record<string, unknown>>)?.[0]?.image
-            : undefined
-          : undefined,
+        image: ssImages.full[0],
+        containers: ssImages.short,
+        registry: ssImages.registry,
       });
       extractWorkloadEdges(ns, 'StatefulSet', name, ((s.spec as Record<string, unknown>)?.template as Record<string, unknown>)?.spec as Record<string, unknown> | undefined, addNode, addEdge);
     }
@@ -262,12 +290,12 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
     for (const ds of daemonsets) {
       const name = ds.metadata?.name;
       if (!name) continue;
+      const dsPodSpec = ((ds.spec as Record<string, unknown>)?.template as Record<string, unknown>)?.spec as Record<string, unknown> | undefined;
+      const dsImages = getContainerImages(dsPodSpec);
       addNode(ns, 'DaemonSet', name, 'workload', {
-        image: ((ds.spec as Record<string, unknown>)?.template as Record<string, unknown>)
-          ? (((ds.spec as Record<string, unknown>)?.template as Record<string, unknown>)?.spec as Record<string, unknown>)
-            ? ((((ds.spec as Record<string, unknown>)?.template as Record<string, unknown>)?.spec as Record<string, unknown>)?.containers as Array<Record<string, unknown>>)?.[0]?.image
-            : undefined
-          : undefined,
+        image: dsImages.full[0],
+        containers: dsImages.short,
+        registry: dsImages.registry,
       });
       extractWorkloadEdges(ns, 'DaemonSet', name, ((ds.spec as Record<string, unknown>)?.template as Record<string, unknown>)?.spec as Record<string, unknown> | undefined, addNode, addEdge);
     }
@@ -472,7 +500,8 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
       }
 
       const podSpec = pod.spec as Record<string, unknown> | undefined;
-      const image = ((podSpec?.containers as Array<Record<string, unknown>>)?.[0])?.image as string | undefined;
+      const podImages = getContainerImages(podSpec);
+      const image = podImages.full[0];
       const nodeName = podSpec?.nodeName as string | undefined;
       const restarts = containerStatuses.reduce((sum, cs) => sum + ((cs.restartCount as number) || 0), 0);
 
@@ -518,6 +547,8 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
           ownerKind,
           ownerName,
           image,
+          containers: podImages.short,
+          registry: podImages.registry,
           node: nodeName,
           restarts,
         },

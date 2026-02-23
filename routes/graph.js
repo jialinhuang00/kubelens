@@ -23,11 +23,13 @@ async function execKubectl(args, signal) {
     const bytes = Buffer.byteLength(stdout, 'utf8');
     const parsed = JSON.parse(stdout);
     console.log(`[graph] kubectl ${args.split(' -')[0]}: ${(bytes / 1024).toFixed(1)}KB, ${parsed.items?.length ?? 0} items`);
-    return parsed;
+    return { data: parsed, error: null };
   } catch (e) {
-    if (e.code === 'ABORT_ERR') return { items: [] };
-    console.warn(`[graph] kubectl ${args}: ${e.message?.split('\n')[0]}`);
-    return { items: [] };
+    if (e.code === 'ABORT_ERR') return { data: { items: [] }, error: null };
+    const stderrLines = [...new Set((e.stderr || '').split('\n').map(l => l.trim()).filter(Boolean))];
+    const msg = stderrLines.join('\n') || e.message?.split('\n')[0] || 'Unknown error';
+    console.warn(`[graph] kubectl ${args}: ${msg}`);
+    return { data: { items: [] }, error: msg };
   }
 }
 
@@ -93,8 +95,16 @@ async function fetchLiveData(signal) {
     allBatches.map(batch => execKubectl(`get ${batch.resources} -A -o json`, signal))
   );
 
+  const errors = [];
   for (let i = 0; i < allBatches.length; i++) {
-    ingest(results[i], allBatches[i].keys);
+    if (results[i].error) errors.push(results[i].error);
+    ingest(results[i].data, allBatches[i].keys);
+  }
+
+  // All core batches failed → kubectl is broken
+  const coreErrors = results.slice(0, batches.length).filter(r => r.error);
+  if (coreErrors.length === batches.length) {
+    throw new Error(coreErrors[0].error);
   }
 
   return { nsData, namespaces: [...allNamespaces] };
@@ -144,7 +154,7 @@ router.get('/graph', async (req, res) => {
     }
   } catch (err) {
     console.error('[graph] Error:', err.message);
-    res.status(500).json({ error: 'Failed to fetch graph data' });
+    res.status(500).json({ message: err.message || 'Failed to fetch graph data' });
   }
 });
 

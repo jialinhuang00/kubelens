@@ -1,32 +1,3 @@
-// Mode toggle (Realtime / Snapshot)
-.mode-toggle {
-  background: var(--bg-secondary);
-
-  .mode-btn {
-    color: var(--text-secondary);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    min-width: 80px;
-
-    &:hover:not(:disabled) {
-      color: var(--text-primary);
-      background: rgba(232, 184, 102, 0.08);
-    }
-
-    &:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
-    }
-
-    &.mode-active {
-      color: var(--bg-primary);
-      background: var(--accent-cyan);
-      box-shadow: 0 0 12px rgba(232, 184, 102, 0.4);
-    }
-  }
-}
-
 // Sticky table headers - need container with fixed height
 .table-container {
   max-height: 400px;

@@ -102,6 +102,7 @@ export interface PodNode extends GraphNode {
     ownerKind: string;
     ownerName: string;
     image?: string;
+    containers?: string[];
     node?: string;
     restarts: number;
     [key: string]: unknown;

@@ -14,43 +14,26 @@
       }
     </div>
 
-    <!-- Mode toggle -->
-    <div class="sidebar-mode-toggle">
-      <div class="mode-toggle">
-        <button
-          class="mode-btn"
-          [class.mode-active]="!dataModeService.isSnapshotMode()"
-          [disabled]="!dataModeService.realtimeAvailable()"
-          (click)="switchMode(false)">
-          Realtime
-        </button>
-        <button
-          class="mode-btn"
-          [class.mode-active]="dataModeService.isSnapshotMode()"
-          [disabled]="!dataModeService.snapshotAvailable()"
-          (click)="switchMode(true)">
-          Snapshot Data
-        </button>
-      </div>
-    </div>
-
     <!-- Top section: Legend / Filters -->
     <div class="sidebar-legend">
       <!-- Namespace selector -->
-      @if (!focusedNamespace()) {
-        <div class="sidebar-section">
-          <h3 class="section-title">Namespaces</h3>
-          <div class="section-list">
+      <div class="sidebar-section">
+        <h3 class="section-title">Namespaces</h3>
+        <div class="ns-chips">
+          @if (focusedNamespace()) {
+            <button class="ns-chip ns-chip-active" (click)="clearNamespaceFocus()">
+              {{ focusedNamespace() }}
+            </button>
+          } @else {
             @for (ns of namespaceList(); track ns.name) {
-              <button class="sidebar-item" (click)="focusNamespace(ns.name)">
-                <span class="item-dot" style="background: #e8b866"></span>
-                <span class="item-label">{{ ns.name }}</span>
-                <span class="item-count">{{ ns.count }}</span>
+              <button class="ns-chip" (click)="focusNamespace(ns.name)">
+                {{ ns.name }} <span class="ns-chip-count">{{ ns.count }}</span>
               </button>
             }
-          </div>
+          }
         </div>
-        <!-- Legend grouped by category -->
+      </div>
+      @if (focusedNamespace()) {
         @for (group of legendGroups(); track group.category) {
           <div class="sidebar-section legend-group">
             <div class="legend-group-label">{{ group.label }}</div>
@@ -67,30 +50,6 @@
             </div>
           </div>
         }
-      } @else {
-        <!-- Focused namespace: kind legend grouped by category -->
-        <div class="sidebar-section">
-          <div class="section-header-row">
-            <button class="back-btn" (click)="clearNamespaceFocus()">&larr; All</button>
-            <h3 class="section-title active-ns-title">{{ focusedNamespace() }}</h3>
-          </div>
-          @for (group of legendGroups(); track group.category) {
-            <div class="legend-group">
-              <div class="legend-group-label">{{ group.label }}</div>
-              <div class="section-list">
-                @for (item of group.items; track item.kind) {
-                  <button class="sidebar-item"
-                          [class.active]="selectedKind() === item.kind"
-                          (click)="selectKind(item.kind)">
-                    <span class="item-dot" [style.background]="item.color"></span>
-                    <span class="item-label">{{ item.kind }}</span>
-                    <span class="item-count">{{ item.count }}</span>
-                  </button>
-                }
-              </div>
-            </div>
-          }
-        </div>
       }
     </div>
 
@@ -120,12 +79,28 @@
             <span class="meta-value">{{ node.category }}</span>
           </div>
           @for (entry of (node.metadata | keyvalue); track entry.key) {
-            @if (entry.value) {
+            @if (entry.value && entry.key !== 'containers' && entry.key !== 'image' && entry.key !== 'registry') {
               <div class="meta-row">
                 <span class="meta-label">{{ entry.key }}</span>
                 <span class="meta-value">{{ entry.value }}</span>
               </div>
             }
+          }
+          @if ($any(node.metadata['containers'])?.length > 1) {
+            <div class="meta-col">
+              <span class="meta-label">images</span>
+              @if (node.metadata['registry']) {
+                <span class="meta-hint">{{ node.metadata['registry'] }}</span>
+              }
+              @for (img of $any(node.metadata['containers']); track img) {
+                <span class="meta-value">{{ img }}</span>
+              }
+            </div>
+          } @else if (node.metadata['image']) {
+            <div class="meta-row">
+              <span class="meta-label">image</span>
+              <span class="meta-value">{{ node.metadata['image'] }}</span>
+            </div>
           }
         </div>
 
@@ -138,8 +113,8 @@
                 <span class="pod-status-dot" [style.background]="getPodStatusColor(pod)"></span>
                 <div class="pod-info">
                   <span class="pod-name">{{ pod.name }}</span>
-                  @if (pod.metadata['image']) {
-                    <span class="pod-image">{{ pod.metadata['image'] }}</span>
+                  @for (img of $any(pod.metadata['containers']); track img) {
+                    <span class="pod-image">{{ img }}</span>
                   }
                 </div>
                 <span class="pod-status" [style.color]="getPodStatusColor(pod)">{{ pod.metadata['status'] }}</span>
@@ -248,6 +223,7 @@
       <button class="action-btn" (click)="fitView()" title="Fit view (F)">
         <span>&#x26F6;</span> Fit
       </button>
+      <app-mode-toggle (modeChanged)="onModeChanged()"></app-mode-toggle>
     </div>
 
     <!-- Zoom indicator -->

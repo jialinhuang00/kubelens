@@ -6,22 +6,7 @@
         <h1 class="text-2xl font-bold glow-text mb-1" style="color: var(--accent-cyan)">{{ title() }}</h1>
         <p class="text-xs" style="color: var(--text-secondary)">Kubectl Commands Visualized</p>
       </div>
-      <div class="mode-toggle flex rounded-md overflow-hidden border" style="border-color: var(--border-subtle)">
-        <button
-          class="mode-btn px-3 py-1.5 text-xs font-medium transition-all"
-          [class.mode-active]="!dataModeService.isSnapshotMode()"
-          [disabled]="!dataModeService.realtimeAvailable()"
-          (click)="dataModeService.setSnapshotMode(false)">
-          Realtime
-        </button>
-        <button
-          class="mode-btn px-3 py-1.5 text-xs font-medium transition-all"
-          [class.mode-active]="dataModeService.isSnapshotMode()"
-          [disabled]="!dataModeService.snapshotAvailable()"
-          (click)="dataModeService.setSnapshotMode(true)">
-          Snapshot
-        </button>
-      </div>
+      <app-mode-toggle></app-mode-toggle>
     </header>
 
     <div class="space-y-3">

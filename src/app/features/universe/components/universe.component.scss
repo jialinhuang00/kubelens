@@ -73,43 +73,6 @@ $sidebar-width: 320px;
   border-radius: 4px;
 }
 
-// ---- Mode toggle ----
-.sidebar-mode-toggle {
-  padding: 8px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.mode-toggle {
-  display: flex;
-  border-radius: 5px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.mode-btn {
-  flex: 1;
-  padding: 5px 0;
-  font-size: 11px;
-  font-family: inherit;
-  font-weight: 500;
-  color: #5a5040;
-  background: transparent;
-  border: none;
-  cursor: default;
-  transition: all 0.2s;
-
-  &:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-  }
-
-  &.mode-active {
-    color: #0a0804;
-    background: #e8b866;
-    box-shadow: 0 0 12px rgba(232, 184, 102, 0.4);
-  }
-}
 
 // ---- Legend section (top) ----
 .sidebar-legend {
@@ -128,6 +91,48 @@ $sidebar-width: 320px;
   text-transform: uppercase;
   letter-spacing: 1.5px;
   margin: 0 0 8px 0;
+}
+
+.ns-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ns-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  color: #b8b0a0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    background: rgba(232, 184, 102, 0.12);
+    border-color: rgba(232, 184, 102, 0.3);
+    color: #e8b866;
+  }
+}
+
+.ns-chip-active {
+  background: rgba(232, 184, 102, 0.15);
+  border-color: rgba(232, 184, 102, 0.4);
+  color: #e8b866;
+
+  .ns-chip-count {
+    color: rgba(232, 184, 102, 0.6);
+  }
+}
+
+.ns-chip-count {
+  font-size: 10px;
+  color: #5a5040;
 }
 
 .active-ns-title {
@@ -327,6 +332,26 @@ $sidebar-width: 320px;
   color: #b8b0a0;
   text-align: right;
   word-break: break-all;
+}
+
+.meta-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+
+  .meta-hint {
+    color: #4a4535;
+    font-size: 10px;
+    word-break: break-all;
+  }
+
+  .meta-value {
+    color: #b8b0a0;
+    word-break: break-all;
+  }
 }
 
 // ---- Section headings in detail ----
@@ -792,7 +817,10 @@ $sidebar-width: 320px;
   position: absolute;
   top: 12px;
   right: 12px;
-  z-index: 10;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .action-btn {

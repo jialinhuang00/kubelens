@@ -27,6 +27,7 @@ import { ExecutionDialogService } from '../../../core/services/execution-dialog.
 import { ExecutionGroupGenerator } from '../../../shared/constants/execution-groups.constants';
 import { OutputData } from '../../../shared/interfaces/output-data.interface';
 import { DataModeService } from '../../../core/services/data-mode.service';
+import { ModeToggleComponent } from '../../../shared/components/mode-toggle/mode-toggle.component';
 import { EcrService } from '../../k8s/services/ecr.service';
 
 // Resource config: defines all resource types, their labels, colors, and template generators
@@ -41,7 +42,7 @@ interface ResourceConfig {
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterOutlet, FormsModule, CommonModule, ContextBarComponent, CommandChipsComponent, OutputDisplayComponent, CommandInputComponent, ExecutionDialogComponent],
+  imports: [RouterOutlet, FormsModule, CommonModule, ContextBarComponent, CommandChipsComponent, OutputDisplayComponent, CommandInputComponent, ExecutionDialogComponent, ModeToggleComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
