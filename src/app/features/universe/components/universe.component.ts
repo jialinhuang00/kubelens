@@ -44,6 +44,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly dataModeService = inject(DataModeService);
 
   @ViewChild('graphCanvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('searchInput') searchInputRef!: ElementRef<HTMLInputElement>;
 
   readonly loading = this.graphData.loading;
   readonly error = this.graphData.error;
@@ -114,9 +115,8 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.namespaceBoundaries();
   });
 
-  // Active node IDs (selected + connected OR kind-filtered) for dimming
+  // Active node IDs (selected + connected OR kind-filtered OR search) for dimming
   readonly activeNodeIds = computed(() => {
-    // Namespace focus: dim everything outside focused namespace
     const ns = this.focusedNamespace();
     // Kind filter takes priority
     const kind = this.selectedKind();
@@ -126,12 +126,31 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
         nodes.filter(n => n.kind === kind && (!ns || n.namespace === ns)).map(n => n.id)
       );
     }
+    // Search filter
+    const searchIds = this.searchMatchIds();
+    if (this.searchText() && searchIds.size > 0) {
+      return searchIds;
+    }
     // Single node selection
     const selected = this.selectedNode();
     if (!selected) return null; // null = no selection, show all
     const connected = this.connectedNodes();
     return new Set<string>([selected.id, ...connected.map(n => n.id)]);
   });
+
+  // Search
+  readonly searchText = signal('');
+  readonly searchResults = computed(() => {
+    const text = this.searchText().toLowerCase();
+    const ns = this.focusedNamespace();
+    if (!text || !ns) return [];
+    return this.graphData.nodes().filter(
+      n => n.namespace === ns && (n.name.toLowerCase().includes(text) || n.kind.toLowerCase().includes(text))
+    );
+  });
+  readonly searchMatchIds = computed(() => new Set(this.searchResults().map(n => n.id)));
+  readonly searchHighlightIndex = signal(-1);
+  readonly searchOpen = signal(false);
 
   readonly selectedKind = signal<NodeKind | null>(null);
 
@@ -291,6 +310,8 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedEdges.set([]);
     this.connectedNodes.set([]);
     this.selectedKind.set(null);
+    this.searchText.set('');
+    this.searchOpen.set(false);
     this.graphLayout.unselectNodes();
     this.graphLayout.unfocusNode();
   }
@@ -324,6 +345,8 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
 
   clearNamespaceFocus(): void {
     this.focusedNamespace.set(null);
+    this.searchText.set('');
+    this.searchOpen.set(false);
     this.clearSelection();
     this.graphLayout.fitView();
   }
@@ -354,6 +377,43 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     }, 100);
   }
 
+  onSearchInput(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.searchText.set(value);
+    this.searchHighlightIndex.set(-1);
+    this.searchOpen.set(!!value);
+  }
+
+  onSearchKeydown(event: KeyboardEvent): void {
+    const results = this.searchResults();
+    if (!results.length) return;
+    const idx = this.searchHighlightIndex();
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      const next = Math.min(idx + 1, results.length - 1);
+      this.searchHighlightIndex.set(next);
+      this.selectNode(results[next]);
+      this.graphLayout.zoomToNode(results[next].id);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      const prev = Math.max(idx - 1, 0);
+      this.searchHighlightIndex.set(prev);
+      this.selectNode(results[prev]);
+      this.graphLayout.zoomToNode(results[prev].id);
+    } else if (event.key === 'Enter' && idx >= 0 && idx < results.length) {
+      event.preventDefault();
+      this.selectSearchResult(results[idx]);
+    }
+  }
+
+  selectSearchResult(node: GraphNode): void {
+    this.searchOpen.set(false);
+    this.searchHighlightIndex.set(-1);
+    this.selectNode(node);
+    this.graphLayout.zoomToNode(node.id);
+  }
+
   selectKind(kind: NodeKind): void {
     if (this.selectedKind() === kind) {
       // Toggle off
@@ -381,17 +441,34 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @HostListener('window:keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {
+    // Don't handle shortcuts when typing in search
+    const inInput = event.target instanceof HTMLInputElement;
     if (event.key === 'Escape') {
+      if (inInput) {
+        if (this.searchOpen()) {
+          this.searchOpen.set(false);
+        } else {
+          this.searchText.set('');
+          this.searchOpen.set(false);
+          (event.target as HTMLInputElement).blur();
+        }
+        return;
+      }
       if (this.selectedNode() || this.selectedKind()) {
         this.clearSelection();
       } else if (this.focusedNamespace()) {
         this.clearNamespaceFocus();
       }
     }
+    if (inInput) return;
     if (event.key === 'f' || event.key === 'F') {
       if (!this.selectedNode()) {
         this.fitView();
       }
+    }
+    if (event.key === '/' && this.focusedNamespace()) {
+      event.preventDefault();
+      this.searchInputRef?.nativeElement?.focus();
     }
   }
 }

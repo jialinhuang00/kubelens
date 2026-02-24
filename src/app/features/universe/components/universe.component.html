@@ -34,6 +34,34 @@
         </div>
       </div>
       @if (focusedNamespace()) {
+        <!-- Search within namespace -->
+        <div class="sidebar-section search-section">
+          <div class="search-wrapper" [class.has-dropdown]="searchOpen() && searchText()">
+            <input #searchInput
+                   class="search-input"
+                   type="text"
+                   placeholder="Search resources..."
+                   [value]="searchText()"
+                   (input)="onSearchInput($event)"
+                   (keydown)="onSearchKeydown($event)">
+            @if (searchOpen() && searchText()) {
+              <div class="search-dropdown">
+                @if (searchResults().length > 0) {
+                  @for (node of searchResults(); track node.id; let i = $index) {
+                    <button class="search-dropdown-item"
+                            [class.highlighted]="i === searchHighlightIndex()"
+                            (click)="selectSearchResult(node)">
+                      <span class="item-dot" [style.background]="getKindColor(node.kind)"></span>
+                      <span class="dropdown-label">{{ node.kind }}/{{ node.name }}</span>
+                    </button>
+                  }
+                } @else {
+                  <div class="search-empty">No matches</div>
+                }
+              </div>
+            }
+          </div>
+        </div>
         @for (group of legendGroups(); track group.category) {
           <div class="sidebar-section legend-group">
             <div class="legend-group-label">{{ group.label }}</div>
@@ -54,7 +82,7 @@
     </div>
 
     <!-- Divider -->
-    <div class="sidebar-divider"></div>
+    <div class="sidebar-divider" [class.active]="!!selectedNode()"></div>
 
     <!-- Bottom section: Node details -->
     <div class="sidebar-details">
@@ -64,9 +92,8 @@
           <div class="detail-kind-badge" [style.background]="getKindColor(node.kind)">
             {{ node.kind }}
           </div>
-          <button class="close-btn" (click)="clearSelection()">&times;</button>
+          <h2 class="detail-name">{{ node.name }}</h2>
         </div>
-        <h2 class="detail-name">{{ node.name }}</h2>
 
         <!-- Metadata -->
         <div class="detail-meta">
@@ -247,6 +274,9 @@
       <span>Esc: Deselect</span>
       <span>F: Fit view</span>
       <span>Scroll: Zoom</span>
+      @if (focusedNamespace()) {
+        <span>/ : Search</span>
+      }
     </div>
   </div>
 </div>
