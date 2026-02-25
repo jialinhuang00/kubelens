@@ -74,9 +74,15 @@
     border-color: #e8b866;
   }
 
-  &:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
+  &.stop {
+    background: rgba(224, 112, 112, 0.15);
+    border-color: rgba(224, 112, 112, 0.4);
+    color: #e07070;
+
+    &:hover {
+      background: rgba(224, 112, 112, 0.25);
+      border-color: #e07070;
+    }
   }
 }
 

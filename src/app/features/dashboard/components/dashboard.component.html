@@ -54,18 +54,15 @@
       />
 
       <!-- Command Input -->
-      <div class="command-row">
-        <app-command-input
-          [command]="customCommand()"
-          [isLoading]="isBusy()"
-          (commandChange)="onCustomCommandChange($event)"
-          (commandExecute)="executeCustomCommand()"
-          (keyDown)="onCommandInputKeyDown($event)"
-        />
-        @if (isStreaming()) {
-          <button class="stop-stream-btn" (click)="stopStream()">Stop</button>
-        }
-      </div>
+      <app-command-input
+        [command]="customCommand()"
+        [isLoading]="isBusy()"
+        [isStreaming]="isStreaming()"
+        (commandChange)="onCustomCommandChange($event)"
+        (commandExecute)="executeCustomCommand()"
+        (stopStream)="stopStream()"
+        (keyDown)="onCommandInputKeyDown($event)"
+      />
 
       <!-- Output Display (full width) -->
       <app-output-display

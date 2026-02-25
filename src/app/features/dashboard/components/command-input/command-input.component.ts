@@ -10,8 +10,10 @@ import { FormsModule } from '@angular/forms';
 export class CommandInputComponent {
   @Input() command!: string;
   @Input() isLoading!: boolean;
+  @Input() isStreaming = false;
   @Output() commandChange = new EventEmitter<string>();
   @Output() commandExecute = new EventEmitter<void>();
+  @Output() stopStream = new EventEmitter<void>();
   @Output() keyDown = new EventEmitter<KeyboardEvent>();
 
   onCommandChange(event: Event) {
@@ -25,5 +27,9 @@ export class CommandInputComponent {
 
   onExecute() {
     this.commandExecute.emit();
+  }
+
+  onStop() {
+    this.stopStream.emit();
   }
 }

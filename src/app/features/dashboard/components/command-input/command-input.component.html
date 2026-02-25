@@ -11,12 +11,11 @@
         [value]="command"
         (input)="onCommandChange($event)"
         (keydown)="onKeyDown($event)">
-      <button
-        class="execute-btn"
-        [disabled]="isLoading"
-        (click)="onExecute()">
-        {{ isLoading ? 'EXECUTING...' : 'EXECUTE' }}
-      </button>
+      @if (isStreaming) {
+        <button class="execute-btn stop" (click)="onStop()">STOP</button>
+      } @else {
+        <button class="execute-btn" (click)="onExecute()">EXECUTE</button>
+      }
     </div>
     <div class="help-text">
       Supports: -o yaml/json/wide/custom-columns • jsonpath • --no-headers • Cmd+Enter to execute
