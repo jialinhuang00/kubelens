@@ -40,6 +40,7 @@ export class RolloutConsoleComponent {
   // UI State
   showHistoryTable = signal<boolean>(false);
   selectedVersion = signal<string>('');
+  selectedEcrTag = signal<string>('');
 
   onToggleExpanded() {
     this.toggleExpanded.emit();

@@ -272,14 +272,12 @@ export class KubectlService {
 
   // Check if command requires streaming execution
   shouldUseStream(command: string): boolean {
-    const streamingCommands = [
-      'rollout status',
-      'logs -f',
-      'get events -w',
-      'wait'
-    ];
-
-    return streamingCommands.some(cmd => command.includes(cmd));
+    if (command.includes('rollout status')) return true;
+    if (command.includes('get events -w')) return true;
+    if (command.includes('wait')) return true;
+    // "logs ... -f" — -f can be anywhere after logs
+    if (/\blogs\b/.test(command) && /\s-f\b/.test(command)) return true;
+    return false;
   }
 
   async getResourceCounts(namespace: string): Promise<Record<string, number>> {
@@ -297,10 +295,10 @@ export class KubectlService {
   async getResourceNames(resourceType: ResourceType, namespace: string): Promise<string[]> {
     try {
       const response = await this.executeCommand(
-        `kubectl get ${resourceType} -n ${namespace} -o jsonpath="{.items[*].metadata.name}"`
+        `kubectl get ${resourceType} -n ${namespace} -o jsonpath={.items[*].metadata.name}`
       );
       if (response.success) {
-        return response.stdout.trim().split(' ').filter(n => n);
+        return response.stdout.replace(/"/g, '').trim().split(' ').filter(n => n);
       }
       return [];
     } catch (error) {
@@ -311,10 +309,10 @@ export class KubectlService {
 
   async getNamespaces(): Promise<string[]> {
     try {
-      const response = await this.executeCommand('kubectl get namespaces -o jsonpath="{.items[*].metadata.name}"');
+      const response = await this.executeCommand('kubectl get namespaces -o jsonpath={.items[*].metadata.name}');
 
       if (response.success) {
-        return response.stdout.trim().split(' ').filter(ns => ns);
+        return response.stdout.replace(/"/g, '').trim().split(' ').filter(ns => ns);
       }
 
       // Fallback namespaces if command fails

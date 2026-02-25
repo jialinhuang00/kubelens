@@ -30,6 +30,7 @@ export interface CommandTemplate {
   command: string;
   displayCommand?: string; // Optional display version with placeholders
   top?: boolean;
+  disabled?: boolean;
 }
 
 export interface KubectlResponse {

@@ -70,7 +70,7 @@ export class TemplateService {
       {
         id: `pod-${selectedPod}-logs`,
         name: `Logs`,
-        command: `kubectl logs ${selectedPod} -n {namespace} --tail=50`
+        command: `kubectl logs ${selectedPod} -n {namespace} --tail=50 -f`
       },
       {
         id: `pod-${selectedPod}-describe`,
@@ -80,7 +80,8 @@ export class TemplateService {
       {
         id: `pod-${selectedPod}-exec`,
         name: `Exec Shell`,
-        command: `kubectl exec -it ${selectedPod} -n {namespace} -- /bin/sh`
+        command: `kubectl exec -it ${selectedPod} -n {namespace} -- /bin/sh`,
+        disabled: true
       }
     ];
   }

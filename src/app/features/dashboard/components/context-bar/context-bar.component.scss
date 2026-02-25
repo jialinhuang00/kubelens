@@ -304,3 +304,25 @@
     border-radius: 2px;
   }
 }
+
+.refetch-btn {
+  flex-shrink: 0;
+  padding: 2px 0;
+  font-size: 13px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  color: rgba(232, 184, 102, 0.5);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover:not(:disabled) {
+    color: #e8b866;
+    background: rgba(232, 184, 102, 0.08);
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+}

@@ -57,10 +57,7 @@ export class RolloutStateService {
     try {
       const refreshGroup = ExecutionGroupGenerator.deploymentOperations(deployment, namespace);
       await this.executionContext.withGroup(refreshGroup, async () => {
-        await Promise.all([
-          this.deploymentService.getDeploymentStatus(deployment, namespace),
-          this.deploymentService.getRolloutHistory(deployment, namespace)
-        ]);
+        await this.deploymentService.getDeploymentStatus(deployment, namespace);
       });
       console.log(`✅ Status updated after rollout action`);
     } catch (error) {

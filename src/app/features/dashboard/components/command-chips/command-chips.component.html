@@ -26,6 +26,7 @@
               <button class="cmd-chip"
                       [style.--chip-color]="group.color"
                       [title]="tpl.command"
+                      [disabled]="tpl.disabled"
                       (click)="onExecute(tpl)">{{ tpl.name }}</button>
             }
             @if (hiddenCount(group) > 0) {

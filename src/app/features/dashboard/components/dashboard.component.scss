@@ -39,6 +39,39 @@
   }
 }
 
+// Command row with stop button
+.command-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+
+  app-command-input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.stop-stream-btn {
+  margin-top: 28px; // align with input row (below section header)
+  padding: 6px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+  cursor: pointer;
+  background: rgba(224, 112, 112, 0.15);
+  border: 1px solid #e07070;
+  color: #e07070;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+
+  &:hover {
+    background: rgba(224, 112, 112, 0.3);
+    box-shadow: 0 0 8px rgba(224, 112, 112, 0.4);
+  }
+}
+
 // Output Display section
 .output-display-section {
   overflow: visible;

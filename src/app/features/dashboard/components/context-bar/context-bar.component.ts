@@ -26,6 +26,12 @@ export class ContextBarComponent {
   @Output() namespaceChange = new EventEmitter<string>();
   @Output() resourceChange = new EventEmitter<{ key: string; value: string }>();
   @Output() resourceExpand = new EventEmitter<string>();
+  @Output() resourceRefetch = new EventEmitter<string>();
+
+  onRefetch(key: string, event: Event) {
+    event.stopPropagation();
+    this.resourceRefetch.emit(key);
+  }
 
   // Namespace filter
   filterText = signal('');

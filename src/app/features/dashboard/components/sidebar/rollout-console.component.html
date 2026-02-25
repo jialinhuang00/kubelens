@@ -57,68 +57,24 @@
           <span class="ecr-image-url">{{ deploymentImage }}</span>
         </div>
         <div class="ecr-tags">
-          @if (ecrTags.length === 0 && !ecrIsLoading && !ecrError) {
-            <button class="ecr-btn" (click)="onLoadTags()">Load Tags</button>
-          }
-          @if (ecrIsLoading) {
-            <span class="ecr-loading">Loading...</span>
-          }
+          <button class="ecr-btn" (click)="onLoadTags()" [disabled]="ecrIsLoading">
+            {{ ecrIsLoading ? 'Loading...' : 'Load Tags' }}
+          </button>
           @if (ecrError) {
             <span class="ecr-error" [title]="ecrError">Error</span>
-            <button class="ecr-btn" (click)="onLoadTags()">Retry</button>
           }
-          @for (tag of ecrTags; track tag) {
-            <button class="ecr-tag"
-              [title]="'Set image to ' + tag"
-              (click)="onSelectTag(tag)">{{ tag }}</button>
+          @if (ecrTags.length > 0) {
+            <select class="ecr-select" [value]="selectedEcrTag()" (change)="selectedEcrTag.set($any($event.target).value)">
+              <option value="" disabled>Select tag...</option>
+              @for (tag of ecrTags; track tag) {
+                <option [value]="tag">{{ tag }}</option>
+              }
+            </select>
+            <button class="ecr-btn" [disabled]="!selectedEcrTag()" (click)="onSelectTag(selectedEcrTag())">Set Image</button>
           }
         </div>
       </div>
     }
-
-    <!-- Version History -->
-    <div class="history-row">
-      <button class="history-toggle-btn" (click)="onToggleHistory()">
-        Version History
-        <span class="toggle-arrow" [class.expanded]="showHistoryTable()">&#9662;</span>
-      </button>
-
-      @if (showHistoryTable()) {
-        <div class="history-table">
-          @if (rolloutHistory.length > 0) {
-            <table>
-              <thead>
-                <tr>
-                  <th>Rev</th>
-                  <th>Image</th>
-                  <th>Created</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (item of rolloutHistory; track item.revision) {
-                  <tr class="group">
-                    <td>{{ item.revision }}</td>
-                    <td class="image-cell">
-                      <span class="truncate" [title]="item.image">{{ item.image }}</span>
-                      <button class="copy-btn opacity-0 group-hover:opacity-100"
-                        (click)="onCopyToClipboard(item.image, $event)">
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-                          <path d="m4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-                        </svg>
-                      </button>
-                    </td>
-                    <td class="date-cell">{{ item.created }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          } @else {
-            <div class="no-history">No rollout history available</div>
-          }
-        </div>
-      }
-    </div>
   </div>
 </div>
 }

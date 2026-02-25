@@ -1,1 +1,26 @@
-// Raw output specific styles can be added here if needed
+.terminal-output {
+  max-height: 60vh;
+  overflow-y: auto;
+  overflow-x: auto;
+
+  pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .flash {
+    animation: flash-highlight 0.6s ease-out;
+  }
+}
+
+@keyframes flash-highlight {
+  0% {
+    background: rgba(232, 184, 102, 0.3);
+    color: #e8b866;
+  }
+  100% {
+    background: transparent;
+    color: inherit;
+  }
+}

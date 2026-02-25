@@ -147,6 +147,14 @@
   &:active {
     transform: scale(0.95);
   }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    filter: none;
+    box-shadow: none;
+    transform: none;
+  }
 }
 
 .show-more-btn {

@@ -62,6 +62,8 @@
           <!-- Expanded panel (item list) -->
           @if (expandedResource() === res.key) {
             <div class="resource-panel">
+              <button class="refetch-btn" title="Refetch" (click)="onRefetch(res.key, $event)"
+                      [disabled]="res.isLoading">&#x21bb;</button>
               @if (res.isLoading) {
                 <span class="panel-item disabled">Loading...</span>
               } @else if (res.items.length === 0) {

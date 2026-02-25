@@ -69,9 +69,11 @@ export class DashboardComponent implements OnInit {
 
   customCommand = signal<string>('kubectl get pods');
   isLoading = signal<boolean>(false);
+  isStreaming = signal<boolean>(false);
+  private activeStreamStop: (() => Promise<void>) | null = null;
 
-  // True when any execution is in-flight (user commands OR background resource loading)
-  isBusy = computed(() => this.isLoading() || this.dialogService.activeExecutions().length > 0);
+  // True only when a user-initiated command is running
+  isBusy = computed(() => this.isLoading());
 
   // Command execution results
   commandOutput = signal<string>('');
@@ -257,6 +259,23 @@ export class DashboardComponent implements OnInit {
     this.selectedDeployment.set('');
     this.selectedPod.set('');
     this.selectedService.set('');
+
+    // Clear output
+    this.results.set([]);
+    this.headers.set([]);
+    this.commandOutput.set('');
+    this.yamlContent.set('');
+    this.podDescribeData.set([]);
+    this.multipleTables.set([]);
+    this.multipleYamls.set([]);
+    this.hasEventsTable.set(false);
+    this.outputType.set('raw');
+
+    // Stop active stream if any
+    if (this.isStreaming()) {
+      await this.stopStream();
+    }
+
     await this.namespaceService.loadNamespaces();
   }
 
@@ -485,6 +504,33 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  // Refetch a single resource type — clear selection first
+  async onResourceRefetch(key: string) {
+    const namespace = this.selectedNamespace();
+    if (!namespace) return;
+
+    const cfg = this.resourceConfigs.find(c => c.key === key);
+    if (!cfg) return;
+
+    // Clear selection for this resource (triggers template/output cleanup)
+    this.onResourceChange({ key, value: '' });
+
+    // Stop active stream if running (e.g. logs -f on a pod that may no longer exist)
+    if (this.isStreaming()) {
+      await this.stopStream();
+    }
+
+    if (cfg.type === 'builtin') {
+      switch (key) {
+        case 'deployment': await this.deploymentService.loadDeployments(namespace); break;
+        case 'pod': await this.podService.loadPods(namespace); break;
+        case 'service': await this.svcService.loadServices(namespace); break;
+      }
+    } else if (cfg.genericType) {
+      await this.genericResourceService.loadResource(cfg.genericType, namespace);
+    }
+  }
+
   outputData = computed<OutputData>(() => ({
     outputType: this.outputType(),
     isLoading: this.isLoading(),
@@ -499,6 +545,15 @@ export class DashboardComponent implements OnInit {
     hasEventsTable: this.hasEventsTable()
   }));
 
+  async stopStream() {
+    if (this.activeStreamStop) {
+      await this.activeStreamStop();
+      this.activeStreamStop = null;
+    }
+    this.isStreaming.set(false);
+    this.isLoading.set(false);
+  }
+
   private async executeCommandWithStream(command: string) {
     try {
       const streamResponse = await this.executor.executeStream(command);
@@ -509,16 +564,22 @@ export class DashboardComponent implements OnInit {
       }
 
       this.outputType.set('streaming');
-      this.commandOutput.set('Starting command stream...\n');
+      this.isStreaming.set(true);
+      this.activeStreamStop = streamResponse.stop || null;
+      this.commandOutput.set('');
 
       streamResponse.output$.subscribe({
         next: (output) => this.commandOutput.set(output),
         complete: () => {
+          this.isStreaming.set(false);
+          this.activeStreamStop = null;
           this.isLoading.set(false);
           this.parseAndSetOutput(this.commandOutput(), command);
         },
         error: (error) => {
           this.commandOutput.set(`Stream error: ${error.message}`);
+          this.isStreaming.set(false);
+          this.activeStreamStop = null;
           this.isLoading.set(false);
         }
       });
@@ -574,23 +635,25 @@ export class DashboardComponent implements OnInit {
     this.multipleYamls.set([]);
     this.uiStateService.resetOutputStates();
 
-    const group = executionGroup || ExecutionGroupGenerator.userCommand();
-    const result = await this.executor.executeNormal(command, group);
+    try {
+      const group = executionGroup || ExecutionGroupGenerator.userCommand();
+      const result = await this.executor.executeNormal(command, group);
 
-    if (result.cancelled) return;
+      if (result.cancelled) return;
 
-    if (result.networkError) {
-      this.outputType.set('raw');
-      this.commandOutput.set(`Network error: ${result.networkError}`);
-    } else if (result.response) {
-      if (result.response.success) {
-        this.parseAndSetOutput(result.response.stdout, command);
-      } else {
+      if (result.networkError) {
         this.outputType.set('raw');
-        this.commandOutput.set(`Error: ${result.response.error}`);
+        this.commandOutput.set(`Network error: ${result.networkError}`);
+      } else if (result.response) {
+        if (result.response.success) {
+          this.parseAndSetOutput(result.response.stdout, command);
+        } else {
+          this.outputType.set('raw');
+          this.commandOutput.set(`Error: ${result.response.error}`);
+        }
       }
+    } finally {
+      this.isLoading.set(false);
     }
-
-    this.isLoading.set(false);
   }
 }
