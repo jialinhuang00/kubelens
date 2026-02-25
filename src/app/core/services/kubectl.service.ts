@@ -292,6 +292,48 @@ export class KubectlService {
     }
   }
 
+  async getAllResourceNames(namespace: string): Promise<Record<string, string[]>> {
+    const types = 'deployments,pods,services,statefulsets,cronjobs,jobs,configmaps,secrets,persistentvolumeclaims,serviceaccounts,ingresses';
+    const kindMap: Record<string, string> = {
+      'deployment.apps': 'Deployment',
+      'pod': 'Pod',
+      'service': 'Service',
+      'statefulset.apps': 'StatefulSet',
+      'cronjob.batch': 'CronJob',
+      'job.batch': 'Job',
+      'configmap': 'ConfigMap',
+      'secret': 'Secret',
+      'persistentvolumeclaim': 'PersistentVolumeClaim',
+      'serviceaccount': 'ServiceAccount',
+      'ingress.networking.k8s.io': 'Ingress',
+    };
+    try {
+      const response = await this.executeCommand(
+        `kubectl get ${types} -n ${namespace} -o name`
+      );
+      if (response.success) {
+        const result: Record<string, string[]> = {};
+        for (const line of response.stdout.trim().split('\n').filter(l => l)) {
+          // Format: "resourcetype.group/name" e.g. "deployment.apps/nginx"
+          const slashIdx = line.indexOf('/');
+          if (slashIdx < 0) continue;
+          const prefix = line.substring(0, slashIdx);
+          const name = line.substring(slashIdx + 1);
+          const kind = kindMap[prefix];
+          if (kind) {
+            if (!result[kind]) result[kind] = [];
+            result[kind].push(name);
+          }
+        }
+        return result;
+      }
+      return {};
+    } catch (error) {
+      console.error(`Failed to load all resources for namespace ${namespace}:`, error);
+      return {};
+    }
+  }
+
   async getResourceNames(resourceType: ResourceType, namespace: string): Promise<string[]> {
     try {
       const response = await this.executeCommand(

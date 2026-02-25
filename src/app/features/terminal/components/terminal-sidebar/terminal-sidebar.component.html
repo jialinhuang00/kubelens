@@ -1,0 +1,131 @@
+<div class="sidebar">
+  <!-- Header -->
+  <div class="sidebar-header">
+    <a class="back-link" routerLink="/">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </a>
+    <h2 class="sidebar-title">Terminal</h2>
+  </div>
+
+  <!-- Namespace Section -->
+  <div class="sidebar-section">
+    <div class="section-label">Namespace</div>
+    <input
+      class="filter-input"
+      type="text"
+      placeholder="Filter namespaces..."
+      [ngModel]="namespaceFilter()"
+      (ngModelChange)="namespaceFilter.set($event)"
+    />
+    <div class="namespace-list">
+      @for (ns of filteredNamespaces(); track ns) {
+        <button
+          class="namespace-chip"
+          [class.active]="selectedNamespace() === ns"
+          (click)="onSelectNamespace(ns)"
+        >
+          {{ ns }}
+        </button>
+      }
+      @if (filteredNamespaces().length === 0 && namespaces().length === 0) {
+        <div class="empty-hint">Loading namespaces...</div>
+      }
+      @if (filteredNamespaces().length === 0 && namespaces().length > 0) {
+        <div class="empty-hint">No match</div>
+      }
+    </div>
+  </div>
+
+  <!-- Resource Tree Section -->
+  @if (selectedNamespace()) {
+    <div class="sidebar-section resource-tree-section">
+      <div class="section-label">
+        Resources
+        @if (resourceTree.isLoading()) {
+          <span class="section-spinner"></span>
+          <span class="section-loading-text">loading...</span>
+        }
+      </div>
+      <div class="resource-tree">
+        @for (node of resourceTree.tree(); track node.kind) {
+          <div class="tree-group">
+            <button class="tree-group-header" (click)="onToggleKind(node.kind)">
+              <svg class="expand-icon" [class.expanded]="node.isExpanded" width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5l8 7-8 7z"/>
+              </svg>
+              <span class="tree-kind-dot" [style.backgroundColor]="node.color"></span>
+              <span class="tree-kind-label">{{ node.label }}</span>
+              @if (node.count > 0) {
+                <span class="tree-count">{{ node.count }}</span>
+              }
+              @if (node.isLoading) {
+                <span class="tree-spinner"></span>
+              }
+            </button>
+            @if (node.isExpanded) {
+              <div class="tree-items">
+                @if (node.isLoading) {
+                  <div class="loading-hint">
+                    <span class="tree-spinner"></span>
+                    <span>Fetching...</span>
+                  </div>
+                }
+                @for (item of node.items; track item) {
+                  <label
+                    class="tree-item"
+                    [class.other-workspace]="isItemInOtherWorkspace(node.kind, item)"
+                    (click)="$event.stopPropagation()"
+                  >
+                    <input
+                      type="checkbox"
+                      class="tree-checkbox"
+                      [checked]="isItemChecked(node.kind, item)"
+                      [disabled]="isItemInOtherWorkspace(node.kind, item)"
+                      (change)="onToggleItem(node.kind, item)"
+                    />
+                    <span class="tree-item-name">{{ item }}</span>
+                    @if (isItemInOtherWorkspace(node.kind, item)) {
+                      <span class="workspace-badge">{{ getItemWorkspaceLabel(node.kind, item) }}</span>
+                    }
+                  </label>
+                }
+                @if (node.items.length === 0 && !node.isLoading) {
+                  <div class="empty-hint">No resources</div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Commands Section -->
+  <div class="sidebar-section commands-section">
+    <div class="section-label">Commands</div>
+    <div class="quick-actions">
+      <button class="quick-btn" (click)="onQuickAction('get-all')">Get All</button>
+      <button class="quick-btn" (click)="onQuickAction('events')">Events</button>
+      <button class="quick-btn" (click)="onQuickAction('nodes')">Nodes</button>
+    </div>
+    <div class="command-input-area">
+      <input
+        class="command-input"
+        type="text"
+        placeholder="kubectl ..."
+        [ngModel]="customCommand()"
+        (ngModelChange)="customCommand.set($event)"
+        (keydown)="onCommandKeyDown($event)"
+      />
+      <button
+        class="execute-btn"
+        [disabled]="!customCommand().trim()"
+        (click)="onExecuteCustomCommand()"
+      >
+        Run
+      </button>
+    </div>
+  </div>
+</div>

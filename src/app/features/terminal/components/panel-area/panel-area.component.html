@@ -1,0 +1,49 @@
+<!-- Workspace tabs -->
+@if (panelManager.workspaceCount() > 1 || panelManager.allPanels().size > 0) {
+  <div class="workspace-bar">
+    @for (ws of panelManager.workspaces(); track ws.index) {
+      <button
+        class="workspace-tab"
+        [class.active]="panelManager.activeWorkspace() === ws.index"
+        (click)="onSwitchWorkspace(ws.index)"
+      >
+        <span class="ws-label">Desktop {{ ws.index + 1 }}</span>
+        @if (ws.panelCount > 0) {
+          <span class="ws-count">{{ ws.panelCount }}</span>
+        }
+        @if (panelManager.workspaceCount() > 1) {
+          <button class="ws-close" (click)="onRemoveWorkspace(ws.index, $event)" title="Remove desktop">
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        }
+      </button>
+    }
+    <button class="workspace-add" (click)="onAddWorkspace()" title="New desktop">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    </button>
+  </div>
+}
+
+<div class="panel-area">
+  @for (panel of panelManager.panelList(); track panel.id) {
+    <app-floating-panel
+      [panel]="panel"
+      (closeRequest)="onClosePanel($event)"
+    />
+  }
+
+  @if (panelManager.panelCount() === 0) {
+    <div class="empty-state">
+      <svg class="empty-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+          d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+      </svg>
+      <p class="empty-text">Select resources from the sidebar to open panels</p>
+      <p class="empty-sub">Each resource gets its own floating terminal</p>
+    </div>
+  }
+</div>

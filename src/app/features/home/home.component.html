@@ -36,13 +36,10 @@
         <p class="export-ns">
           namespace: <strong>{{ exportService.currentNamespace() }}</strong>
         </p>
-        @for (res of showAllResources ? exportService.activeResources() : exportService.activeResources().slice(0, 5); track res) {
-          <p class="export-resource">writing... {{ res }}</p>
-        }
-        @if (exportService.activeResources().length > 5) {
-          <button class="export-show-more" (click)="showAllResources = !showAllResources">
-            {{ showAllResources ? 'show less' : '+ ' + (exportService.activeResources().length - 5) + ' more...' }}
-          </button>
+        @if (exportService.activeResources().length) {
+          <p class="export-resource" [title]="exportService.activeResources().join(', ')">
+            writing... {{ exportService.activeResources().slice(0, 4).join(', ') }}@if (exportService.activeResources().length > 4) {<span class="export-overflow">, +{{ exportService.activeResources().length - 4 }} more</span>}
+          </p>
         }
       }
       <div class="progress-bar">

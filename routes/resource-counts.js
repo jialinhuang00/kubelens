@@ -41,6 +41,7 @@ router.get('/resource-counts', async (req, res) => {
     'tcproutes.gateway.networking.k8s.io': 'tcproutes',
   };
 
+  console.log(`Fetching resource counts for namespace: ${namespace}`);
   try {
     const results = await Promise.all(
       resourceTypes.map(async (type) => {

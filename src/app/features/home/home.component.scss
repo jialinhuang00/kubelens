@@ -238,6 +238,10 @@
   animation: slideIn 0.3s ease-out;
   position: relative;
   padding-left: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
 
   &::before {
     content: '📄';
@@ -246,6 +250,11 @@
     font-size: 10px;
     animation: paperFly 1.5s ease-in-out infinite;
   }
+}
+
+.export-overflow {
+  color: #e8b866;
+  opacity: 0.7;
 }
 
 @keyframes slideIn {
@@ -277,22 +286,6 @@
   100% {
     transform: translateX(12px) translateY(0) rotate(0deg);
     opacity: 0.4;
-  }
-}
-
-.export-show-more {
-  font-size: 10px;
-  color: #e8b866;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font-family: 'IBM Plex Mono', monospace;
-  opacity: 0.7;
-  transition: opacity 0.15s ease;
-
-  &:hover {
-    opacity: 1;
   }
 }
 

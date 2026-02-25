@@ -11,6 +11,13 @@ export const routes: Routes = [
   {
     path: 'terminal',
     loadComponent: () =>
+      import('./features/terminal/components/terminal.component').then(
+        (m) => m.TerminalComponent
+      ),
+  },
+  {
+    path: 'terminal-legacy',
+    loadComponent: () =>
       import('./features/dashboard/components/dashboard.component').then(
         (m) => m.DashboardComponent
       ),

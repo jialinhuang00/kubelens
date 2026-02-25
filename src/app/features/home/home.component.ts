@@ -14,8 +14,6 @@ import { TickFlashDirective } from '../../shared/directives/tick-flash.directive
 export class HomeComponent implements OnInit {
   dataModeService = inject(DataModeService);
   exportService = inject(K8sExportService);
-  showAllResources = false;
-
   ngOnInit() {
     this.dataModeService.checkAvailability();
     this.exportService.checkState();
