@@ -14,6 +14,19 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
   font-family: $font;
 }
 
+// ---- Sidebar wrapper with collapse ----
+.sidebar-wrapper {
+  flex-shrink: 0;
+  width: 320px;
+  overflow: hidden;
+  transition: width 0.25s ease;
+
+  &.collapsed {
+    width: 0;
+  }
+}
+
+// ---- Main area ----
 .main-area {
   flex: 1;
   display: flex;
@@ -37,4 +50,38 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
   color: $text-dim;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+// ---- Sidebar collapse toggle (thin vertical strip) ----
+.collapse-toggle {
+  z-index: 30;
+  background: rgba(14, 11, 8, 0.9);
+  border: 1px solid $border;
+  color: $text-dim;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+
+  &:hover {
+    color: $accent;
+    border-color: rgba(232, 184, 102, 0.4);
+    background: rgba(232, 184, 102, 0.08);
+  }
+
+  .toggle-arrow {
+    font-size: 10px;
+    line-height: 1;
+  }
+}
+
+.sidebar-toggle {
+  width: 16px;
+  align-self: stretch;
+  border-radius: 0;
+  border-top: none;
+  border-bottom: none;
+  padding: 0;
 }

@@ -14,6 +14,8 @@ import { Router } from '@angular/router';
 import { DecimalPipe, KeyValuePipe } from '@angular/common';
 import { DataModeService } from '../../../core/services/data-mode.service';
 import { ModeToggleComponent } from '../../../shared/components/mode-toggle/mode-toggle.component';
+import { BackLinkComponent } from '../../../shared/components/back-link/back-link.component';
+import { NamespaceChipsComponent } from '../../../shared/components/namespace-chips/namespace-chips.component';
 import { GraphDataService } from '../services/graph-data.service';
 import { GraphLayoutService, NodeLabel, NamespaceBoundary } from '../services/graph-layout.service';
 import {
@@ -33,7 +35,7 @@ import {
 
 @Component({
   selector: 'app-universe',
-  imports: [DecimalPipe, KeyValuePipe, ModeToggleComponent],
+  imports: [DecimalPipe, KeyValuePipe, ModeToggleComponent, BackLinkComponent, NamespaceChipsComponent],
   templateUrl: './universe.component.html',
   styleUrls: ['./universe.component.scss'],
 })
@@ -58,6 +60,13 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly selectedNode = signal<GraphNode | null>(null);
   readonly selectedEdges = signal<GraphEdge[]>([]);
   readonly connectedNodes = signal<GraphNode[]>([]);
+
+  // Sidebar collapse
+  readonly sidebarCollapsed = signal(false);
+
+  toggleSidebar(): void {
+    this.sidebarCollapsed.update(v => !v);
+  }
 
   // Zoom
   readonly zoomLevel = signal(1);
@@ -90,6 +99,8 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
       .map(([ns, count]) => ({ name: ns, count }))
       .sort((a, b) => a.name.localeCompare(b.name));
   });
+
+  readonly namespaceNames = computed(() => this.namespaceList().map(ns => ns.name));
 
   // Important kinds to show in overview (no namespace selected)
   private readonly OVERVIEW_KINDS = new Set<NodeKind>([
@@ -327,6 +338,14 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   onConnectedNodeClick(node: GraphNode): void {
     this.selectNode(node);
     this.graphLayout.zoomToNode(node.id);
+  }
+
+  onNamespaceChipClick(ns: string): void {
+    if (this.focusedNamespace() === ns) {
+      this.clearNamespaceFocus();
+    } else {
+      this.focusNamespace(ns);
+    }
   }
 
   focusNamespace(ns: string): void {

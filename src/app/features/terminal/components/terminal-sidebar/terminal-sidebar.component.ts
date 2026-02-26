@@ -1,6 +1,8 @@
 import { Component, inject, signal, effect, OnInit, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { BackLinkComponent } from '../../../../shared/components/back-link/back-link.component';
+import { NamespaceChipsComponent } from '../../../../shared/components/namespace-chips/namespace-chips.component';
 import { NamespaceService } from '../../../k8s/services/namespace.service';
 import { ResourceTreeService } from '../../services/resource-tree.service';
 import { PanelManagerService } from '../../services/panel-manager.service';
@@ -12,7 +14,7 @@ import { CommandTemplate } from '../../../../shared/models/kubectl.models';
 @Component({
   selector: 'app-terminal-sidebar',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BackLinkComponent, NamespaceChipsComponent],
   templateUrl: './terminal-sidebar.component.html',
   styleUrl: './terminal-sidebar.component.scss',
 })
@@ -27,10 +29,7 @@ export class TerminalSidebarComponent implements OnInit {
 
   namespaces = this.namespaceService.namespaces;
   selectedNamespace = signal('');
-  namespaceFilter = signal('');
   customCommand = signal('');
-
-  filteredNamespaces = signal<string[]>([]);
 
   private prevMode: boolean | null = null;
   private modeEffect = effect(() => {
@@ -41,14 +40,6 @@ export class TerminalSidebarComponent implements OnInit {
       this.namespaceService.loadNamespaces();
     }
     this.prevMode = mode;
-  });
-
-  private filterEffect = effect(() => {
-    const filter = this.namespaceFilter().toLowerCase();
-    const all = this.namespaces();
-    this.filteredNamespaces.set(
-      filter ? all.filter(ns => ns.toLowerCase().includes(filter)) : all
-    );
   });
 
   async ngOnInit(): Promise<void> {

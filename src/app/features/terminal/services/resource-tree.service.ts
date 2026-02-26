@@ -4,24 +4,27 @@ import { ExecutionContextService } from '../../../core/services/execution-contex
 import { ExecutionGroupGenerator } from '../../../shared/constants/execution-groups.constants';
 import { ResourceTreeNode } from '../models/panel.models';
 
+import { ResourceType } from '../../../shared/models/kubectl.models';
+
 interface ResourceKindConfig {
   kind: string;
   label: string;
   color: string;
+  resourceType: ResourceType;
 }
 
 const RESOURCE_KINDS: ResourceKindConfig[] = [
-  { kind: 'Deployment', label: 'Deployments', color: '#e8b866' },
-  { kind: 'Pod', label: 'Pods', color: '#f0d080' },
-  { kind: 'Service', label: 'Services', color: '#d4956a' },
-  { kind: 'StatefulSet', label: 'StatefulSets', color: '#e0a050' },
-  { kind: 'CronJob', label: 'CronJobs', color: '#c8a060' },
-  { kind: 'Job', label: 'Jobs', color: '#b89860' },
-  { kind: 'ConfigMap', label: 'ConfigMaps', color: '#a0b880' },
-  { kind: 'Secret', label: 'Secrets', color: '#c0a8a0' },
-  { kind: 'PersistentVolumeClaim', label: 'PVCs', color: '#90b0c8' },
-  { kind: 'ServiceAccount', label: 'ServiceAccounts', color: '#a8a0c0' },
-  { kind: 'Ingress', label: 'Ingresses', color: '#80c0b0' },
+  { kind: 'Deployment', label: 'Deployments', color: '#e8b866', resourceType: 'deployments' },
+  { kind: 'Pod', label: 'Pods', color: '#f0d080', resourceType: 'pods' },
+  { kind: 'Service', label: 'Services', color: '#d4956a', resourceType: 'services' },
+  { kind: 'StatefulSet', label: 'StatefulSets', color: '#e0a050', resourceType: 'statefulsets' },
+  { kind: 'CronJob', label: 'CronJobs', color: '#c8a060', resourceType: 'cronjobs' },
+  { kind: 'Job', label: 'Jobs', color: '#b89860', resourceType: 'jobs' },
+  { kind: 'ConfigMap', label: 'ConfigMaps', color: '#a0b880', resourceType: 'configmaps' },
+  { kind: 'Secret', label: 'Secrets', color: '#c0a8a0', resourceType: 'secrets' },
+  { kind: 'PersistentVolumeClaim', label: 'PVCs', color: '#90b0c8', resourceType: 'persistentvolumeclaims' },
+  { kind: 'ServiceAccount', label: 'ServiceAccounts', color: '#a8a0c0', resourceType: 'serviceaccounts' },
+  { kind: 'Ingress', label: 'Ingresses', color: '#80c0b0', resourceType: 'ingresses' },
 ];
 
 @Injectable({ providedIn: 'root' })
@@ -46,27 +49,20 @@ export class ResourceTreeService {
       count: 0,
     })));
 
-    // One kubectl call, one child process, all 11 resource types
+    // Load each resource type individually (works in both realtime and snapshot)
     const group = ExecutionGroupGenerator.namespaceResourceLoading(namespace);
-    const allResources = await this.executionContext.withGroup(group, () =>
-      this.kubectlService.getAllResourceNames(namespace)
+    await this.executionContext.withGroup(group, () =>
+      Promise.all(RESOURCE_KINDS.map(async (cfg) => {
+        const items = await this.kubectlService.getResourceNames(cfg.resourceType, namespace);
+        this.tree.update(nodes => nodes.map(n =>
+          n.kind === cfg.kind
+            ? { ...n, items, isLoading: false, count: items.length }
+            : n
+        ));
+      }))
     );
 
     this.isLoading.set(false);
-
-    // Update tree — items.length IS the count
-    this.tree.set(RESOURCE_KINDS.map(cfg => {
-      const items = allResources[cfg.kind] || [];
-      return {
-        kind: cfg.kind,
-        label: cfg.label,
-        color: cfg.color,
-        items,
-        isExpanded: false,
-        isLoading: false,
-        count: items.length,
-      };
-    }));
   }
 
   toggleKind(kind: string, _namespace: string): void {

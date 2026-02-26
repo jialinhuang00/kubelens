@@ -1,38 +1,27 @@
 <!-- Full-page universe visualization -->
 <div class="universe-container" [class.has-selection]="!!activeNodeIds()">
 
-  <!-- ============ LEFT SIDEBAR (always visible) ============ -->
+  <!-- ============ LEFT SIDEBAR (collapsible) ============ -->
+  <div class="sidebar-wrapper" [class.collapsed]="sidebarCollapsed()">
   <div class="sidebar">
     <!-- Sidebar header -->
     <div class="sidebar-header">
-      <button class="nav-btn" (click)="goBack()">
-        <span class="arrow">&larr;</span>
-      </button>
+      <app-back-link />
       <h1 class="sidebar-title">K8s Universe</h1>
       @if (stats(); as s) {
         <span class="stats-badge">{{ s.totalNodes }}</span>
       }
     </div>
 
+    <!-- Namespace selector -->
+    <app-namespace-chips
+      [namespaces]="namespaceNames()"
+      [selected]="focusedNamespace()"
+      (select)="onNamespaceChipClick($event)"
+    />
+
     <!-- Top section: Legend / Filters -->
     <div class="sidebar-legend">
-      <!-- Namespace selector -->
-      <div class="sidebar-section">
-        <h3 class="section-title">Namespaces</h3>
-        <div class="ns-chips">
-          @if (focusedNamespace()) {
-            <button class="ns-chip ns-chip-active" (click)="clearNamespaceFocus()">
-              {{ focusedNamespace() }}
-            </button>
-          } @else {
-            @for (ns of namespaceList(); track ns.name) {
-              <button class="ns-chip" (click)="focusNamespace(ns.name)">
-                {{ ns.name }} <span class="ns-chip-count">{{ ns.count }}</span>
-              </button>
-            }
-          }
-        </div>
-      </div>
       @if (focusedNamespace()) {
         <!-- Search within namespace -->
         <div class="sidebar-section search-section">
@@ -173,6 +162,10 @@
       }
     </div>
   </div>
+  </div>
+  <button class="collapse-toggle sidebar-toggle" (click)="toggleSidebar()" [title]="sidebarCollapsed() ? 'Show sidebar' : 'Hide sidebar'">
+    <span class="toggle-arrow">{{ sidebarCollapsed() ? '&#x25B6;' : '&#x25C0;' }}</span>
+  </button>
 
   <!-- ============ MAIN GRAPH AREA ============ -->
   <div class="graph-area">

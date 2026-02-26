@@ -1,42 +1,16 @@
 <div class="sidebar">
   <!-- Header -->
   <div class="sidebar-header">
-    <a class="back-link" routerLink="/">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="15 18 9 12 15 6"/>
-      </svg>
-    </a>
+    <app-back-link />
     <h2 class="sidebar-title">Terminal</h2>
   </div>
 
   <!-- Namespace Section -->
-  <div class="sidebar-section">
-    <div class="section-label">Namespace</div>
-    <input
-      class="filter-input"
-      type="text"
-      placeholder="Filter namespaces..."
-      [ngModel]="namespaceFilter()"
-      (ngModelChange)="namespaceFilter.set($event)"
-    />
-    <div class="namespace-list">
-      @for (ns of filteredNamespaces(); track ns) {
-        <button
-          class="namespace-chip"
-          [class.active]="selectedNamespace() === ns"
-          (click)="onSelectNamespace(ns)"
-        >
-          {{ ns }}
-        </button>
-      }
-      @if (filteredNamespaces().length === 0 && namespaces().length === 0) {
-        <div class="empty-hint">Loading namespaces...</div>
-      }
-      @if (filteredNamespaces().length === 0 && namespaces().length > 0) {
-        <div class="empty-hint">No match</div>
-      }
-    </div>
-  </div>
+  <app-namespace-chips
+    [namespaces]="namespaces()"
+    [selected]="selectedNamespace()"
+    (select)="onSelectNamespace($event)"
+  />
 
   <!-- Resource Tree Section -->
   @if (selectedNamespace()) {

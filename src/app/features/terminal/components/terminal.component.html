@@ -1,5 +1,10 @@
 <div class="terminal-container">
-  <app-terminal-sidebar />
+  <div class="sidebar-wrapper" [class.collapsed]="sidebarCollapsed()">
+    <app-terminal-sidebar />
+  </div>
+  <button class="collapse-toggle sidebar-toggle" (click)="toggleSidebar()" [title]="sidebarCollapsed() ? 'Show sidebar' : 'Hide sidebar'">
+    <span class="toggle-arrow">{{ sidebarCollapsed() ? '&#x25B6;' : '&#x25C0;' }}</span>
+  </button>
   <div class="main-area">
     <div class="main-header">
       <span class="main-title">Floating Terminal</span>

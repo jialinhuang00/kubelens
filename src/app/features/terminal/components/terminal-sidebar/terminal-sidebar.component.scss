@@ -32,17 +32,6 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
   border-bottom: 1px solid $border;
 }
 
-.back-link {
-  color: $text-dim;
-  text-decoration: none;
-  display: flex;
-  transition: color 0.15s;
-
-  &:hover {
-    color: $accent;
-  }
-}
-
 .sidebar-title {
   font-size: 14px;
   font-weight: 700;
@@ -107,67 +96,6 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 10px;
   color: $text-dim;
   padding: 4px 0;
-}
-
-.filter-input {
-  width: 100%;
-  padding: 5px 8px;
-  font-size: 11px;
-  font-family: $font;
-  background: $surface;
-  border: 1px solid $border;
-  border-radius: 4px;
-  color: $text;
-  outline: none;
-  margin-bottom: 6px;
-  box-sizing: border-box;
-
-  &::placeholder {
-    color: $text-dim;
-  }
-
-  &:focus {
-    border-color: rgba(232, 184, 102, 0.3);
-  }
-}
-
-.namespace-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  max-height: 120px;
-  overflow-y: auto;
-
-  &::-webkit-scrollbar {
-    width: 2px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: rgba(232, 184, 102, 0.15);
-  }
-}
-
-.namespace-chip {
-  font-size: 10px;
-  font-family: $font;
-  padding: 2px 8px;
-  border-radius: 4px;
-  border: 1px solid $border;
-  background: transparent;
-  color: $text-dim;
-  cursor: pointer;
-  transition: all 0.15s;
-
-  &:hover {
-    border-color: rgba(232, 184, 102, 0.3);
-    color: $text;
-  }
-
-  &.active {
-    border-color: $accent;
-    color: $accent;
-    background: rgba(232, 184, 102, 0.08);
-  }
 }
 
 .empty-hint {
