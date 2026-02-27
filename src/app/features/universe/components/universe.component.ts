@@ -348,8 +348,8 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
-    // Select/focus after data is stable
-    this.graphLayout.selectNode(node.id);
+    // Update node + edge brightness (we handle all dimming via color callbacks)
+    this.graphLayout.setActiveNodes(this.activeNodeIds(), this.selectedEdges());
     this.graphLayout.focusNode(node.id);
   }
 
@@ -361,6 +361,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedKind.set(null);
     this.searchText.set('');
     this.searchOpen.set(false);
+    this.graphLayout.setActiveNodes(null);
     this.graphLayout.unselectNodes();
     this.graphLayout.unfocusNode();
   }
@@ -477,6 +478,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
       // Toggle off
       this.selectedKind.set(null);
       this.selectedNode.set(null);
+      this.graphLayout.setActiveNodes(null);
       this.graphLayout.unselectNodes();
       return;
     }
@@ -485,7 +487,10 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     const ids = this.graphData.nodes()
       .filter((n) => n.kind === kind)
       .map((n) => n.id);
-    this.graphLayout.selectNodesByIds(ids);
+    const idSet = new Set(ids);
+    // For kind filter, show all edges between nodes of this kind
+    const kindEdges = this.graphData.edges().filter(e => idSet.has(e.source) || idSet.has(e.target));
+    this.graphLayout.setActiveNodes(idSet, kindEdges);
   }
 
   getKindColor(kind: NodeKind): string {

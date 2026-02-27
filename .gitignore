@@ -79,4 +79,4 @@ kubeconfig*
 # Git specific
 .git/
 .gitattributes
-k8s-snapshot
+k8s-snapshot**

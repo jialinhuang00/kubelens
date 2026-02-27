@@ -65,6 +65,8 @@ export class GraphLayoutService {
   private temporaryNodeIds = new Set<string>();
   private baseNodeCount = 0; // node count before temporary pods
   private currentKindColors: Record<NodeKind, string> = KIND_COLORS;
+  private activeNodeIds: Set<string> | null = null; // null = no selection, show all
+  private activeEdgeKeys: Set<string> | null = null; // null = no selection, show all
 
   initializeGraph(
     canvas: HTMLCanvasElement,
@@ -87,10 +89,28 @@ export class GraphLayoutService {
     this.ngZone.runOutsideAngular(() => {
       this.graph = new Graph<CosmosNode, CosmosLink>(canvas, {
         backgroundColor: 'rgba(0, 0, 0, 0)',
-        nodeColor: (n) => kindColors[n.data.kind] ?? '#888',
+        nodeColor: (n) => {
+          const base = kindColors[n.data.kind] ?? '#888';
+          if (!this.activeNodeIds) return base;
+          if (this.activeNodeIds.has(n.data.id)) return base;
+          // Dimmed: parse hex and return with low alpha
+          const r = parseInt(base.slice(1, 3), 16);
+          const g = parseInt(base.slice(3, 5), 16);
+          const b = parseInt(base.slice(5, 7), 16);
+          return `rgba(${r},${g},${b},0.08)`;
+        },
         nodeSize: (n) => n.data.kind === 'Pod' ? 3 : (CATEGORY_SIZES[getCategory(n.data.kind)] ?? 5),
         nodeSizeScale: 1,
-        linkColor: (l) => edgeColors[l.data.type] ?? '#556677',
+        linkColor: (l) => {
+          const base = edgeColors[l.data.type] ?? '#556677';
+          if (!this.activeEdgeKeys) return base;
+          const key = `${l.data.source}|${l.data.target}`;
+          if (this.activeEdgeKeys.has(key)) return base;
+          const r = parseInt(base.slice(1, 3), 16);
+          const g = parseInt(base.slice(3, 5), 16);
+          const b = parseInt(base.slice(5, 7), 16);
+          return `rgba(${r},${g},${b},0.06)`;
+        },
         linkWidth: (l) => {
           const t = l.data.type;
           if (t === EdgeType.Exposes || t === EdgeType.RoutesTo || t === EdgeType.ParentGateway) return 1.5;
@@ -105,8 +125,8 @@ export class GraphLayoutService {
         scaleNodesOnZoom: true,
         fitViewOnInit: true,
         fitViewDelay: isLarge ? 800 : 500,
-        nodeGreyoutOpacity: 0.1,
-        linkGreyoutOpacity: 0.1,
+        nodeGreyoutOpacity: 1.0, // we handle node dimming via nodeColor callback
+        linkGreyoutOpacity: 1.0, // we handle link dimming via linkColor callback
         hoveredNodeRingColor: '#ffffff',
         focusedNodeRingColor: getComputedStyle(document.documentElement).getPropertyValue('--t-accent').trim() || '#e8b866',
         randomSeed: 42,
@@ -351,18 +371,56 @@ export class GraphLayoutService {
   }
 
   selectNode(nodeId: string): void {
-    if (!this.graph) return;
-    this.graph.selectNodeById(nodeId, true);
+    // No-op for cosmos selection — we handle highlighting via color callbacks
   }
 
   selectNodesByIds(ids: string[]): void {
+    // No-op for cosmos selection — we handle highlighting via color callbacks
+  }
+
+  /** Set which nodes/edges should appear bright; null = show all */
+  setActiveNodes(nodeIds: Set<string> | null, edges?: GraphEdge[]): void {
+    this.activeNodeIds = nodeIds;
+    this.activeEdgeKeys = edges ? new Set(edges.map(e => `${e.source}|${e.target}`)) : null;
     if (!this.graph) return;
-    this.graph.selectNodesByIds(ids);
+    // Force cosmos to re-evaluate color callbacks
+    const kindColors = this.currentKindColors;
+    const edgeColors = getThemedEdgeColors();
+    this.graph.setConfig({
+      nodeColor: (n) => {
+        const base = kindColors[n.data.kind] ?? '#888';
+        if (!this.activeNodeIds) return base;
+        if (this.activeNodeIds.has(n.data.id)) return base;
+        const r = parseInt(base.slice(1, 3), 16);
+        const g = parseInt(base.slice(3, 5), 16);
+        const b = parseInt(base.slice(5, 7), 16);
+        return `rgba(${r},${g},${b},0.08)`;
+      },
+      linkColor: (l) => {
+        const base = edgeColors[l.data.type] ?? '#556677';
+        if (!this.activeEdgeKeys) return base;
+        const key = `${l.data.source}|${l.data.target}`;
+        if (this.activeEdgeKeys.has(key)) return base;
+        const r = parseInt(base.slice(1, 3), 16);
+        const g = parseInt(base.slice(3, 5), 16);
+        const b = parseInt(base.slice(5, 7), 16);
+        return `rgba(${r},${g},${b},0.06)`;
+      },
+    });
   }
 
   unselectNodes(): void {
     if (!this.graph) return;
+    this.activeNodeIds = null;
+    this.activeEdgeKeys = null;
     this.graph.unselectNodes();
+    // Reset colors to full brightness
+    const kindColors = this.currentKindColors;
+    const edgeColors = getThemedEdgeColors();
+    this.graph.setConfig({
+      nodeColor: (n) => kindColors[n.data.kind] ?? '#888',
+      linkColor: (l) => edgeColors[l.data.type] ?? '#556677',
+    });
   }
 
   focusNode(nodeId: string): void {

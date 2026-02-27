@@ -239,6 +239,7 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
   const nodes: GraphNode[] = [];
   const edges: GraphEdge[] = [];
   const nodeIds = new Set<string>();
+  const edgeKeys = new Set<string>();
   const allNamespaces: string[] = [];
 
   function addNode(ns: string, kind: NodeKind, name: string, category: NodeCategory, metadata: Record<string, unknown> = {}): string {
@@ -250,6 +251,9 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
   }
 
   function addEdge(source: string, target: string, type: EdgeType, sourceField?: SourceField): void {
+    const key = `${source}|${target}|${type}`;
+    if (edgeKeys.has(key)) return;
+    edgeKeys.add(key);
     edges.push({ source, target, type, ...(sourceField && { sourceField }) });
   }
 
