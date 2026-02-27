@@ -1,25 +1,17 @@
-$accent: #e8b866;
-$bg-panel: #1c1610;
-$bg-header: #151010;
-$border: rgba(232, 184, 102, 0.15);
-$border-glow: rgba(232, 184, 102, 0.3);
-$text: #e8dcc8;
-$text-dim: rgba(232, 220, 200, 0.5);
-
 .floating-panel {
   display: flex;
   flex-direction: column;
-  background: $bg-panel;
-  border: 1px solid $border;
-  border-radius: 8px;
+  background: var(--t-bg-panel);
+  border: 1px solid var(--t-border);
+  border-radius: var(--t-radius-md);
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--t-shadow-panel);
   transition: box-shadow 0.3s ease;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
 
   &.streaming {
-    border-color: $border-glow;
-    box-shadow: 0 0 20px rgba(232, 184, 102, 0.15), 0 4px 20px rgba(0, 0, 0, 0.4);
+    border-color: var(--t-border-glow);
+    box-shadow: 0 0 20px rgba(128, 128, 128, 0.15), var(--t-shadow-panel);
   }
 
   &.maximized {
@@ -32,8 +24,8 @@ $text-dim: rgba(232, 220, 200, 0.5);
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
-  background: $bg-header;
-  border-bottom: 1px solid $border;
+  background: var(--t-bg-panel);
+  border-bottom: 1px solid var(--t-border);
   cursor: grab;
   user-select: none;
   min-height: 32px;
@@ -58,14 +50,14 @@ $text-dim: rgba(232, 220, 200, 0.5);
   letter-spacing: 0.05em;
   padding: 1px 5px;
   border-radius: 3px;
-  color: #0e0b08;
+  color: var(--t-text-on-accent);
   flex-shrink: 0;
 }
 
 .panel-title {
   font-size: 11px;
   font-weight: 600;
-  color: $text;
+  color: var(--t-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -75,7 +67,7 @@ $text-dim: rgba(232, 220, 200, 0.5);
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #6dca82;
+  background: var(--t-success);
   flex-shrink: 0;
   animation: pulse 1.5s ease-in-out infinite;
 }
@@ -83,8 +75,8 @@ $text-dim: rgba(232, 220, 200, 0.5);
 .loading-indicator {
   width: 10px;
   height: 10px;
-  border: 1.5px solid rgba(232, 184, 102, 0.2);
-  border-top-color: $accent;
+  border: 1.5px solid var(--t-border);
+  border-top-color: var(--t-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   flex-shrink: 0;
@@ -106,23 +98,23 @@ $text-dim: rgba(232, 220, 200, 0.5);
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: $text-dim;
+  color: var(--t-text-dim);
   cursor: pointer;
   transition: all 0.15s ease;
 
   &:hover {
-    background: rgba(232, 184, 102, 0.1);
-    color: $text;
+    background: rgba(128, 128, 128, 0.1);
+    color: var(--t-text-primary);
   }
 }
 
 .stop-btn:hover {
-  color: #e07070;
+  color: var(--t-error);
   background: rgba(224, 112, 112, 0.1);
 }
 
 .close-btn:hover {
-  color: #e07070;
+  color: var(--t-error);
   background: rgba(224, 112, 112, 0.1);
 }
 
@@ -131,8 +123,25 @@ $text-dim: rgba(232, 220, 200, 0.5);
   flex-wrap: wrap;
   gap: 4px;
   padding: 6px 10px;
-  border-bottom: 1px solid $border;
+  border-bottom: 1px solid var(--t-border);
   background: rgba(0, 0, 0, 0.15);
+}
+
+:host ::ng-deep app-rollout-console {
+  display: block;
+
+  .rollout-console {
+    border-bottom: 1px solid var(--t-border);
+  }
+
+  .rollout-toggle {
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.08);
+  }
+
+  .rollout-body {
+    padding: 0 10px;
+  }
 }
 
 .toolbar-chip {
@@ -140,17 +149,17 @@ $text-dim: rgba(232, 220, 200, 0.5);
   font-family: inherit;
   padding: 2px 8px;
   border-radius: 4px;
-  border: 1px solid $border;
+  border: 1px solid var(--t-border);
   background: transparent;
-  color: $text-dim;
+  color: var(--t-text-dim);
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
 
   &:hover:not(.disabled) {
-    border-color: $accent;
-    color: $accent;
-    background: rgba(232, 184, 102, 0.06);
+    border-color: var(--t-accent);
+    color: var(--t-accent);
+    background: rgba(128, 128, 128, 0.06);
   }
 
   &.disabled {
@@ -173,24 +182,86 @@ $text-dim: rgba(232, 220, 200, 0.5);
   }
 
   &::-webkit-scrollbar-thumb {
-    background: rgba(232, 184, 102, 0.2);
+    background: var(--t-border);
     border-radius: 2px;
   }
 }
 
 .active-command {
   font-size: 10px;
-  color: $text-dim;
+  color: var(--t-text-dim);
   padding: 4px 10px;
-  border-bottom: 1px solid rgba(232, 184, 102, 0.06);
+  border-bottom: 1px solid rgba(128, 128, 128, 0.06);
   background: rgba(0, 0, 0, 0.1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 
   .command-prefix {
-    color: $accent;
+    color: var(--t-accent);
     margin-right: 4px;
+  }
+}
+
+.editable-command-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid var(--t-border);
+
+  .command-prefix {
+    color: var(--t-accent);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .editable-command-input {
+    flex: 1;
+    background: var(--t-bg);
+    border: 1px solid var(--t-border);
+    border-radius: var(--t-radius-sm);
+    color: var(--t-text);
+    font-family: inherit;
+    font-size: 11px;
+    padding: 4px 8px;
+    outline: none;
+
+    &:focus {
+      border-color: var(--t-accent);
+    }
+  }
+
+  .editable-run-btn {
+    background: var(--t-accent);
+    color: var(--t-bg);
+    border: none;
+    border-radius: var(--t-radius-sm);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 4px 10px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+
+    &:hover {
+      opacity: 0.85;
+    }
+  }
+
+  .editable-dismiss-btn {
+    background: none;
+    border: none;
+    color: var(--t-text-dim);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 4px;
+    line-height: 1;
+
+    &:hover {
+      color: var(--t-error);
+    }
   }
 }
 

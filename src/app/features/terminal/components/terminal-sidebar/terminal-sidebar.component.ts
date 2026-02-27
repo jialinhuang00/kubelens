@@ -127,13 +127,19 @@ export class TerminalSidebarComponent implements OnInit {
       case 'Pod': return this.templateService.generatePodTemplates(name);
       case 'Service': return this.templateService.generateServiceTemplates(name);
       case 'StatefulSet': return this.templateService.generateStatefulSetTemplates(name);
+      case 'DaemonSet': return this.templateService.generateDaemonSetTemplates(name);
       case 'CronJob': return this.templateService.generateCronJobTemplates(name);
       case 'Job': return this.templateService.generateJobTemplates(name);
+      case 'ReplicaSet': return this.templateService.generateReplicaSetTemplates(name);
       case 'ConfigMap': return this.templateService.generateConfigMapTemplates(name);
       case 'Secret': return this.templateService.generateSecretTemplates(name);
-      case 'PVC': return this.templateService.generatePVCTemplates(name);
+      case 'PersistentVolumeClaim': return this.templateService.generatePVCTemplates(name);
+      case 'HorizontalPodAutoscaler': return this.templateService.generateHPATemplates(name);
       case 'ServiceAccount': return this.templateService.generateServiceAccountTemplates(name);
       case 'Ingress': return this.templateService.generateIngressTemplates(name);
+      case 'NetworkPolicy': return this.templateService.generateNetworkPolicyTemplates(name);
+      case 'Role': return this.templateService.generateRoleTemplates(name);
+      case 'RoleBinding': return this.templateService.generateRoleBindingTemplates(name);
       default: return [];
     }
   }

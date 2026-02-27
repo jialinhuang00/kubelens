@@ -26,8 +26,8 @@ import { DataModeService } from '../../../core/services/data-mode.service';
       display: flex;
       border-radius: 5px;
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--t-border);
+      background: rgba(128, 128, 128, 0.03);
     }
 
     .mode-btn {
@@ -35,7 +35,7 @@ import { DataModeService } from '../../../core/services/data-mode.service';
       font-size: 11px;
       font-family: inherit;
       font-weight: 500;
-      color: #5a5040;
+      color: var(--t-text-secondary);
       background: transparent;
       border: none;
       cursor: pointer;
@@ -48,9 +48,8 @@ import { DataModeService } from '../../../core/services/data-mode.service';
       }
 
       &.mode-active {
-        color: #0a0804;
-        background: #e8b866;
-        box-shadow: 0 0 12px rgba(232, 184, 102, 0.4);
+        color: var(--t-text-on-accent);
+        background: var(--t-accent);
       }
     }
   `],

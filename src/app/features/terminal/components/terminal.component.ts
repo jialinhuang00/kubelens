@@ -2,11 +2,12 @@ import { Component, signal } from '@angular/core';
 import { TerminalSidebarComponent } from './terminal-sidebar/terminal-sidebar.component';
 import { PanelAreaComponent } from './panel-area/panel-area.component';
 import { ModeToggleComponent } from '../../../shared/components/mode-toggle/mode-toggle.component';
+import { ThemeSwitcherComponent } from '../../../shared/components/theme-switcher/theme-switcher.component';
 
 @Component({
   selector: 'app-terminal',
   standalone: true,
-  imports: [TerminalSidebarComponent, PanelAreaComponent, ModeToggleComponent],
+  imports: [TerminalSidebarComponent, PanelAreaComponent, ModeToggleComponent, ThemeSwitcherComponent],
   templateUrl: './terminal.component.html',
   styleUrl: './terminal.component.scss',
 })

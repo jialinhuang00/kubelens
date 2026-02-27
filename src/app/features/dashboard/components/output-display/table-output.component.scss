@@ -40,7 +40,7 @@
   }
 }
 
-// Custom cyberpunk tooltips
+// Custom tooltips
 .cyber-tooltip-trigger {
   position: relative;
 }
@@ -62,7 +62,7 @@
   pointer-events: none;
   transition: all 0.3s ease;
   z-index: 1000;
-  box-shadow: 0 4px 12px rgba(232, 184, 102, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   max-width: 400px;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -73,7 +73,7 @@
   transform: translateX(-50%) translateY(-2px);
 }
 
-// Copy button tooltips  
+// Copy button tooltips
 .copy-btn {
   position: relative;
   color: var(--accent-cyan);
@@ -100,13 +100,13 @@
   pointer-events: none;
   transition: all 0.3s ease;
   z-index: 1001;
-  box-shadow: 0 4px 12px rgba(232, 184, 102, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .copy-btn:hover {
   background: transparent;
   border-color: var(--accent-cyan);
-  box-shadow: 0 0 8px rgba(232, 184, 102, 0.3);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
 }
 
 .copy-btn:hover::after {
@@ -116,9 +116,9 @@
 
 .copy-btn:active {
   transform: scale(0.9);
-  box-shadow: 0 0 12px rgba(232, 184, 102, 0.5);
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.2);
   border-color: var(--accent-cyan);
-  background: rgba(232, 184, 102, 0.1);
+  background: rgba(128, 128, 128, 0.1);
 }
 
 // Success animation after copy
@@ -159,19 +159,16 @@
   }
 
   &::-webkit-scrollbar-thumb {
-    background: linear-gradient(45deg, rgba(232, 184, 102, 0.3), rgba(232, 184, 102, 0.5));
+    background: var(--t-border-glow);
     border-radius: 1px;
     transition: all 0.3s ease;
-    animation: scrollbarGlowCyan 2.5s ease-in-out infinite alternate;
 
     &:hover {
-      background: linear-gradient(45deg, rgba(232, 184, 102, 0.6), rgba(232, 184, 102, 0.8));
-      box-shadow: 0 0 4px rgba(232, 184, 102, 0.6);
+      background: var(--t-accent);
     }
 
     &:active {
-      background: rgba(232, 184, 102, 0.9);
-      box-shadow: 0 0 6px rgba(232, 184, 102, 0.8);
+      background: var(--t-accent);
     }
   }
 
@@ -184,22 +181,5 @@
 // Firefox scrollbar fallback
 .table-container {
   scrollbar-width: thin;
-  scrollbar-color: rgba(232, 184, 102, 0.25) rgba(0, 0, 0, 0.15);
-}
-
-@keyframes scrollbarGlowCyan {
-  0% {
-    background: linear-gradient(45deg, rgba(232, 184, 102, 0.2), rgba(232, 184, 102, 0.3));
-    box-shadow: 0 0 1px rgba(232, 184, 102, 0.2);
-  }
-
-  50% {
-    background: linear-gradient(45deg, rgba(232, 184, 102, 0.4), rgba(232, 184, 102, 0.6));
-    box-shadow: 0 0 3px rgba(232, 184, 102, 0.4);
-  }
-
-  100% {
-    background: linear-gradient(45deg, rgba(232, 184, 102, 0.25), rgba(232, 184, 102, 0.4));
-    box-shadow: 0 0 2px rgba(232, 184, 102, 0.3);
-  }
+  scrollbar-color: var(--t-border-glow) rgba(0, 0, 0, 0.15);
 }

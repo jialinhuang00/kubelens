@@ -13,7 +13,7 @@
   <div class="panel-header" cdkDragHandle (dblclick)="onDoubleClickHeader()">
     <div class="panel-title-area">
       @if (panel().type === 'resource') {
-        <span class="panel-kind-badge" [style.backgroundColor]="panel().resourceKind === 'Deployment' ? '#e8b866' : panel().resourceKind === 'Pod' ? '#f0d080' : '#d4956a'">
+        <span class="panel-kind-badge" [style.backgroundColor]="panel().resourceKind === 'Deployment' ? 'var(--t-accent)' : panel().resourceKind === 'Pod' ? 'var(--t-accent-hover)' : 'var(--t-warning)'">
           {{ panel().resourceKind }}
         </span>
       }
@@ -62,6 +62,46 @@
           {{ tmpl.name }}
         </button>
       }
+    </div>
+  }
+
+  <!-- Rollout console (Deployment only) -->
+  @if (isDeployment()) {
+    <app-rollout-console
+      [deploymentName]="panel().resourceName"
+      [isExpanded]="rolloutExpanded()"
+      [rolloutTemplates]="rolloutTemplates()"
+      [rolloutHistory]="rolloutHistory()"
+      [currentStatus]="deploymentStatus()?.status || ''"
+      [deploymentStatus]="deploymentStatus()"
+      [buttonStates]="buttonStates()"
+      [ecrTags]="ecrTags()"
+      [ecrIsLoading]="ecrIsLoading()"
+      [ecrError]="ecrError()"
+      [deploymentImage]="deploymentImage()"
+      (toggleExpanded)="onToggleRollout()"
+      (templateExecute)="onRolloutTemplateExecute($event)"
+      (imageUpgrade)="onImageUpgrade($event)"
+      (loadEcrTags)="onLoadEcrTags()"
+      (ecrTagSelect)="onEcrTagSelect($event)"
+      (refetchStatus)="onRefetchRolloutStatus()"
+    />
+  }
+
+  <!-- Editable command bar -->
+  @if (editableCommand()) {
+    <div class="editable-command-bar">
+      <span class="command-prefix">$</span>
+      <input
+        class="editable-command-input"
+        type="text"
+        [value]="editableCommand()"
+        (input)="editableCommand.set($any($event.target).value)"
+        (keydown)="onEditableKeyDown($event)"
+        autofocus
+      >
+      <button class="editable-run-btn" (click)="onRunEditableCommand()" title="Run (Enter)">Run</button>
+      <button class="editable-dismiss-btn" (click)="onDismissEditable()" title="Cancel (Esc)">&times;</button>
     </div>
   }
 

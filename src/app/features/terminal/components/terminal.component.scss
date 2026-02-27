@@ -1,17 +1,10 @@
-$accent: #e8b866;
-$bg: #0a0804;
-$border: rgba(232, 184, 102, 0.12);
-$text: #e8dcc8;
-$text-dim: rgba(232, 220, 200, 0.5);
-$font: 'JetBrains Mono', 'Fira Code', monospace;
-
 .terminal-container {
   display: flex;
   height: 100vh;
   width: 100vw;
-  background: $bg;
+  background: var(--t-bg-terminal);
   overflow: hidden;
-  font-family: $font;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
 // ---- Sidebar wrapper with collapse ----
@@ -40,14 +33,14 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
   align-items: center;
   justify-content: space-between;
   padding: 8px 16px;
-  border-bottom: 1px solid $border;
+  border-bottom: 1px solid var(--t-border);
   flex-shrink: 0;
 }
 
 .main-title {
   font-size: 12px;
   font-weight: 600;
-  color: $text-dim;
+  color: var(--t-text-dim);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -55,9 +48,9 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
 // ---- Sidebar collapse toggle (thin vertical strip) ----
 .collapse-toggle {
   z-index: 30;
-  background: rgba(14, 11, 8, 0.9);
-  border: 1px solid $border;
-  color: $text-dim;
+  background: var(--t-bg-terminal);
+  border: 1px solid var(--t-border);
+  color: var(--t-text-dim);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -66,9 +59,9 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
   flex-shrink: 0;
 
   &:hover {
-    color: $accent;
-    border-color: rgba(232, 184, 102, 0.4);
-    background: rgba(232, 184, 102, 0.08);
+    color: var(--t-accent);
+    border-color: var(--t-border-glow);
+    background: rgba(128, 128, 128, 0.08);
   }
 
   .toggle-arrow {

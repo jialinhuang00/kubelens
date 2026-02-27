@@ -35,18 +35,10 @@ import { FormsModule } from '@angular/forms';
     </div>
   `,
   styles: [`
-    $accent: #e8b866;
-    $bg: #0e0b08;
-    $surface: #1c1610;
-    $border: rgba(232, 184, 102, 0.12);
-    $text: #e8dcc8;
-    $text-dim: rgba(232, 220, 200, 0.5);
-    $font: 'JetBrains Mono', 'Fira Code', monospace;
-
     .ns-section {
       padding: 10px 14px;
-      border-bottom: 1px solid $border;
-      font-family: $font;
+      border-bottom: 1px solid var(--t-border);
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
     }
 
     .section-label {
@@ -54,7 +46,7 @@ import { FormsModule } from '@angular/forms';
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: $text-dim;
+      color: var(--t-text-dim);
       margin-bottom: 6px;
     }
 
@@ -62,21 +54,21 @@ import { FormsModule } from '@angular/forms';
       width: 100%;
       padding: 5px 8px;
       font-size: 11px;
-      font-family: $font;
-      background: $surface;
-      border: 1px solid $border;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      background: var(--t-bg-surface);
+      border: 1px solid var(--t-border);
       border-radius: 4px;
-      color: $text;
+      color: var(--t-text-primary);
       outline: none;
       margin-bottom: 6px;
       box-sizing: border-box;
 
       &::placeholder {
-        color: $text-dim;
+        color: var(--t-text-dim);
       }
 
       &:focus {
-        border-color: rgba(232, 184, 102, 0.3);
+        border-color: var(--t-border-glow);
       }
     }
 
@@ -92,36 +84,36 @@ import { FormsModule } from '@angular/forms';
       }
 
       &::-webkit-scrollbar-thumb {
-        background: rgba(232, 184, 102, 0.15);
+        background: var(--t-border);
       }
     }
 
     .namespace-chip {
       font-size: 10px;
-      font-family: $font;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
       padding: 2px 8px;
       border-radius: 4px;
-      border: 1px solid $border;
+      border: 1px solid var(--t-border);
       background: transparent;
-      color: $text-dim;
+      color: var(--t-text-dim);
       cursor: pointer;
       transition: all 0.15s;
 
       &:hover {
-        border-color: rgba(232, 184, 102, 0.3);
-        color: $text;
+        border-color: var(--t-border-glow);
+        color: var(--t-text-primary);
       }
 
       &.active {
-        border-color: $accent;
-        color: $accent;
-        background: rgba(232, 184, 102, 0.08);
+        border-color: var(--t-accent);
+        color: var(--t-accent);
+        background: rgba(128, 128, 128, 0.08);
       }
     }
 
     .empty-hint {
       font-size: 10px;
-      color: $text-dim;
+      color: var(--t-text-dim);
       padding: 4px 0;
     }
   `],

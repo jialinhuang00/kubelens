@@ -40,7 +40,7 @@
   }
 }
 
-// Custom cyberpunk tooltips
+// Custom tooltips
 .cyber-tooltip-trigger {
   position: relative;
 }
@@ -62,7 +62,7 @@
   pointer-events: none;
   transition: all 0.3s ease;
   z-index: 1000;
-  box-shadow: 0 4px 12px rgba(232, 184, 102, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   max-width: 400px;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -73,7 +73,7 @@
   transform: translateX(-50%) translateY(-2px);
 }
 
-// Copy button tooltips  
+// Copy button tooltips
 .copy-btn {
   position: relative;
   color: var(--accent-cyan);
@@ -100,13 +100,13 @@
   pointer-events: none;
   transition: all 0.3s ease;
   z-index: 1001;
-  box-shadow: 0 4px 12px rgba(232, 184, 102, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .copy-btn:hover {
   background: transparent;
   border-color: var(--accent-cyan);
-  box-shadow: 0 0 8px rgba(232, 184, 102, 0.3);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
 }
 
 .copy-btn:hover::after {
@@ -116,9 +116,9 @@
 
 .copy-btn:active {
   transform: scale(0.9);
-  box-shadow: 0 0 12px rgba(232, 184, 102, 0.5);
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.2);
   border-color: var(--accent-cyan);
-  background: rgba(232, 184, 102, 0.1);
+  background: rgba(128, 128, 128, 0.1);
 }
 
 // Success animation after copy

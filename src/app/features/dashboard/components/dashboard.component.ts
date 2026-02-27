@@ -42,7 +42,7 @@ interface ResourceConfig {
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterOutlet, FormsModule, CommonModule, ContextBarComponent, CommandChipsComponent, OutputDisplayComponent, CommandInputComponent, ExecutionDialogComponent, ModeToggleComponent],
+  imports: [FormsModule, CommonModule, ContextBarComponent, CommandChipsComponent, OutputDisplayComponent, CommandInputComponent, ExecutionDialogComponent, ModeToggleComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })

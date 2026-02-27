@@ -14,17 +14,29 @@ interface ResourceKindConfig {
 }
 
 const RESOURCE_KINDS: ResourceKindConfig[] = [
+  // Workloads
   { kind: 'Deployment', label: 'Deployments', color: '#e8b866', resourceType: 'deployments' },
-  { kind: 'Pod', label: 'Pods', color: '#f0d080', resourceType: 'pods' },
-  { kind: 'Service', label: 'Services', color: '#d4956a', resourceType: 'services' },
   { kind: 'StatefulSet', label: 'StatefulSets', color: '#e0a050', resourceType: 'statefulsets' },
+  { kind: 'DaemonSet', label: 'DaemonSets', color: '#d4956a', resourceType: 'daemonsets' },
   { kind: 'CronJob', label: 'CronJobs', color: '#c8a060', resourceType: 'cronjobs' },
   { kind: 'Job', label: 'Jobs', color: '#b89860', resourceType: 'jobs' },
+  { kind: 'Pod', label: 'Pods', color: '#f0d080', resourceType: 'pods' },
+  { kind: 'ReplicaSet', label: 'ReplicaSets', color: '#c0b880', resourceType: 'replicasets' },
+  // Networking
+  { kind: 'Service', label: 'Services', color: '#80c0b0', resourceType: 'services' },
+  { kind: 'Ingress', label: 'Ingresses', color: '#70b8a8', resourceType: 'ingresses' },
+  { kind: 'NetworkPolicy', label: 'NetworkPolicies', color: '#90a8b8', resourceType: 'networkpolicies' },
+  // Config
   { kind: 'ConfigMap', label: 'ConfigMaps', color: '#a0b880', resourceType: 'configmaps' },
   { kind: 'Secret', label: 'Secrets', color: '#c0a8a0', resourceType: 'secrets' },
+  // Storage
   { kind: 'PersistentVolumeClaim', label: 'PVCs', color: '#90b0c8', resourceType: 'persistentvolumeclaims' },
+  // Scaling
+  { kind: 'HorizontalPodAutoscaler', label: 'HPAs', color: '#b8a080', resourceType: 'horizontalpodautoscalers' },
+  // RBAC
   { kind: 'ServiceAccount', label: 'ServiceAccounts', color: '#a8a0c0', resourceType: 'serviceaccounts' },
-  { kind: 'Ingress', label: 'Ingresses', color: '#80c0b0', resourceType: 'ingresses' },
+  { kind: 'Role', label: 'Roles', color: '#b0a0c8', resourceType: 'roles' },
+  { kind: 'RoleBinding', label: 'RoleBindings', color: '#a898b8', resourceType: 'rolebindings' },
 ];
 
 @Injectable({ providedIn: 'root' })
@@ -73,20 +85,4 @@ export class ResourceTreeService {
     ));
   }
 
-  getTemplateGeneratorKind(kind: string): string {
-    const map: Record<string, string> = {
-      'Deployment': 'deployment',
-      'Pod': 'pod',
-      'Service': 'service',
-      'StatefulSet': 'statefulsets',
-      'CronJob': 'cronjobs',
-      'Job': 'jobs',
-      'ConfigMap': 'configmaps',
-      'Secret': 'secrets',
-      'PersistentVolumeClaim': 'persistentvolumeclaims',
-      'ServiceAccount': 'serviceaccounts',
-      'Ingress': 'ingresses',
-    };
-    return map[kind] || kind.toLowerCase();
-  }
 }

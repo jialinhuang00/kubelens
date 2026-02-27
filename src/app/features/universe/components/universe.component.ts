@@ -11,9 +11,10 @@ import {
   HostListener,
 } from '@angular/core';
 import { Router } from '@angular/router';
-import { DecimalPipe, KeyValuePipe } from '@angular/common';
+import { DecimalPipe, KeyValuePipe, NgTemplateOutlet } from '@angular/common';
 import { DataModeService } from '../../../core/services/data-mode.service';
 import { ModeToggleComponent } from '../../../shared/components/mode-toggle/mode-toggle.component';
+import { ThemeSwitcherComponent } from '../../../shared/components/theme-switcher/theme-switcher.component';
 import { BackLinkComponent } from '../../../shared/components/back-link/back-link.component';
 import { NamespaceChipsComponent } from '../../../shared/components/namespace-chips/namespace-chips.component';
 import { GraphDataService } from '../services/graph-data.service';
@@ -22,7 +23,7 @@ import {
   GraphNode,
   GraphEdge,
   GraphDataResponse,
-  KIND_COLORS,
+  getThemedKindColors,
   NodeKind,
   NodeCategory,
   PodPhase,
@@ -35,7 +36,7 @@ import {
 
 @Component({
   selector: 'app-universe',
-  imports: [DecimalPipe, KeyValuePipe, ModeToggleComponent, BackLinkComponent, NamespaceChipsComponent],
+  imports: [DecimalPipe, KeyValuePipe, NgTemplateOutlet, ModeToggleComponent, ThemeSwitcherComponent, BackLinkComponent, NamespaceChipsComponent],
   templateUrl: './universe.component.html',
   styleUrls: ['./universe.component.scss'],
 })
@@ -61,11 +62,47 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly selectedEdges = signal<GraphEdge[]>([]);
   readonly connectedNodes = signal<GraphNode[]>([]);
 
+  // Theme-aware kind color palette (read once at init, refreshed on mode change)
+  readonly kindColors = signal<Record<NodeKind, string>>(getThemedKindColors());
+
   // Sidebar collapse
   readonly sidebarCollapsed = signal(false);
 
   toggleSidebar(): void {
     this.sidebarCollapsed.update(v => !v);
+  }
+
+  // Floating detail panel position + drag
+  readonly detailPanelPos = signal({ x: 16, y: 60 });
+  private dragging = false;
+  private dragOffset = { x: 0, y: 0 };
+
+  onDetailPanelMouseDown(_event: MouseEvent): void {
+    // Prevent graph clicks when clicking the panel
+    _event.stopPropagation();
+  }
+
+  onDragStart(event: MouseEvent): void {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    this.dragging = true;
+    const pos = this.detailPanelPos();
+    this.dragOffset = { x: event.clientX - pos.x, y: event.clientY - pos.y };
+
+    const onMove = (e: MouseEvent) => {
+      if (!this.dragging) return;
+      this.detailPanelPos.set({
+        x: e.clientX - this.dragOffset.x,
+        y: e.clientY - this.dragOffset.y,
+      });
+    };
+    const onUp = () => {
+      this.dragging = false;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
   }
 
   // Zoom
@@ -194,13 +231,14 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     // Group by category
+    const colors = this.kindColors();
     const groups: { category: NodeCategory; label: string; items: { kind: NodeKind; color: string; count: number }[] }[] = [];
     for (const cat of CATEGORY_ORDER) {
       const items = Object.entries(byKind)
         .filter(([kind]) => getCategory(kind as NodeKind) === cat)
         .map(([kind, count]) => ({
           kind: kind as NodeKind,
-          color: KIND_COLORS[kind as NodeKind] ?? '#888',
+          color: colors[kind as NodeKind] ?? '#888',
           count,
         }))
         .sort((a, b) => b.count - a.count);
@@ -379,6 +417,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onModeChanged(): void {
+    this.kindColors.set(getThemedKindColors());
     this.graphLayout.destroy();
     this.graphData.fetchGraph();
     this.clearDataCheck();
@@ -450,7 +489,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getKindColor(kind: NodeKind): string {
-    return KIND_COLORS[kind] ?? '#888';
+    return this.kindColors()[kind] ?? '#888';
   }
 
   getPodStatusColor(pod: GraphNode): string {

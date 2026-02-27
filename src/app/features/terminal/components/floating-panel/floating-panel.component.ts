@@ -1,17 +1,24 @@
-import { Component, input, output, inject, computed } from '@angular/core';
+import { Component, input, output, inject, computed, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { CdkDrag, CdkDragHandle, CdkDragEnd } from '@angular/cdk/drag-drop';
 import { PanelState } from '../../models/panel.models';
 import { PanelManagerService } from '../../services/panel-manager.service';
 import { PanelExecutionService } from '../../services/panel-execution.service';
 import { UiStateService } from '../../../dashboard/services/ui-state.service';
 import { OutputDisplayComponent } from '../../../dashboard/components/output-display/output-display.component';
+import { RolloutConsoleComponent } from '../../../dashboard/components/sidebar/rollout-console.component';
 import { CommandTemplate } from '../../../../shared/models/kubectl.models';
+import { DeploymentService } from '../../../k8s/services/deployment.service';
+import { EcrService } from '../../../k8s/services/ecr.service';
+import { RolloutStateService } from '../../../dashboard/services/rollout-state.service';
+import { RolloutService } from '../../../dashboard/services/rollout.service';
+import { TemplateService } from '../../../dashboard/services/template.service';
 
 @Component({
   selector: 'app-floating-panel',
   standalone: true,
-  imports: [CommonModule, CdkDrag, CdkDragHandle, OutputDisplayComponent],
+  imports: [CommonModule, FormsModule, CdkDrag, CdkDragHandle, OutputDisplayComponent, RolloutConsoleComponent],
   providers: [UiStateService],
   templateUrl: './floating-panel.component.html',
   styleUrl: './floating-panel.component.scss',
@@ -22,6 +29,41 @@ export class FloatingPanelComponent {
 
   private panelManager = inject(PanelManagerService);
   private panelExecution = inject(PanelExecutionService);
+  private deploymentService = inject(DeploymentService);
+  private ecrService = inject(EcrService);
+  private rolloutStateService = inject(RolloutStateService);
+  private rolloutService = inject(RolloutService);
+  private templateService = inject(TemplateService);
+
+  editableCommand = signal('');
+
+  // Rollout state
+  rolloutExpanded = signal(false);
+  rolloutTemplates = signal<CommandTemplate[]>([]);
+
+  isDeployment = computed(() => this.panel().resourceKind === 'Deployment');
+  deploymentStatus = this.deploymentService.deploymentStatus;
+  rolloutHistory = this.deploymentService.rolloutHistory;
+  buttonStates = computed(() => this.deploymentService.getButtonStates(this.deploymentStatus()));
+  deploymentImage = computed(() => this.deploymentStatus()?.containerImage || '');
+
+  // ECR state
+  ecrTags = this.ecrService.tags;
+  ecrIsLoading = this.ecrService.isLoading;
+  ecrError = this.ecrService.error;
+
+  private lastInitDeployment = '';
+
+  // Set rollout templates once based on panel identity (not reactive to panel state changes)
+  private rolloutInit = effect(() => {
+    const p = this.panel();
+    const key = `${p.resourceKind}:${p.resourceName}:${p.namespace}`;
+    if (p.resourceKind === 'Deployment' && p.resourceName && key !== this.lastInitDeployment) {
+      this.lastInitDeployment = key;
+      this.rolloutTemplates.set(this.templateService.generateRolloutTemplates(p.resourceName));
+      this.ecrService.clear();
+    }
+  });
 
   panelTitle = computed(() => {
     const p = this.panel();
@@ -95,6 +137,79 @@ export class FloatingPanelComponent {
       p.namespace,
       p.resourceName,
     );
+    if (template.requiresInput) {
+      this.editableCommand.set(command);
+    } else {
+      this.panelExecution.execute(p.id, command);
+    }
+  }
+
+  onRunEditableCommand(): void {
+    const cmd = this.editableCommand().trim();
+    if (!cmd) return;
+    this.panelExecution.execute(this.panel().id, cmd);
+    this.editableCommand.set('');
+  }
+
+  onEditableKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      this.onRunEditableCommand();
+    } else if (event.key === 'Escape') {
+      this.editableCommand.set('');
+    }
+  }
+
+  onDismissEditable(): void {
+    this.editableCommand.set('');
+  }
+
+  private hasFetchedStatus = false;
+
+  // Rollout handlers
+  onToggleRollout(): void {
+    this.rolloutExpanded.update(v => !v);
+    if (this.rolloutExpanded() && !this.hasFetchedStatus) {
+      this.hasFetchedStatus = true;
+      const p = this.panel();
+      this.deploymentService.fetchRolloutStatus(p.resourceName, p.namespace);
+    }
+  }
+
+  onRolloutTemplateExecute(template: CommandTemplate): void {
+    const p = this.panel();
+    const command = this.panelExecution.substituteCommand(template.command, p.namespace, p.resourceName);
     this.panelExecution.execute(p.id, command);
+  }
+
+  onImageUpgrade(event: { deployment: string; image: string }): void {
+    const p = this.panel();
+    const command = this.rolloutService.generateSetImageCommand(event.deployment, p.namespace, event.image);
+    this.panelExecution.execute(p.id, command);
+    this.rolloutStateService.triggerRolloutAction('image-upgrade');
+  }
+
+  onLoadEcrTags(): void {
+    const image = this.deploymentImage();
+    if (image) {
+      this.ecrService.fetchTags(image);
+    }
+  }
+
+  onEcrTagSelect(tag: string): void {
+    const p = this.panel();
+    const image = this.deploymentImage();
+    if (!image || !tag) return;
+    // Replace the tag portion of the image URL
+    const baseImage = image.replace(/:.*$/, '');
+    const fullImage = `${baseImage}:${tag}`;
+    const command = this.rolloutService.generateSetImageCommand(p.resourceName, p.namespace, fullImage);
+    this.panelExecution.execute(p.id, command);
+    this.rolloutStateService.triggerRolloutAction('ecr-tag-select');
+  }
+
+  onRefetchRolloutStatus(): void {
+    const p = this.panel();
+    this.deploymentService.fetchRolloutStatus(p.resourceName, p.namespace);
   }
 }

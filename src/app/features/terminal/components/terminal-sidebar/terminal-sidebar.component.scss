@@ -5,22 +5,15 @@
 }
 
 $sidebar-width: 320px;
-$accent: #e8b866;
-$bg: #0e0b08;
-$surface: #1c1610;
-$border: rgba(232, 184, 102, 0.12);
-$text: #e8dcc8;
-$text-dim: rgba(232, 220, 200, 0.5);
-$font: 'JetBrains Mono', 'Fira Code', monospace;
 
 .sidebar {
   width: $sidebar-width;
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: $bg;
-  border-right: 1px solid $border;
-  font-family: $font;
+  background: var(--t-bg-body);
+  border-right: 1px solid var(--t-border);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
   overflow: hidden;
 }
 
@@ -29,20 +22,20 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
   align-items: center;
   gap: 8px;
   padding: 12px 14px;
-  border-bottom: 1px solid $border;
+  border-bottom: 1px solid var(--t-border);
 }
 
 .sidebar-title {
   font-size: 14px;
   font-weight: 700;
-  color: $accent;
+  color: var(--t-accent);
   margin: 0;
   letter-spacing: 0.02em;
 }
 
 .sidebar-section {
   padding: 10px 14px;
-  border-bottom: 1px solid $border;
+  border-bottom: 1px solid var(--t-border);
 }
 
 .resource-tree-section {
@@ -55,7 +48,7 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: rgba(232, 184, 102, 0.2);
+    background: var(--t-border);
     border-radius: 2px;
   }
 }
@@ -68,15 +61,15 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: $text-dim;
+  color: var(--t-text-dim);
   margin-bottom: 6px;
 }
 
 .section-spinner {
   width: 8px;
   height: 8px;
-  border: 1px solid rgba(232, 184, 102, 0.2);
-  border-top-color: $accent;
+  border: 1px solid var(--t-border);
+  border-top-color: var(--t-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -85,7 +78,7 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
   font-weight: 400;
   text-transform: none;
   letter-spacing: normal;
-  color: $accent;
+  color: var(--t-accent);
   opacity: 0.7;
 }
 
@@ -94,13 +87,13 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
   align-items: center;
   gap: 6px;
   font-size: 10px;
-  color: $text-dim;
+  color: var(--t-text-dim);
   padding: 4px 0;
 }
 
 .empty-hint {
   font-size: 10px;
-  color: $text-dim;
+  color: var(--t-text-dim);
   padding: 4px 0;
 }
 
@@ -122,19 +115,19 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
   padding: 4px 2px;
   border: none;
   background: transparent;
-  color: $text;
+  color: var(--t-text-primary);
   cursor: pointer;
   font-size: 11px;
-  font-family: $font;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
   transition: background 0.1s;
 
   &:hover {
-    background: rgba(232, 184, 102, 0.04);
+    background: rgba(128, 128, 128, 0.04);
   }
 }
 
 .expand-icon {
-  color: $text-dim;
+  color: var(--t-text-dim);
   transition: transform 0.15s;
   flex-shrink: 0;
 
@@ -157,17 +150,17 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
 
 .tree-count {
   font-size: 9px;
-  color: $text-dim;
+  color: var(--t-text-dim);
   padding: 0 4px;
-  background: rgba(232, 184, 102, 0.06);
+  background: rgba(128, 128, 128, 0.06);
   border-radius: 3px;
 }
 
 .tree-spinner {
   width: 8px;
   height: 8px;
-  border: 1px solid rgba(232, 184, 102, 0.2);
-  border-top-color: $accent;
+  border: 1px solid var(--t-border);
+  border-top-color: var(--t-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -183,11 +176,11 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
   padding: 2px 0;
   cursor: pointer;
   font-size: 10px;
-  color: $text-dim;
+  color: var(--t-text-dim);
   transition: color 0.1s;
 
   &:hover {
-    color: $text;
+    color: var(--t-text-primary);
   }
 }
 
@@ -195,7 +188,7 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
   appearance: none;
   width: 12px;
   height: 12px;
-  border: 1px solid $border;
+  border: 1px solid var(--t-border);
   border-radius: 2px;
   background: transparent;
   cursor: pointer;
@@ -203,8 +196,8 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
   position: relative;
 
   &:checked {
-    border-color: $accent;
-    background: rgba(232, 184, 102, 0.15);
+    border-color: var(--t-accent);
+    background: rgba(128, 128, 128, 0.15);
 
     &::after {
       content: '';
@@ -213,7 +206,7 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
       left: 3px;
       width: 4px;
       height: 6px;
-      border: solid $accent;
+      border: solid var(--t-accent);
       border-width: 0 1.5px 1.5px 0;
       transform: rotate(45deg);
     }
@@ -240,8 +233,8 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
   font-weight: 600;
   padding: 0 4px;
   border-radius: 3px;
-  background: rgba(232, 184, 102, 0.12);
-  color: $accent;
+  background: rgba(128, 128, 128, 0.12);
+  color: var(--t-accent);
   flex-shrink: 0;
   letter-spacing: 0.02em;
 }
@@ -259,18 +252,18 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
 
 .quick-btn {
   font-size: 10px;
-  font-family: $font;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
   padding: 3px 8px;
   border-radius: 4px;
-  border: 1px solid $border;
+  border: 1px solid var(--t-border);
   background: transparent;
-  color: $text-dim;
+  color: var(--t-text-dim);
   cursor: pointer;
   transition: all 0.15s;
 
   &:hover {
-    border-color: $accent;
-    color: $accent;
+    border-color: var(--t-accent);
+    color: var(--t-accent);
   }
 }
 
@@ -283,38 +276,38 @@ $font: 'JetBrains Mono', 'Fira Code', monospace;
   flex: 1;
   padding: 5px 8px;
   font-size: 11px;
-  font-family: $font;
-  background: $surface;
-  border: 1px solid $border;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  background: var(--t-bg-surface);
+  border: 1px solid var(--t-border);
   border-radius: 4px;
-  color: $text;
+  color: var(--t-text-primary);
   outline: none;
   min-width: 0;
 
   &::placeholder {
-    color: $text-dim;
+    color: var(--t-text-dim);
   }
 
   &:focus {
-    border-color: rgba(232, 184, 102, 0.3);
+    border-color: var(--t-border-glow);
   }
 }
 
 .execute-btn {
   padding: 5px 10px;
   font-size: 10px;
-  font-family: $font;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-weight: 600;
   border-radius: 4px;
-  border: 1px solid $accent;
-  background: rgba(232, 184, 102, 0.1);
-  color: $accent;
+  border: 1px solid var(--t-accent);
+  background: rgba(128, 128, 128, 0.1);
+  color: var(--t-accent);
   cursor: pointer;
   transition: all 0.15s;
   flex-shrink: 0;
 
   &:hover:not(:disabled) {
-    background: rgba(232, 184, 102, 0.2);
+    background: rgba(128, 128, 128, 0.2);
   }
 
   &:disabled {

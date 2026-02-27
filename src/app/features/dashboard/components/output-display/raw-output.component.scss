@@ -16,8 +16,8 @@
 
 @keyframes flash-highlight {
   0% {
-    background: rgba(232, 184, 102, 0.3);
-    color: #e8b866;
+    background: rgba(128, 128, 128, 0.3);
+    color: var(--t-accent);
   }
   100% {
     background: transparent;

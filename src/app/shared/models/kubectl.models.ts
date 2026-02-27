@@ -11,7 +11,13 @@ export type ResourceType =
   | 'serviceaccounts'
   | 'ingresses'
   | 'gateways'
-  | 'httproutes';
+  | 'httproutes'
+  | 'daemonsets'
+  | 'replicasets'
+  | 'horizontalpodautoscalers'
+  | 'networkpolicies'
+  | 'roles'
+  | 'rolebindings';
 
 export interface KubeResource {
   [key: string]: string;
@@ -31,6 +37,7 @@ export interface CommandTemplate {
   displayCommand?: string; // Optional display version with placeholders
   top?: boolean;
   disabled?: boolean;
+  requiresInput?: boolean; // If true, populate editable input instead of auto-executing
 }
 
 export interface KubectlResponse {

@@ -38,6 +38,12 @@ export class TemplateService {
       { id: 'ing-list', name: 'Ingresses', command: 'kubectl get ingress -n {namespace}' },
       { id: 'gw-list', name: 'Gateways', command: 'kubectl get gateways -n {namespace}' },
       { id: 'hr-list', name: 'HTTPRoutes', command: 'kubectl get httproutes -n {namespace}' },
+      { id: 'ds-list', name: 'DaemonSets', command: 'kubectl get daemonsets -n {namespace}' },
+      { id: 'rs-list', name: 'ReplicaSets', command: 'kubectl get replicasets -n {namespace}' },
+      { id: 'hpa-list', name: 'HPAs', command: 'kubectl get hpa -n {namespace}' },
+      { id: 'np-list', name: 'NetworkPolicies', command: 'kubectl get networkpolicies -n {namespace}' },
+      { id: 'role-list', name: 'Roles', command: 'kubectl get roles -n {namespace}' },
+      { id: 'rb-list', name: 'RoleBindings', command: 'kubectl get rolebindings -n {namespace}' },
     ];
   }
 
@@ -73,16 +79,31 @@ export class TemplateService {
         command: `kubectl logs ${selectedPod} -n {namespace} --tail=50 -f`
       },
       {
+        id: `pod-${selectedPod}-logs-prev`,
+        name: `Previous Logs`,
+        command: `kubectl logs ${selectedPod} -n {namespace} --previous --tail=100`
+      },
+      {
         id: `pod-${selectedPod}-describe`,
         name: `Details`,
         command: `kubectl describe pod ${selectedPod} -n {namespace}`
+      },
+      {
+        id: `pod-${selectedPod}-yaml`,
+        name: `YAML`,
+        command: `kubectl get pod ${selectedPod} -n {namespace} -o yaml`
       },
       {
         id: `pod-${selectedPod}-exec`,
         name: `Exec Shell`,
         command: `kubectl exec -it ${selectedPod} -n {namespace} -- /bin/sh`,
         disabled: true
-      }
+      },
+      {
+        id: `pod-${selectedPod}-delete`,
+        name: `Delete`,
+        command: `kubectl delete pod ${selectedPod} -n {namespace}`
+      },
     ];
   }
 
@@ -188,7 +209,7 @@ export class TemplateService {
       { id: `sts-${selected}-yaml`, name: 'YAML', command: `kubectl get statefulset ${selected} -n {namespace} -o yaml` },
       { id: `sts-${selected}-rollout`, name: 'Rollout Status', command: `kubectl rollout status statefulset/${selected} -n {namespace}` },
       { id: `sts-${selected}-restart`, name: 'Restart', command: `kubectl rollout restart statefulset/${selected} -n {namespace}` },
-      { id: `sts-${selected}-scale`, name: 'Scale', command: `kubectl scale statefulset ${selected} --replicas=3 -n {namespace}` },
+      { id: `sts-${selected}-scale`, name: 'Scale', command: `kubectl scale statefulset ${selected} --replicas= -n {namespace}`, requiresInput: true },
     ];
   }
 
@@ -207,6 +228,7 @@ export class TemplateService {
     return [
       { id: `cm-${selected}-describe`, name: 'Details', command: `kubectl describe configmap ${selected} -n {namespace}` },
       { id: `cm-${selected}-yaml`, name: 'YAML', command: `kubectl get configmap ${selected} -n {namespace} -o yaml` },
+      { id: `cm-${selected}-json`, name: 'Data (JSON)', command: `kubectl get configmap ${selected} -n {namespace} -o jsonpath="{.data}"` },
     ];
   }
 
@@ -240,6 +262,7 @@ export class TemplateService {
     return [
       { id: `ing-${selected}-describe`, name: 'Details', command: `kubectl describe ingress ${selected} -n {namespace}` },
       { id: `ing-${selected}-yaml`, name: 'YAML', command: `kubectl get ingress ${selected} -n {namespace} -o yaml` },
+      { id: `ing-${selected}-endpoints`, name: 'Endpoints', command: `kubectl get endpoints -n {namespace}` },
     ];
   }
 
@@ -256,6 +279,58 @@ export class TemplateService {
     return [
       { id: `hr-${selected}-describe`, name: 'Details', command: `kubectl describe httproute ${selected} -n {namespace}` },
       { id: `hr-${selected}-yaml`, name: 'YAML', command: `kubectl get httproute ${selected} -n {namespace} -o yaml` },
+    ];
+  }
+
+  generateDaemonSetTemplates(selected: string): CommandTemplate[] {
+    if (!selected) return [];
+    return [
+      { id: `ds-${selected}-describe`, name: 'Details', command: `kubectl describe daemonset ${selected} -n {namespace}` },
+      { id: `ds-${selected}-yaml`, name: 'YAML', command: `kubectl get daemonset ${selected} -n {namespace} -o yaml` },
+      { id: `ds-${selected}-rollout`, name: 'Rollout Status', command: `kubectl rollout status daemonset/${selected} -n {namespace}` },
+      { id: `ds-${selected}-restart`, name: 'Restart', command: `kubectl rollout restart daemonset/${selected} -n {namespace}` },
+    ];
+  }
+
+  generateReplicaSetTemplates(selected: string): CommandTemplate[] {
+    if (!selected) return [];
+    return [
+      { id: `rs-${selected}-describe`, name: 'Details', command: `kubectl describe replicaset ${selected} -n {namespace}` },
+      { id: `rs-${selected}-yaml`, name: 'YAML', command: `kubectl get replicaset ${selected} -n {namespace} -o yaml` },
+      { id: `rs-${selected}-scale`, name: 'Scale', command: `kubectl scale replicaset ${selected} --replicas= -n {namespace}`, requiresInput: true },
+    ];
+  }
+
+  generateHPATemplates(selected: string): CommandTemplate[] {
+    if (!selected) return [];
+    return [
+      { id: `hpa-${selected}-describe`, name: 'Details', command: `kubectl describe hpa ${selected} -n {namespace}` },
+      { id: `hpa-${selected}-yaml`, name: 'YAML', command: `kubectl get hpa ${selected} -n {namespace} -o yaml` },
+      { id: `hpa-${selected}-status`, name: 'Status', command: `kubectl get hpa ${selected} -n {namespace} -o wide` },
+    ];
+  }
+
+  generateNetworkPolicyTemplates(selected: string): CommandTemplate[] {
+    if (!selected) return [];
+    return [
+      { id: `np-${selected}-describe`, name: 'Details', command: `kubectl describe networkpolicy ${selected} -n {namespace}` },
+      { id: `np-${selected}-yaml`, name: 'YAML', command: `kubectl get networkpolicy ${selected} -n {namespace} -o yaml` },
+    ];
+  }
+
+  generateRoleTemplates(selected: string): CommandTemplate[] {
+    if (!selected) return [];
+    return [
+      { id: `role-${selected}-describe`, name: 'Details', command: `kubectl describe role ${selected} -n {namespace}` },
+      { id: `role-${selected}-yaml`, name: 'YAML', command: `kubectl get role ${selected} -n {namespace} -o yaml` },
+    ];
+  }
+
+  generateRoleBindingTemplates(selected: string): CommandTemplate[] {
+    if (!selected) return [];
+    return [
+      { id: `rb-${selected}-describe`, name: 'Details', command: `kubectl describe rolebinding ${selected} -n {namespace}` },
+      { id: `rb-${selected}-yaml`, name: 'YAML', command: `kubectl get rolebinding ${selected} -n {namespace} -o yaml` },
     ];
   }
 

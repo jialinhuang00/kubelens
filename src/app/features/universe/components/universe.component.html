@@ -6,8 +6,7 @@
   <div class="sidebar">
     <!-- Sidebar header -->
     <div class="sidebar-header">
-      <app-back-link />
-      <h1 class="sidebar-title">K8s Universe</h1>
+      <app-back-link label="K8s Universe" />
       @if (stats(); as s) {
         <span class="stats-badge">{{ s.totalNodes }}</span>
       }
@@ -70,97 +69,13 @@
       }
     </div>
 
-    <!-- Divider -->
-    <div class="sidebar-divider" [class.active]="!!selectedNode()"></div>
+    <!-- Docked detail panel (in sidebar flow, below legend) -->
+    @if (selectedNode(); as node) {
+      <div class="detail-card" (mousedown)="$event.stopPropagation()">
+        <ng-container *ngTemplateOutlet="detailTpl" />
+      </div>
+    }
 
-    <!-- Bottom section: Node details -->
-    <div class="sidebar-details">
-      @if (selectedNode(); as node) {
-        <!-- Selected node info -->
-        <div class="detail-header">
-          <div class="detail-kind-badge" [style.background]="getKindColor(node.kind)">
-            {{ node.kind }}
-          </div>
-          <h2 class="detail-name">{{ node.name }}</h2>
-        </div>
-
-        <!-- Metadata -->
-        <div class="detail-meta">
-          <div class="meta-row">
-            <span class="meta-label">Namespace</span>
-            <span class="meta-value">{{ node.namespace }}</span>
-          </div>
-          <div class="meta-row">
-            <span class="meta-label">Category</span>
-            <span class="meta-value">{{ node.category }}</span>
-          </div>
-          @for (entry of (node.metadata | keyvalue); track entry.key) {
-            @if (entry.value && entry.key !== 'containers' && entry.key !== 'image' && entry.key !== 'registry') {
-              <div class="meta-row">
-                <span class="meta-label">{{ entry.key }}</span>
-                <span class="meta-value">{{ entry.value }}</span>
-              </div>
-            }
-          }
-          @if ($any(node.metadata['containers'])?.length > 1) {
-            <div class="meta-col">
-              <span class="meta-label">images</span>
-              @if (node.metadata['registry']) {
-                <span class="meta-hint">{{ node.metadata['registry'] }}</span>
-              }
-              @for (img of $any(node.metadata['containers']); track img) {
-                <span class="meta-value">{{ img }}</span>
-              }
-            </div>
-          } @else if (node.metadata['image']) {
-            <div class="meta-row">
-              <span class="meta-label">image</span>
-              <span class="meta-value">{{ node.metadata['image'] }}</span>
-            </div>
-          }
-        </div>
-
-        <!-- Pods section (for workloads) -->
-        @if (expandedPods().length > 0) {
-          <h3 class="section-heading">Pods ({{ expandedPods().length }})</h3>
-          <div class="pods-list">
-            @for (pod of expandedPods(); track pod.id) {
-              <div class="pod-item">
-                <span class="pod-status-dot" [style.background]="getPodStatusColor(pod)"></span>
-                <div class="pod-info">
-                  <span class="pod-name">{{ pod.name }}</span>
-                  @for (img of $any(pod.metadata['containers']); track img) {
-                    <span class="pod-image">{{ img }}</span>
-                  }
-                </div>
-                <span class="pod-status" [style.color]="getPodStatusColor(pod)">{{ pod.metadata['status'] }}</span>
-              </div>
-            }
-          </div>
-        }
-
-        <!-- Connected resources -->
-        @if (groupedConnections().length > 0) {
-          <h3 class="section-heading">Connections</h3>
-          @for (group of groupedConnections(); track group.type) {
-            <div class="connection-group">
-              <div class="group-label">{{ group.type }}</div>
-              @for (item of group.items; track item.node.id) {
-                <button class="connected-node-btn" (click)="onConnectedNodeClick(item.node)">
-                  <span class="conn-dot" [style.background]="getKindColor(item.node.kind)"></span>
-                  <span class="conn-kind">{{ item.node.kind }}/</span>
-                  <span class="conn-name">{{ item.node.name }}</span>
-                </button>
-              }
-            </div>
-          }
-        }
-      } @else {
-        <div class="no-selection">
-          <p>Select a node to view details</p>
-        </div>
-      }
-    </div>
   </div>
   </div>
   <button class="collapse-toggle sidebar-toggle" (click)="toggleSidebar()" [title]="sidebarCollapsed() ? 'Show sidebar' : 'Hide sidebar'">
@@ -228,7 +143,6 @@
              [class.orphan]="label.orphan"
              [style.left.px]="label.x"
              [style.top.px]="label.y"
-             [style.color]="label.color"
              [style.--glow-color]="label.color">
           <span class="label-text">{{ label.text }}</span>
         </div>
@@ -243,6 +157,7 @@
       <button class="action-btn" (click)="fitView()" title="Fit view (F)">
         <span>&#x26F6;</span> Fit
       </button>
+      <app-theme-switcher />
       <app-mode-toggle (modeChanged)="onModeChanged()"></app-mode-toggle>
     </div>
 
@@ -272,4 +187,96 @@
       }
     </div>
   </div>
+
+  <!-- ============ FLOATING DETAIL PANEL (sidebar collapsed) ============ -->
+  @if (sidebarCollapsed() && selectedNode()) {
+    <div class="detail-panel floating"
+         [style.left.px]="detailPanelPos().x"
+         [style.top.px]="detailPanelPos().y"
+         (mousedown)="onDetailPanelMouseDown($event)">
+      <div class="detail-panel-drag-bar" (mousedown)="onDragStart($event)">
+        <span class="drag-dots">&#x2801;&#x2801;&#x2801;</span>
+      </div>
+      <ng-container *ngTemplateOutlet="detailTpl" />
+    </div>
+  }
 </div>
+
+<!-- ============ SHARED DETAIL TEMPLATE ============ -->
+<ng-template #detailTpl>
+  @if (selectedNode(); as node) {
+    <div class="detail-panel-header">
+      <div class="detail-kind-badge" [style.background]="getKindColor(node.kind)">
+        {{ node.kind }}
+      </div>
+      <h2 class="detail-name">{{ node.name }}</h2>
+      <button class="detail-close" (click)="clearSelection()" title="Close">&times;</button>
+    </div>
+    <div class="detail-panel-body">
+      <div class="detail-meta">
+        <div class="meta-row">
+          <span class="meta-label">Namespace</span>
+          <span class="meta-value">{{ node.namespace }}</span>
+        </div>
+        @for (entry of (node.metadata | keyvalue); track entry.key) {
+          @if (entry.value && entry.key !== 'containers' && entry.key !== 'image' && entry.key !== 'registry' && entry.key !== 'status') {
+            <div class="meta-row">
+              <span class="meta-label">{{ entry.key }}</span>
+              <span class="meta-value">{{ entry.value }}</span>
+            </div>
+          }
+        }
+        @if ($any(node.metadata['containers'])?.length > 1) {
+          <div class="meta-col">
+            <span class="meta-label">images</span>
+            @if (node.metadata['registry']) {
+              <span class="meta-hint">{{ node.metadata['registry'] }}</span>
+            }
+            @for (img of $any(node.metadata['containers']); track img) {
+              <span class="meta-value">{{ img }}</span>
+            }
+          </div>
+        } @else if (node.metadata['image']) {
+          <div class="meta-row">
+            <span class="meta-label">image</span>
+            <span class="meta-value">{{ node.metadata['image'] }}</span>
+          </div>
+        }
+      </div>
+
+      @if (expandedPods().length > 0) {
+        <h3 class="section-heading">Pods ({{ expandedPods().length }})</h3>
+        <div class="pods-list">
+          @for (pod of expandedPods(); track pod.id) {
+            <div class="pod-item">
+              <span class="pod-status-dot" [style.background]="getPodStatusColor(pod)"></span>
+              <div class="pod-info">
+                <span class="pod-name">{{ pod.name }}</span>
+                <span class="pod-status" [style.color]="getPodStatusColor(pod)">{{ pod.metadata['status'] }}</span>
+                @for (img of $any(pod.metadata['containers']); track img) {
+                  <span class="pod-image">{{ img }}</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      @if (groupedConnections().length > 0) {
+        <h3 class="section-heading">Connections</h3>
+        @for (group of groupedConnections(); track group.type) {
+          <div class="connection-group">
+            <div class="group-label">{{ group.type }}</div>
+            @for (item of group.items; track item.node.id) {
+              <button class="connected-node-btn" (click)="onConnectedNodeClick(item.node)">
+                <span class="conn-dot" [style.background]="getKindColor(item.node.kind)"></span>
+                <span class="conn-kind">{{ item.node.kind }}/</span>
+                <span class="conn-name">{{ item.node.name }}</span>
+              </button>
+            }
+          </div>
+        }
+      }
+    </div>
+  }
+</ng-template>

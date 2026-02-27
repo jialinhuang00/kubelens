@@ -5,9 +5,10 @@ import {
   GraphNode,
   GraphEdge,
   KIND_COLORS,
-  EDGE_COLORS,
   CATEGORY_SIZES,
   getCategory,
+  getThemedKindColors,
+  getThemedEdgeColors,
   NodeKind,
   EdgeType,
 } from '../models/graph.models';
@@ -63,6 +64,7 @@ export class GraphLayoutService {
   private callbacks: GraphCallbacks | null = null;
   private temporaryNodeIds = new Set<string>();
   private baseNodeCount = 0; // node count before temporary pods
+  private currentKindColors: Record<NodeKind, string> = KIND_COLORS;
 
   initializeGraph(
     canvas: HTMLCanvasElement,
@@ -77,13 +79,18 @@ export class GraphLayoutService {
     const nodeCount = this.cosmosNodes.length;
     const isLarge = nodeCount > 200;
 
+    // Read themed colors from CSS tokens at init time
+    this.currentKindColors = getThemedKindColors();
+    const kindColors = this.currentKindColors;
+    const edgeColors = getThemedEdgeColors();
+
     this.ngZone.runOutsideAngular(() => {
       this.graph = new Graph<CosmosNode, CosmosLink>(canvas, {
         backgroundColor: 'rgba(0, 0, 0, 0)',
-        nodeColor: (n) => KIND_COLORS[n.data.kind] ?? '#888',
+        nodeColor: (n) => kindColors[n.data.kind] ?? '#888',
         nodeSize: (n) => n.data.kind === 'Pod' ? 3 : (CATEGORY_SIZES[getCategory(n.data.kind)] ?? 5),
         nodeSizeScale: 1,
-        linkColor: (l) => EDGE_COLORS[l.data.type] ?? '#556677',
+        linkColor: (l) => edgeColors[l.data.type] ?? '#556677',
         linkWidth: (l) => {
           const t = l.data.type;
           if (t === EdgeType.Exposes || t === EdgeType.RoutesTo || t === EdgeType.ParentGateway) return 1.5;
@@ -101,7 +108,7 @@ export class GraphLayoutService {
         nodeGreyoutOpacity: 0.1,
         linkGreyoutOpacity: 0.1,
         hoveredNodeRingColor: '#ffffff',
-        focusedNodeRingColor: '#e8b866',
+        focusedNodeRingColor: getComputedStyle(document.documentElement).getPropertyValue('--t-accent').trim() || '#e8b866',
         randomSeed: 42,
         disableSimulation: isLarge,
         simulation: {
@@ -180,7 +187,7 @@ export class GraphLayoutService {
         id: node.id,
         text: node.data.name,
         kind: node.data.kind,
-        color: KIND_COLORS[node.data.kind] ?? '#888',
+        color: this.currentKindColors[node.data.kind] ?? '#888',
         x: screenPos[0],
         y: screenPos[1],
         size: CATEGORY_SIZES[getCategory(node.data.kind)] ?? 5,
@@ -193,7 +200,7 @@ export class GraphLayoutService {
         let entry = nsPositions.get(ns);
         if (!entry) {
           // Use namespace node color if available
-          const nsColor = KIND_COLORS['Namespace'];
+          const nsColor = this.currentKindColors['Namespace'];
           entry = { xs: [], ys: [], color: nsColor };
           nsPositions.set(ns, entry);
         }
@@ -387,7 +394,7 @@ export class GraphLayoutService {
   /** Show WebGL dots (overview mode) */
   setNodesVisible(): void {
     if (!this.graph) return;
-    this.graph.setConfig({ nodeColor: (n) => KIND_COLORS[n.data.kind] ?? '#888' });
+    this.graph.setConfig({ nodeColor: (n) => this.currentKindColors[n.data.kind] ?? '#888' });
   }
 
   spaceToScreen(pos: [number, number]): [number, number] {

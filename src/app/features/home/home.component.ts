@@ -3,11 +3,12 @@ import { RouterLink } from '@angular/router';
 import { DataModeService } from '../../core/services/data-mode.service';
 import { K8sExportService } from '../../core/services/k8s-export.service';
 import { TickFlashDirective } from '../../shared/directives/tick-flash.directive';
+import { ThemeSwitcherComponent } from '../../shared/components/theme-switcher/theme-switcher.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [RouterLink, TickFlashDirective],
+  imports: [RouterLink, TickFlashDirective, ThemeSwitcherComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
 })

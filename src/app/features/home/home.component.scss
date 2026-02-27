@@ -5,19 +5,26 @@
   justify-content: center;
   min-height: 100vh;
   padding: 2rem;
+  position: relative;
+}
+
+.theme-corner {
+  position: absolute;
+  top: 16px;
+  right: 16px;
 }
 
 .title {
   font-size: 2rem;
   font-weight: 700;
-  color: #e8b866;
+  color: var(--t-accent);
   letter-spacing: 0.04em;
   margin-bottom: 0.25rem;
 }
 
 .subtitle {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--t-text-secondary);
   margin-bottom: 2rem;
 }
 
@@ -26,27 +33,27 @@
   display: flex;
   border-radius: 6px;
   overflow: hidden;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--t-border);
   margin-bottom: 0.75rem;
 }
 
 .hint {
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--t-text-secondary);
   opacity: 0.7;
   margin-bottom: 2rem;
 
   code {
     font-family: 'IBM Plex Mono', monospace;
-    color: #e8b866;
-    background: rgba(232, 184, 102, 0.1);
+    color: var(--t-accent);
+    background: rgba(128, 128, 128, 0.1);
     padding: 1px 5px;
     border-radius: 3px;
     font-size: 10px;
   }
 
   &.hint-error {
-    color: #e07070;
+    color: var(--t-error);
     opacity: 1;
   }
 }
@@ -59,13 +66,13 @@
   letter-spacing: 0.04em;
   background: transparent;
   border: none;
-  color: var(--text-secondary);
+  color: var(--t-text-secondary);
   cursor: pointer;
   transition: all 0.15s ease;
 
   &:hover:not(:disabled) {
-    color: var(--text-primary);
-    background: rgba(232, 184, 102, 0.08);
+    color: var(--t-text-primary);
+    background: rgba(128, 128, 128, 0.08);
   }
 
   &:disabled {
@@ -74,8 +81,8 @@
   }
 
   &.active {
-    color: #0e0b08;
-    background: #e8b866;
+    color: var(--t-text-on-accent);
+    background: var(--t-accent);
   }
 }
 
@@ -92,16 +99,16 @@
   gap: 0.75rem;
   width: 220px;
   padding: 2rem 1.5rem;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  background: var(--t-bg-surface);
+  border: 1px solid var(--t-border);
+  border-radius: var(--t-radius-lg);
   text-decoration: none;
   cursor: pointer;
   transition: all 0.2s ease;
 
   &:hover {
-    border-color: #e8b866;
-    box-shadow: 0 0 20px rgba(232, 184, 102, 0.15);
+    border-color: var(--t-accent);
+    box-shadow: 0 0 20px rgba(128, 128, 128, 0.15);
     transform: translateY(-2px);
   }
 }
@@ -109,21 +116,21 @@
 .card-icon {
   font-size: 2rem;
   font-family: 'IBM Plex Mono', monospace;
-  color: #e8b866;
+  color: var(--t-accent);
   line-height: 1;
 }
 
 .card-label {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--t-text-primary);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
 .card-desc {
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--t-text-secondary);
   text-align: center;
   line-height: 1.4;
 }
@@ -132,7 +139,7 @@
 .export-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(8, 6, 4, 0.6);
+  background: rgba(0, 0, 0, 0.6);
   z-index: 10;
   animation: fadeIn 0.3s ease;
 }
@@ -157,28 +164,20 @@
     padding: 1.5rem 2rem;
     gap: 0.75rem;
   }
-  background: rgba(50, 40, 26, 0.95);
+  background: var(--t-bg-surface);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(232, 184, 102, 0.35);
-  border-radius: 8px;
+  border: 1px solid var(--t-border-glow);
+  border-radius: var(--t-radius-md);
   margin-bottom: 2rem;
-  box-shadow:
-    0 0 30px rgba(232, 184, 102, 0.12),
-    0 4px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--t-shadow-panel);
 
   &.export-done {
-    border-color: rgba(109, 202, 130, 0.5);
-    box-shadow:
-      0 0 30px rgba(109, 202, 130, 0.12),
-      0 4px 24px rgba(0, 0, 0, 0.4);
+    border-color: var(--t-success);
   }
 
   &.export-paused {
-    border-color: rgba(212, 149, 106, 0.5);
-    box-shadow:
-      0 0 30px rgba(212, 149, 106, 0.12),
-      0 4px 24px rgba(0, 0, 0, 0.4);
+    border-color: var(--t-warning);
   }
 }
 
@@ -191,48 +190,48 @@
 .export-label {
   font-size: 12px;
   font-weight: 600;
-  color: #e8b866;
+  color: var(--t-accent);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .export-tip {
   font-size: 11px;
-  color: #d4c8a8;
+  color: var(--t-text-primary);
   font-style: italic;
 }
 
 .export-cancel {
   font-size: 10px;
-  color: #c8bca0;
+  color: var(--t-text-secondary);
   background: transparent;
-  border: 1px solid rgba(200, 188, 160, 0.3);
+  border: 1px solid var(--t-border);
   border-radius: 4px;
   padding: 2px 8px;
   cursor: pointer;
   transition: all 0.15s ease;
 
   &:hover {
-    color: #e07070;
-    border-color: #e07070;
+    color: var(--t-error);
+    border-color: var(--t-error);
   }
 }
 
 .export-ns {
   font-size: 12px;
-  color: #c8bca0;
+  color: var(--t-text-primary);
   font-family: 'IBM Plex Mono', monospace;
   margin: 0;
 
   strong {
-    color: #f0c870;
+    color: var(--t-accent);
     font-weight: 600;
   }
 }
 
 .export-resource {
   font-size: 11px;
-  color: #b8ac90;
+  color: var(--t-text-secondary);
   font-family: 'IBM Plex Mono', monospace;
   margin: 0;
   animation: slideIn 0.3s ease-out;
@@ -253,7 +252,7 @@
 }
 
 .export-overflow {
-  color: #e8b866;
+  color: var(--t-accent);
   opacity: 0.7;
 }
 
@@ -292,14 +291,14 @@
 .progress-bar {
   width: 100%;
   height: 6px;
-  background: rgba(232, 184, 102, 0.12);
+  background: var(--t-border);
   border-radius: 3px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: #e8b866;
+  background: var(--t-accent);
   border-radius: 3px;
   transition: width 0.3s ease;
   position: relative;
@@ -330,7 +329,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 10px;
-  color: #b8ac90;
+  color: var(--t-text-secondary);
   font-family: 'IBM Plex Mono', monospace;
 
   .tick-flash {
@@ -340,8 +339,8 @@
 
 @keyframes tickFlash {
   0% {
-    color: #f0d080;
-    text-shadow: 0 0 6px rgba(232, 184, 102, 0.8);
+    color: var(--t-accent-hover);
+    text-shadow: 0 0 6px var(--t-accent);
   }
   100% {
     color: inherit;
@@ -351,7 +350,7 @@
 
 .export-success {
   font-size: 12px;
-  color: #6dca82;
+  color: var(--t-success);
   margin: 0;
 }
 
@@ -361,8 +360,8 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #0e0b08;
-  background: #e8b866;
+  color: var(--t-text-on-accent);
+  background: var(--t-accent);
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -370,7 +369,7 @@
   align-self: center;
 
   &:hover {
-    background: #f0d080;
+    background: var(--t-accent-hover);
   }
 }
 
@@ -382,6 +381,6 @@
 
 .card-hint {
   font-size: 10px;
-  color: #d4956a;
+  color: var(--t-warning);
   font-style: italic;
 }
