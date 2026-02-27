@@ -7,26 +7,27 @@
 // Theme Token System
 // =============================================================
 
+// ---- Henesys (default — light, green meadows) ----
 :root {
   // ---- Colors ----
-  --t-accent: #e8b866;
-  --t-accent-hover: #f0d080;
-  --t-bg-body: #0e0b08;
-  --t-bg-surface: #1c1610;
-  --t-bg-panel: #151010;
-  --t-bg-terminal: #0a0804;
-  --t-bg-output: rgba(0, 0, 0, 0.8);
-  --t-text-primary: #e8dcc8;
-  --t-text-dim: rgba(232, 220, 200, 0.5);
-  --t-text-secondary: #a89880;
-  --t-text-on-accent: #0e0b08;
-  --t-border: rgba(232, 184, 102, 0.12);
-  --t-border-glow: rgba(232, 184, 102, 0.3);
+  --t-accent: #d08840;
+  --t-accent-hover: #e0a050;
+  --t-bg-body: #f5edd6;
+  --t-bg-surface: #e8dfc4;
+  --t-bg-panel: #f0e8d0;
+  --t-bg-terminal: #faf6e8;
+  --t-bg-output: #1a1a10;
+  --t-text-primary: #3a3428;
+  --t-text-dim: rgba(58, 52, 40, 0.5);
+  --t-text-secondary: #6a6050;
+  --t-text-on-accent: #fff;
+  --t-border: rgba(208, 136, 64, 0.18);
+  --t-border-glow: rgba(208, 136, 64, 0.4);
   --t-success: #6dca82;
-  --t-error: #e07070;
+  --t-error: #d05050;
   --t-warning: #d4956a;
-  --t-log-text: #6dca82;
-  --t-log-dim: rgba(232, 220, 200, 0.3);
+  --t-log-text: #a07030;
+  --t-log-dim: #6a6050;
 
   // ---- Shape ----
   --t-radius-sm: 4px;
@@ -34,25 +35,26 @@
   --t-radius-lg: 12px;
 
   // ---- Effects ----
-  --t-shadow-panel: 0 4px 20px rgba(0, 0, 0, 0.4);
-  --t-gradient-header: linear-gradient(180deg, #151010, #0e0b08);
-  --t-gradient-button: linear-gradient(135deg, #1a1408, #1c1610);
+  --t-shadow-panel: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --t-gradient-header: linear-gradient(180deg, #e0a050, #c07830);
+  --t-gradient-button: linear-gradient(180deg, #f0e8d0, #e0d8bc);
 
   // ---- Graph ----
-  --t-bg-graph: #0a0804;
-  --t-graph-text: #e8dcc8;
-  --t-graph-text-dim: #5a5040;
-  --t-graph-border: rgba(255, 255, 255, 0.08);
-  --t-graph-label-shadow: 0 0 4px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.6);
-  --t-graph-effect-opacity: 1;
+  --t-bg-graph: #e8dfc4;
+  --t-graph-text: #3a3428;
+  --t-graph-text-dim: #7a7060;
+  --t-graph-border: rgba(208, 136, 64, 0.15);
+  --t-graph-label-shadow: 0 0 3px rgba(255,255,255,0.7);
+  --t-graph-effect-opacity: 0.3;
 
   // ---- Node kind colors (WebGL graph dots) ----
-  --t-kind-namespace: #e8b866;
-  --t-kind-workload: #6dca82;
-  --t-kind-network: #d0c8b8;
-  --t-kind-config: #b8b0a0;
-  --t-kind-storage: #d4956a;
-  --t-kind-rbac: #c8a060;
+  // Henesys: meadow green, sky blue, mushroom orange, stone grey, warm brown
+  --t-kind-namespace: #4a9a5a;
+  --t-kind-workload: #4a90c8;
+  --t-kind-network: #d08840;
+  --t-kind-config: #8a8878;
+  --t-kind-storage: #b86838;
+  --t-kind-rbac: #7a6850;
 
   // ---- Backward compat aliases ----
   --bg-primary: var(--t-bg-body);
@@ -67,164 +69,116 @@
   --border-subtle: var(--t-border);
 }
 
-// ---- Bondi Blue (iMac G3 teal) ----
-[data-theme="bondi-blue"] {
-  --t-accent: #20a898;
-  --t-accent-hover: #30c8b8;
-  --t-bg-body: #e6eded;
-  --t-bg-surface: #dce6e6;
-  --t-bg-panel: #f0f6f6;
-  --t-bg-terminal: #f6fafa;
-  --t-bg-output: #0a1e1e;
-  --t-text-primary: #1a2a2a;
-  --t-text-dim: #668080;
-  --t-text-secondary: #4a6a6a;
+// ---- Lith Harbor (light, coastal blue) ----
+[data-theme="lith-harbor"] {
+  --t-accent: #3d8ec9;
+  --t-accent-hover: #58a8e0;
+  --t-bg-body: #e8f0f6;
+  --t-bg-surface: #d4dfe8;
+  --t-bg-panel: #e0eaf2;
+  --t-bg-terminal: #f0f6fa;
+  --t-bg-output: #0a1420;
+  --t-text-primary: #2a3440;
+  --t-text-dim: rgba(42, 52, 64, 0.5);
+  --t-text-secondary: #506070;
   --t-text-on-accent: #fff;
-  --t-border: rgba(0, 153, 153, 0.18);
-  --t-border-glow: rgba(0, 200, 180, 0.35);
-  --t-success: #50e8b0;
-  --t-error: #e04848;
-  --t-warning: #e0a020;
-  --t-log-text: #80d8c8;
-  --t-log-dim: #406060;
-  --t-radius-sm: 8px;
-  --t-radius-md: 12px;
-  --t-radius-lg: 16px;
-  --t-shadow-panel: 0 2px 0 rgba(255,255,255,0.15) inset, 0 8px 32px rgba(0,0,0,0.12);
-  --t-gradient-header: linear-gradient(180deg, #5ce0d0, #20a0a0);
-  --t-gradient-button: linear-gradient(180deg, #e8f0f0, #d0dada);
-  --t-bg-graph: #dce8e8;
-  --t-graph-text: #1a2a2a;
-  --t-graph-text-dim: #5a7a7a;
-  --t-graph-border: rgba(0, 153, 153, 0.15);
-  --t-graph-label-shadow: 0 0 3px rgba(255,255,255,0.7);
-  --t-graph-effect-opacity: 0.3;
-  --t-kind-namespace: #0e7868;
-  --t-kind-workload: #1a8060;
-  --t-kind-network: #3a6878;
-  --t-kind-config: #4a6068;
-  --t-kind-storage: #a06820;
-  --t-kind-rbac: #607818;
-}
-
-// ---- Grape Soda (iMac G3 purple) ----
-[data-theme="grape-soda"] {
-  --t-accent: #8050e0;
-  --t-accent-hover: #a070f0;
-  --t-bg-body: #eae6f0;
-  --t-bg-surface: #e0dae8;
-  --t-bg-panel: #f4f0f8;
-  --t-bg-terminal: #f8f6fc;
-  --t-bg-output: #12081e;
-  --t-text-primary: #2a1840;
-  --t-text-dim: #806898;
-  --t-text-secondary: #5a4870;
-  --t-text-on-accent: #fff;
-  --t-border: rgba(128, 80, 224, 0.15);
-  --t-border-glow: rgba(160, 112, 240, 0.35);
-  --t-success: #70e0a0;
-  --t-error: #e04848;
-  --t-warning: #e0a020;
-  --t-log-text: #b898d8;
-  --t-log-dim: #504068;
-  --t-radius-sm: 8px;
-  --t-radius-md: 12px;
-  --t-radius-lg: 16px;
-  --t-shadow-panel: 0 2px 0 rgba(255,255,255,0.12) inset, 0 8px 32px rgba(0,0,0,0.12);
-  --t-gradient-header: linear-gradient(180deg, #c8a0f0, #8858d0);
-  --t-gradient-button: linear-gradient(180deg, #ece6f4, #dcd0e8);
-  --t-bg-graph: #e0dae8;
-  --t-graph-text: #2a1840;
-  --t-graph-text-dim: #6a5880;
-  --t-graph-border: rgba(128, 80, 224, 0.12);
-  --t-graph-label-shadow: 0 0 3px rgba(255,255,255,0.7);
-  --t-graph-effect-opacity: 0.3;
-  --t-kind-namespace: #6030b0;
-  --t-kind-workload: #7840a0;
-  --t-kind-network: #4858a0;
-  --t-kind-config: #605070;
-  --t-kind-storage: #b85830;
-  --t-kind-rbac: #987020;
-}
-
-// ---- XP Olive (Windows XP green) ----
-[data-theme="xp-olive"] {
-  --t-accent: #508018;
-  --t-accent-hover: #68a030;
-  --t-bg-body: #eae8d4;
-  --t-bg-surface: #dddbc8;
-  --t-bg-panel: #fff;
-  --t-bg-terminal: #fff;
-  --t-bg-output: #0c0c08;
-  --t-text-primary: #333;
-  --t-text-dim: #556040;
-  --t-text-secondary: #666;
-  --t-text-on-accent: #fff;
-  --t-border: rgba(80, 128, 24, 0.2);
-  --t-border-glow: rgba(80, 128, 24, 0.4);
-  --t-success: #60d860;
-  --t-error: #cc3030;
-  --t-warning: #e0a020;
-  --t-log-text: #b0c890;
-  --t-log-dim: #506040;
-  --t-radius-sm: 3px;
-  --t-radius-md: 4px;
-  --t-radius-lg: 8px;
-  --t-shadow-panel: 0 4px 16px rgba(0,0,0,0.15);
-  --t-gradient-header: linear-gradient(180deg, #88c840, #508018);
-  --t-gradient-button: linear-gradient(180deg, #d4d0bc, #c0bca8);
-  --t-bg-graph: #e0dec8;
-  --t-graph-text: #333;
-  --t-graph-text-dim: #556040;
-  --t-graph-border: rgba(80, 128, 24, 0.12);
-  --t-graph-label-shadow: 0 0 3px rgba(255,255,255,0.7);
-  --t-graph-effect-opacity: 0.3;
-  --t-kind-namespace: #386010;
-  --t-kind-workload: #487818;
-  --t-kind-network: #686048;
-  --t-kind-config: #585850;
-  --t-kind-storage: #985820;
-  --t-kind-rbac: #806818;
-}
-
-// ---- XP Silver (XP Metallic + Aqua hybrid) ----
-[data-theme="xp-silver"] {
-  --t-accent: #5060a8;
-  --t-accent-hover: #6878c0;
-  --t-bg-body: #e4e6ec;
-  --t-bg-surface: #dcdee6;
-  --t-bg-panel: #f0f0f6;
-  --t-bg-terminal: #f6f6fa;
-  --t-bg-output: #10121a;
-  --t-text-primary: #2a2a38;
-  --t-text-dim: #707890;
-  --t-text-secondary: #505868;
-  --t-text-on-accent: #fff;
-  --t-border: rgba(80, 96, 168, 0.15);
-  --t-border-glow: rgba(80, 96, 168, 0.35);
-  --t-success: #60c8a0;
+  --t-border: rgba(61, 142, 201, 0.18);
+  --t-border-glow: rgba(61, 142, 201, 0.4);
+  --t-success: #50c8a0;
   --t-error: #d05050;
   --t-warning: #d0a040;
-  --t-log-text: #a0b0d0;
-  --t-log-dim: #485068;
-  --t-radius-sm: 4px;
-  --t-radius-md: 6px;
-  --t-radius-lg: 10px;
-  --t-shadow-panel: 0 2px 0 rgba(255,255,255,0.1) inset, 0 6px 24px rgba(0,0,0,0.12);
-  --t-gradient-header: linear-gradient(180deg, #c0c8e0, #7880a0);
-  --t-gradient-button: linear-gradient(180deg, #e8eaf0, #d0d2da);
-  --t-bg-graph: #dcdee6;
-  --t-graph-text: #2a2a38;
-  --t-graph-text-dim: #606878;
-  --t-graph-border: rgba(80, 96, 168, 0.10);
+  --t-log-text: #2878b0;
+  --t-log-dim: #506070;
+  --t-shadow-panel: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --t-gradient-header: linear-gradient(180deg, #58a8e0, #3080b8);
+  --t-gradient-button: linear-gradient(180deg, #e0eaf2, #d0dce6);
+  --t-bg-graph: #d4dfe8;
+  --t-graph-text: #2a3440;
+  --t-graph-text-dim: #607080;
+  --t-graph-border: rgba(61, 142, 201, 0.15);
   --t-graph-label-shadow: 0 0 3px rgba(255,255,255,0.7);
   --t-graph-effect-opacity: 0.3;
-  --t-kind-namespace: #384888;
-  --t-kind-workload: #2868a0;
-  --t-kind-network: #585e78;
-  --t-kind-config: #484e60;
-  --t-kind-storage: #a07028;
-  --t-kind-rbac: #786848;
+  // Lith Harbor: ocean blue, white stone, wood brown, purple dome, sand
+  --t-kind-namespace: #2878b0;
+  --t-kind-workload: #c8c0b0;
+  --t-kind-network: #7868b8;
+  --t-kind-config: #a08858;
+  --t-kind-storage: #c0a070;
+  --t-kind-rbac: #5898c8;
+}
+
+// ---- Ellinia (dark, deep forest green) ----
+[data-theme="ellinia"] {
+  --t-accent: #5aaa68;
+  --t-accent-hover: #70c080;
+  --t-bg-body: #141e14;
+  --t-bg-surface: #1e2c1e;
+  --t-bg-panel: #1a2618;
+  --t-bg-terminal: #101a10;
+  --t-bg-output: rgba(0, 0, 0, 0.8);
+  --t-text-primary: #c8d8c0;
+  --t-text-dim: rgba(200, 216, 192, 0.5);
+  --t-text-secondary: #7a9870;
+  --t-text-on-accent: #fff;
+  --t-border: rgba(90, 170, 104, 0.15);
+  --t-border-glow: rgba(90, 170, 104, 0.35);
+  --t-success: #60c880;
+  --t-error: #d86050;
+  --t-warning: #c8a050;
+  --t-log-text: #78b880;
+  --t-log-dim: rgba(200, 216, 192, 0.3);
+  --t-shadow-panel: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --t-gradient-header: linear-gradient(180deg, #1e2c1e, #141e14);
+  --t-gradient-button: linear-gradient(135deg, #1a2618, #1e2c1e);
+  --t-bg-graph: #141e14;
+  --t-graph-text: #c8d8c0;
+  --t-graph-text-dim: #4a6040;
+  --t-graph-border: rgba(90, 170, 104, 0.1);
+  --t-graph-label-shadow: 0 0 4px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.6);
+  --t-graph-effect-opacity: 1;
+  --t-kind-namespace: #5aaa68;
+  --t-kind-workload: #58b8d8;
+  --t-kind-network: #d0a850;
+  --t-kind-config: #b070c0;
+  --t-kind-storage: #d87850;
+  --t-kind-rbac: #c8c050;
+}
+
+// ---- Perion (dark, desert canyon orange) ----
+[data-theme="perion"] {
+  --t-accent: #d4784a;
+  --t-accent-hover: #e89060;
+  --t-bg-body: #2a1e18;
+  --t-bg-surface: #3a2c22;
+  --t-bg-panel: #302420;
+  --t-bg-terminal: #221a14;
+  --t-bg-output: rgba(0, 0, 0, 0.8);
+  --t-text-primary: #e8dcc8;
+  --t-text-dim: rgba(232, 220, 200, 0.5);
+  --t-text-secondary: #a08870;
+  --t-text-on-accent: #fff;
+  --t-border: rgba(212, 120, 74, 0.15);
+  --t-border-glow: rgba(212, 120, 74, 0.35);
+  --t-success: #6dca82;
+  --t-error: #e06060;
+  --t-warning: #d4956a;
+  --t-log-text: #d4956a;
+  --t-log-dim: rgba(232, 220, 200, 0.3);
+  --t-shadow-panel: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --t-gradient-header: linear-gradient(180deg, #3a2c22, #2a1e18);
+  --t-gradient-button: linear-gradient(135deg, #302420, #3a2c22);
+  --t-bg-graph: #2a1e18;
+  --t-graph-text: #e8dcc8;
+  --t-graph-text-dim: #6a5840;
+  --t-graph-border: rgba(212, 120, 74, 0.1);
+  --t-graph-label-shadow: 0 0 4px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.6);
+  --t-graph-effect-opacity: 1;
+  --t-kind-namespace: #d4784a;
+  --t-kind-workload: #6dca82;
+  --t-kind-network: #c8a878;
+  --t-kind-config: #a08870;
+  --t-kind-storage: #c89840;
+  --t-kind-rbac: #a09050;
 }
 
 // =============================================================

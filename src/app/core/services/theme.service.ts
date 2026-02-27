@@ -1,7 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
 
-export type ThemeId = 'default' | 'bondi-blue' | 'grape-soda' | 'xp-olive' | 'xp-silver';
-export type ChromeStyle = 'cyberpunk' | 'mac' | 'xp';
+export type ThemeId = 'default' | 'lith-harbor' | 'ellinia' | 'perion';
 
 export interface ThemeOption {
   id: ThemeId;
@@ -9,25 +8,24 @@ export interface ThemeOption {
   preview: string;
 }
 
+const VALID_THEMES = new Set<string>(['default', 'lith-harbor', 'ellinia', 'perion']);
+
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   private readonly STORAGE_KEY = 'kubecmds-theme';
 
   readonly themes: ThemeOption[] = [
-    { id: 'default', label: 'Soft Gold', preview: '#e8b866' },
-    { id: 'bondi-blue', label: 'Bondi Blue', preview: '#20a898' },
-    { id: 'grape-soda', label: 'Grape Soda', preview: '#8050e0' },
-    { id: 'xp-olive', label: 'XP Olive', preview: '#608820' },
-    { id: 'xp-silver', label: 'XP Silver', preview: '#8890b0' },
+    { id: 'default', label: 'Henesys', preview: '#d08840' },
+    { id: 'lith-harbor', label: 'Lith Harbor', preview: '#3d8ec9' },
+    { id: 'ellinia', label: 'Ellinia', preview: '#5aaa68' },
+    { id: 'perion', label: 'Perion', preview: '#d4784a' },
   ];
 
   readonly activeTheme = signal<ThemeId>(this.loadTheme());
 
-  readonly chromeStyle = computed<ChromeStyle>(() => {
+  readonly isDark = computed(() => {
     const t = this.activeTheme();
-    if (t === 'bondi-blue' || t === 'grape-soda') return 'mac';
-    if (t === 'xp-olive' || t === 'xp-silver') return 'xp';
-    return 'cyberpunk';
+    return t === 'ellinia' || t === 'perion';
   });
 
   constructor() {
@@ -49,6 +47,7 @@ export class ThemeService {
   }
 
   private loadTheme(): ThemeId {
-    return (localStorage.getItem(this.STORAGE_KEY) as ThemeId) || 'default';
+    const stored = localStorage.getItem(this.STORAGE_KEY);
+    return stored && VALID_THEMES.has(stored) ? (stored as ThemeId) : 'default';
   }
 }
