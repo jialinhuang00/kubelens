@@ -186,7 +186,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     return new Set<string>([selected.id, ...connected.map(n => n.id)]);
   });
 
-  // Search
+  // Search (namespace-scoped)
   readonly searchText = signal('');
   readonly searchResults = computed(() => {
     const text = this.searchText().toLowerCase();
@@ -199,6 +199,79 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly searchMatchIds = computed(() => new Set(this.searchResults().map(n => n.id)));
   readonly searchHighlightIndex = signal(-1);
   readonly searchOpen = signal(false);
+
+  // Global search (Cmd+K palette)
+  readonly globalSearchOpen = signal(false);
+  readonly globalSearchText = signal('');
+  readonly globalSearchIndex = signal(-1);
+  @ViewChild('globalSearchInput') globalSearchInputRef!: ElementRef<HTMLInputElement>;
+
+  readonly globalSearchResults = computed(() => {
+    const text = this.globalSearchText().toLowerCase().trim();
+    if (!text) return [];
+    const tokens = text.split(/[\s\/]+/).filter(Boolean);
+    if (tokens.length === 0) return [];
+    const nodes = this.graphData.nodes();
+
+    const scored: { node: GraphNode; score: number }[] = [];
+    for (const n of nodes) {
+      const candidate = `${n.kind}/${n.name} ${n.namespace}`.toLowerCase();
+      const score = this.fuzzyScore(tokens, candidate, n.name.toLowerCase(), text);
+      if (score > 0) scored.push({ node: n, score });
+    }
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, 50).map(s => s.node);
+  });
+
+  /**
+   * Fuzzy scoring: each token is matched against candidate with sequential
+   * character matching (characters must appear in order, not necessarily
+   * contiguous). Substring hits score higher than sparse fuzzy hits.
+   */
+  private fuzzyScore(tokens: string[], candidate: string, name: string, raw: string): number {
+    // Exact full match
+    if (name === raw) return 1000;
+
+    let total = 0;
+    for (const token of tokens) {
+      // Try substring first (best)
+      const subIdx = candidate.indexOf(token);
+      if (subIdx >= 0) {
+        // Bonus: starts at word boundary (after /, -, space, or position 0)
+        const boundary = subIdx === 0 || '/- '.includes(candidate[subIdx - 1]);
+        total += 50 + token.length * 2 + (boundary ? 20 : 0) + (name.includes(token) ? 15 : 0);
+        continue;
+      }
+      // Fallback: fuzzy sequential char match
+      const fs = this.fuzzyCharScore(token, candidate);
+      if (fs === 0) return 0; // token didn't match at all — reject node
+      total += fs;
+    }
+    return total;
+  }
+
+  /** Sequential character matching. Returns 0 if not all chars found in order. */
+  private fuzzyCharScore(pattern: string, text: string): number {
+    let pi = 0;
+    let consecutive = 0;
+    let maxConsecutive = 0;
+    let boundaryHits = 0;
+
+    for (let ti = 0; ti < text.length && pi < pattern.length; ti++) {
+      if (text[ti] === pattern[pi]) {
+        // Check if this is a word boundary position
+        if (ti === 0 || '/- _.'.includes(text[ti - 1])) boundaryHits++;
+        consecutive++;
+        maxConsecutive = Math.max(maxConsecutive, consecutive);
+        pi++;
+      } else {
+        consecutive = 0;
+      }
+    }
+    if (pi < pattern.length) return 0; // not all chars matched
+    // Score: base + bonus for consecutive runs + boundary hits
+    return 10 + maxConsecutive * 3 + boundaryHits * 5;
+  }
 
   readonly selectedKind = signal<NodeKind | null>(null);
 
@@ -473,6 +546,58 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.graphLayout.zoomToNode(node.id);
   }
 
+  // Global search methods
+  openGlobalSearch(): void {
+    this.globalSearchOpen.set(true);
+    this.globalSearchText.set('');
+    this.globalSearchIndex.set(-1);
+    setTimeout(() => this.globalSearchInputRef?.nativeElement?.focus());
+  }
+
+  closeGlobalSearch(): void {
+    this.globalSearchOpen.set(false);
+    this.globalSearchText.set('');
+    this.globalSearchIndex.set(-1);
+  }
+
+  onGlobalSearchInput(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.globalSearchText.set(value);
+    this.globalSearchIndex.set(-1);
+  }
+
+  onGlobalSearchKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.closeGlobalSearch();
+      return;
+    }
+    const results = this.globalSearchResults();
+    if (!results.length) return;
+    const idx = this.globalSearchIndex();
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.globalSearchIndex.set(Math.min(idx + 1, results.length - 1));
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.globalSearchIndex.set(Math.max(idx - 1, 0));
+    } else if (event.key === 'Enter' && idx >= 0 && idx < results.length) {
+      event.preventDefault();
+      this.selectGlobalResult(results[idx]);
+    }
+  }
+
+  selectGlobalResult(node: GraphNode): void {
+    this.closeGlobalSearch();
+    const currentNs = this.focusedNamespace();
+    if (currentNs !== node.namespace) {
+      this.focusNamespace(node.namespace);
+    }
+    this.selectNode(node);
+    this.graphLayout.zoomToNode(node.id);
+  }
+
   selectKind(kind: NodeKind): void {
     if (this.selectedKind() === kind) {
       // Toggle off
@@ -504,9 +629,20 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @HostListener('window:keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {
-    // Don't handle shortcuts when typing in search
+    // Cmd+K opens global search (always, even from inputs)
+    if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+      event.preventDefault();
+      this.openGlobalSearch();
+      return;
+    }
+
     const inInput = event.target instanceof HTMLInputElement;
+
     if (event.key === 'Escape') {
+      if (this.globalSearchOpen()) {
+        this.closeGlobalSearch();
+        return;
+      }
       if (inInput) {
         if (this.searchOpen()) {
           this.searchOpen.set(false);

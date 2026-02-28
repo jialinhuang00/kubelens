@@ -161,6 +161,13 @@
       <app-mode-toggle (modeChanged)="onModeChanged()"></app-mode-toggle>
     </div>
 
+    <!-- Search hint — clickable, opens Cmd+K palette -->
+    @if (!globalSearchOpen()) {
+      <button class="search-hint" (click)="openGlobalSearch()">
+        Search resources <kbd class="kbd">&#8984;K</kbd>
+      </button>
+    }
+
     <!-- Zoom indicator -->
     <div class="zoom-indicator">
       {{ zoomLevel() | number:'1.1-1' }}x
@@ -179,13 +186,46 @@
 
     <!-- Keyboard hints -->
     <div class="keyboard-hints">
-      <span>Esc: Deselect</span>
-      <span>F: Fit view</span>
+      <span><kbd class="kbd">Esc</kbd> Deselect</span>
+      <span><kbd class="kbd">F</kbd> Fit view</span>
       <span>Scroll: Zoom</span>
+      <span><kbd class="kbd">&#8984;K</kbd> Search</span>
       @if (focusedNamespace()) {
-        <span>/ : Search</span>
+        <span><kbd class="kbd">/</kbd> Search ns</span>
       }
     </div>
+
+    <!-- Global search command palette -->
+    @if (globalSearchOpen()) {
+      <div class="cmd-palette-backdrop" (click)="closeGlobalSearch()"></div>
+      <div class="cmd-palette">
+        <div class="cmd-palette-header">
+          <input #globalSearchInput
+                 class="cmd-palette-input"
+                 type="text"
+                 placeholder="Search all resources..."
+                 [value]="globalSearchText()"
+                 (input)="onGlobalSearchInput($event)"
+                 (keydown)="onGlobalSearchKeydown($event)"
+                 autofocus>
+          <kbd class="kbd">ESC</kbd>
+        </div>
+        <div class="cmd-palette-results">
+          @if (globalSearchText() && globalSearchResults().length === 0) {
+            <div class="search-empty">No matches</div>
+          }
+          @for (node of globalSearchResults(); track node.id; let i = $index) {
+            <button class="cmd-palette-item"
+                    [class.highlighted]="i === globalSearchIndex()"
+                    (click)="selectGlobalResult(node)">
+              <span class="item-dot" [style.background]="getKindColor(node.kind)"></span>
+              <span class="cmd-palette-label">{{ node.kind }}/{{ node.name }}</span>
+              <span class="cmd-palette-ns-badge">{{ node.namespace }}</span>
+            </button>
+          }
+        </div>
+      </div>
+    }
   </div>
 
   <!-- ============ FLOATING DETAIL PANEL (sidebar collapsed) ============ -->
