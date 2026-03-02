@@ -5,6 +5,7 @@ import {
   signal,
   computed,
   inject,
+  effect,
   ElementRef,
   ViewChild,
   AfterViewInit,
@@ -13,6 +14,7 @@ import {
 import { Router } from '@angular/router';
 import { DecimalPipe, KeyValuePipe, NgTemplateOutlet } from '@angular/common';
 import { DataModeService } from '../../../core/services/data-mode.service';
+import { ThemeService } from '../../../core/services/theme.service';
 import { ModeToggleComponent } from '../../../shared/components/mode-toggle/mode-toggle.component';
 import { ThemeSwitcherComponent } from '../../../shared/components/theme-switcher/theme-switcher.component';
 import { BackLinkComponent } from '../../../shared/components/back-link/back-link.component';
@@ -45,6 +47,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly graphLayout = inject(GraphLayoutService);
   private readonly router = inject(Router);
   protected readonly dataModeService = inject(DataModeService);
+  private readonly themeService = inject(ThemeService);
 
   @ViewChild('graphCanvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('searchInput') searchInputRef!: ElementRef<HTMLInputElement>;
@@ -62,8 +65,16 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly selectedEdges = signal<GraphEdge[]>([]);
   readonly connectedNodes = signal<GraphNode[]>([]);
 
-  // Theme-aware kind color palette (read once at init, refreshed on mode change)
+  // Theme-aware kind color palette (refreshed on theme or mode change)
   readonly kindColors = signal<Record<NodeKind, string>>(getThemedKindColors());
+
+  constructor() {
+    effect(() => {
+      this.themeService.activeTheme();
+      // Read after a tick so CSS variables are applied first
+      setTimeout(() => this.kindColors.set(getThemedKindColors()), 0);
+    });
+  }
 
   // Sidebar collapse
   readonly sidebarCollapsed = signal(false);

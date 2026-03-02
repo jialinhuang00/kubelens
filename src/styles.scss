@@ -181,6 +181,43 @@
   --t-kind-rbac: #a09050;
 }
 
+// ---- Ossyria (light, monochrome) ----
+[data-theme="ossyria"] {
+  --t-accent: #000000;
+  --t-accent-hover: #333333;
+  --t-bg-body: #ffffff;
+  --t-bg-surface: #f0f0f0;
+  --t-bg-panel: #f8f8f8;
+  --t-bg-terminal: #ffffff;
+  --t-bg-output: #000000;
+  --t-text-primary: #000000;
+  --t-text-dim: rgba(0, 0, 0, 0.4);
+  --t-text-secondary: #444444;
+  --t-text-on-accent: #ffffff;
+  --t-border: rgba(0, 0, 0, 0.1);
+  --t-border-glow: rgba(0, 0, 0, 0.3);
+  --t-success: #333333;
+  --t-error: #000000;
+  --t-warning: #555555;
+  --t-log-text: #222222;
+  --t-log-dim: rgba(0, 0, 0, 0.3);
+  --t-shadow-panel: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --t-gradient-header: linear-gradient(180deg, #222222, #000000);
+  --t-gradient-button: linear-gradient(180deg, #f8f8f8, #ebebeb);
+  --t-bg-graph: #f0f0f0;
+  --t-graph-text: #000000;
+  --t-graph-text-dim: #777777;
+  --t-graph-border: rgba(0, 0, 0, 0.07);
+  --t-graph-label-shadow: 0 0 3px rgba(255,255,255,0.95);
+  --t-graph-effect-opacity: 0.15;
+  --t-kind-namespace: #000000;
+  --t-kind-workload: #333333;
+  --t-kind-network: #555555;
+  --t-kind-config: #777777;
+  --t-kind-storage: #444444;
+  --t-kind-rbac: #999999;
+}
+
 // =============================================================
 // Base styles
 // =============================================================

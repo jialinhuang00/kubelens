@@ -1,6 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
 
-export type ThemeId = 'default' | 'lith-harbor' | 'ellinia' | 'perion';
+export type ThemeId = 'default' | 'lith-harbor' | 'ellinia' | 'perion' | 'ossyria';
 
 export interface ThemeOption {
   id: ThemeId;
@@ -8,7 +8,7 @@ export interface ThemeOption {
   preview: string;
 }
 
-const VALID_THEMES = new Set<string>(['default', 'lith-harbor', 'ellinia', 'perion']);
+const VALID_THEMES = new Set<string>(['default', 'lith-harbor', 'ellinia', 'perion', 'ossyria']);
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
@@ -19,6 +19,7 @@ export class ThemeService {
     { id: 'lith-harbor', label: 'Lith Harbor', preview: '#3d8ec9' },
     { id: 'ellinia', label: 'Ellinia', preview: '#5aaa68' },
     { id: 'perion', label: 'Perion', preview: '#d4784a' },
+    { id: 'ossyria', label: 'Ossyria', preview: '#222222' },
   ];
 
   readonly activeTheme = signal<ThemeId>(this.loadTheme());
