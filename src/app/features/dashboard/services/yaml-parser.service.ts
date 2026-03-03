@@ -48,22 +48,16 @@ export class YamlParserService {
     const spaces = match[1].length;
     const trimmedLine = line.trim();
 
-    // kubectl describe format detection:
-    // A line without a colon is likely a multi-line value continuation
     const hasColon = trimmedLine.includes(':');
     const isLikelyContinuation = !hasColon && spaces > 0;
     const isArrayItem = trimmedLine.startsWith('- ');
 
     let level = 0;
     if (isArrayItem) {
-      // Array items sit half a level deeper than their parent at the same indent
-      // e.g. "clusterIPs:" (2 spaces) and "- 10.96.96.125" (2 spaces)
       level = spaces + 0.5;
     } else if (isLikelyContinuation) {
-      // Continuation lines get a moderate sub-level, capped to avoid deep nesting
       level = Math.min(spaces, 10);
     } else {
-      // Use raw indent as level
       level = spaces;
     }
 
@@ -83,19 +77,16 @@ export class YamlParserService {
     const start = startIndex;
     let end = startIndex;
 
-    // Include all lines that are children (higher level) of this line
     for (let i = startIndex + 1; i < lines.length; i++) {
       const line = lines[i];
-      if (!line.trim()) continue; // Skip empty lines
+      if (!line.trim()) continue;
 
       const lineLevel = this.getIndentationLevel(line);
 
-      // If this line is at same or lower level than current, we've reached the end
       if (lineLevel <= level) {
         break;
       }
 
-      // This line is deeper than our level, so it belongs to our block
       end = i;
     }
     return { start, end };

@@ -16,13 +16,6 @@ export const routes: Routes = [
       ),
   },
   {
-    path: 'terminal-legacy',
-    loadComponent: () =>
-      import('./features/dashboard/components/dashboard.component').then(
-        (m) => m.DashboardComponent
-      ),
-  },
-  {
     path: 'universe',
     loadComponent: () =>
       import('./features/universe/components/universe.component').then(
