@@ -6,9 +6,20 @@ Browser-based Kubernetes visualization. GPU-accelerated resource graph + multi-w
 
 ![K8s Terminal — multi-window kubectl interface](./docs/03-terminal.png)
 
+## Prerequisites
+
+- Node.js 18+
+- `kubectl` configured with a valid kubeconfig (required for Realtime mode)
+- Snapshot mode works offline — no cluster needed
+
+Optional:
+- `aws` CLI — only needed for ECR image tag lookups
+- `ECR_PROFILE_MAP` in `.env` — maps AWS account IDs to SSO profile names. Copy `.env.example` to get started.
+
 ## Quick Start
 
 ```bash
+npm install
 npm run dev
 ```
 
