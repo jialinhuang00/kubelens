@@ -15,8 +15,9 @@
     position: sticky;
     top: 0;
     z-index: 10;
-    background: var(--bg-tertiary) !important;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    background: var(--t-bg-terminal) !important;
+    box-shadow: none;
+    border-bottom: 1px solid var(--t-border);
     white-space: nowrap;
     padding: 8px 12px;
   }

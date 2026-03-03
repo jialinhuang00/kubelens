@@ -189,7 +189,7 @@
   --t-bg-surface: #f0f0f0;
   --t-bg-panel: #f8f8f8;
   --t-bg-terminal: #ffffff;
-  --t-bg-output: #000000;
+  --t-bg-output: #f5f5f5;
   --t-text-primary: #000000;
   --t-text-dim: rgba(0, 0, 0, 0.4);
   --t-text-secondary: #444444;
@@ -199,7 +199,7 @@
   --t-success: #333333;
   --t-error: #000000;
   --t-warning: #555555;
-  --t-log-text: #222222;
+  --t-log-text: #111111;
   --t-log-dim: rgba(0, 0, 0, 0.3);
   --t-shadow-panel: 0 4px 16px rgba(0, 0, 0, 0.06);
   --t-gradient-header: linear-gradient(180deg, #222222, #000000);
@@ -305,8 +305,8 @@ body::before {
 }
 
 .terminal-output {
-  background: var(--t-bg-output);
-  border: 1px solid var(--t-border);
+  background: var(--t-bg-terminal);
+  border: none;
   color: var(--t-log-text);
   font-family: 'IBM Plex Mono', 'Courier New', monospace;
   white-space: pre-wrap;
@@ -314,7 +314,7 @@ body::before {
 }
 
 .glow-text {
-  text-shadow: 0 0 10px currentColor;
+  text-shadow: none;
 }
 
 .neon-border {

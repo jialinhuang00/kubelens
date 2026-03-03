@@ -10,7 +10,7 @@
         }
       </tr>
     </thead>
-    <tbody style="background: rgba(0, 0, 0, 0.3);">
+    <tbody>
       @if (isLoading) {
       <tr>
         <td [attr.colspan]="headers.length" class="text-center compact-spacing"
@@ -25,10 +25,11 @@
         <td class="compact-spacing">
           @if (header.toLowerCase() === 'status') {
           <span class="inline-flex px-1 py-0.5 text-xs font-medium rounded-sm"
-            [class]="item[header.toLowerCase()] === PodPhase.Running ? 'neon-border' : 'border border-subtle'"
-            [style]="item[header.toLowerCase()] === PodPhase.Running ? 'color: var(--accent-green); background: rgba(57, 255, 20, 0.1)' : 
-                       item[header.toLowerCase()] === PodPhase.Pending ? 'color: var(--accent-purple); background: rgba(157, 78, 221, 0.1)' :
-                       'color: var(--text-secondary); background: rgba(255, 255, 255, 0.05)'">
+            [style]="item[header.toLowerCase()] === PodPhase.Running ?
+                       'color: var(--t-success); border: 1px solid var(--t-success); box-shadow: 0 0 4px var(--t-success); background: transparent' :
+                       item[header.toLowerCase()] === PodPhase.Pending ?
+                       'color: var(--t-warning); border: 1px solid var(--t-warning); background: transparent' :
+                       'color: var(--t-text-secondary); border: 1px solid var(--t-border); background: transparent'">
             {{ item[header.toLowerCase()] || '-' }}
           </span>
           } @else if (header.toLowerCase().includes('image') || header.toLowerCase().includes('name')) {

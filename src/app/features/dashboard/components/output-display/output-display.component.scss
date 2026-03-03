@@ -1,8 +1,5 @@
 .output-container {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  overflow: hidden;
+  background: var(--t-bg-terminal);
   min-height: 200px;
 }
 
@@ -10,7 +7,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 1rem;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--t-border);
 }
 
 .section-title {
@@ -18,11 +16,11 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text-secondary);
+  color: var(--t-text-secondary);
 }
 
 .section-body {
-  padding: 0 1rem 0.6rem;
+  padding: 16px;
 }
 
 .empty-state {
