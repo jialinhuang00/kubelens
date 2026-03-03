@@ -24,20 +24,9 @@ export interface OutputData {
     yamlContent: string;
   }>;
   
-  // Pod describe data
-  podDescribeData: Array<{
-    name: string;
-    details: string;
-    events: Record<string, string>[];
-    headers: string[];
-  }>;
-  
   // Raw output
   commandOutput: string;
   customCommand: string;
-  
-  // Events data
-  hasEventsTable: boolean;
   
   // UI state (now managed by UiStateService)
   // expandedTables, expandedYamls, expandedPods, isResourceDetailsExpanded

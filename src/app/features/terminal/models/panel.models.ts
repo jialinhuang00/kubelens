@@ -52,8 +52,6 @@ export const EMPTY_OUTPUT_DATA: OutputData = {
   yamlContent: '',
   multipleTables: [],
   multipleYamls: [],
-  podDescribeData: [],
   commandOutput: '',
   customCommand: '',
-  hasEventsTable: false,
 };

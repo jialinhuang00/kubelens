@@ -5,7 +5,6 @@ import { Injectable, signal } from '@angular/core';
 })
 export class UiStateService {
   // Output display states
-  private expandedPods = signal<Set<string>>(new Set());
   private expandedTables = signal<Set<string>>(new Set());
   private expandedYamls = signal<Set<string>>(new Set());
   private isResourceDetailsExpanded = signal<boolean>(false);
@@ -14,7 +13,6 @@ export class UiStateService {
   private isRolloutConsoleExpanded = signal<boolean>(false);
 
   // Public readonly signals
-  readonly expandedPodsState = this.expandedPods.asReadonly();
   readonly expandedTablesState = this.expandedTables.asReadonly();
   readonly expandedYamlsState = this.expandedYamls.asReadonly();
   readonly isResourceDetailsExpandedState = this.isResourceDetailsExpanded.asReadonly();
@@ -23,17 +21,6 @@ export class UiStateService {
   // Output display methods
   toggleResourceDetails() {
     this.isResourceDetailsExpanded.set(!this.isResourceDetailsExpanded());
-  }
-
-  togglePodDetails(podName: string) {
-    const expanded = this.expandedPods();
-    const newExpanded = new Set(expanded);
-    if (newExpanded.has(podName)) {
-      newExpanded.delete(podName);
-    } else {
-      newExpanded.add(podName);
-    }
-    this.expandedPods.set(newExpanded);
   }
 
   toggleTable(tableTitle: string) {
@@ -63,10 +50,6 @@ export class UiStateService {
   }
 
   // Utility methods
-  isPodExpanded(podName: string): boolean {
-    return this.expandedPods().has(podName);
-  }
-
   isTableExpanded(tableTitle: string): boolean {
     return this.expandedTables().has(tableTitle);
   }
@@ -77,7 +60,6 @@ export class UiStateService {
 
   // Reset methods for when new data loads
   resetOutputStates() {
-    this.expandedPods.set(new Set());
     this.expandedTables.set(new Set());
     this.expandedYamls.set(new Set());
     this.isResourceDetailsExpanded.set(false);

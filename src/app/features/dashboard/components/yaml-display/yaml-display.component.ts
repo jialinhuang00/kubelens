@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { YamlParserService, YamlLine } from '../../services/yaml-parser.service';
 
 @Component({
-  selector: 'app-yaml-display',
+  selector: 'app-one-yaml',
   standalone: true,
   imports: [CommonModule],
   template: `

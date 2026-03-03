@@ -175,16 +175,6 @@ export class PanelExecutionService {
         out.headers = parsed.headers || [];
         out.results = parsed.data || [];
         break;
-      case 'events':
-        out.outputType = 'events';
-        out.commandOutput = parsed.rawOutput || '';
-        out.headers = parsed.headers || [];
-        out.results = parsed.data || [];
-        break;
-      case 'multiple-pods':
-        out.outputType = 'multiple-pods';
-        out.podDescribeData = parsed.podData || [];
-        break;
       case 'yaml':
         out.outputType = 'yaml';
         out.yamlContent = parsed.yamlContent || '';

@@ -13,20 +13,12 @@
     (toggleYamlExpansion)="onToggleYamlExpansion($event)">
   </app-multiple-yamls>
   } @else if (data.outputType === 'yaml' && data.yamlContent) {
-  <app-yaml-display [yamlText]="data.yamlContent"></app-yaml-display>
+  <app-one-yaml [yamlText]="data.yamlContent"></app-one-yaml>
   } @else if (data.commandOutput && (!data.results || !data.results.length)) {
   <app-raw-output [commandOutput]="data.commandOutput"></app-raw-output>
-  } @else if (data.podDescribeData && data.podDescribeData.length > 0) {
-  <app-pod-details [podDescribeData]="data.podDescribeData" [expandedPods]="expandedPods()"
-    (togglePodDetails)="onTogglePodDetails($event)">
-  </app-pod-details>
-  } @else if (data.commandOutput && data.results && data.results.length > 0 && data.hasEventsTable) {
-  <app-events-display [commandOutput]="data.commandOutput" [results]="data.results" [headers]="data.headers"
-    [isResourceDetailsExpanded]="isResourceDetailsExpanded()" (toggleResourceDetails)="onToggleResourceDetails()">
-  </app-events-display>
   } @else if (data.results && data.results.length > 0) {
-  <app-table-output [results]="data.results" [headers]="data.headers" [isLoading]="data.isLoading">
-  </app-table-output>
+  <app-one-table [results]="data.results" [headers]="data.headers" [isLoading]="data.isLoading">
+  </app-one-table>
   } @else if (!data.isLoading) {
   <div class="empty-state">
     <svg class="empty-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">

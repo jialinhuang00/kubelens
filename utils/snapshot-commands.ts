@@ -161,7 +161,7 @@ export function parseKubectlCommand(command: string): ParsedCommand | null {
     }
 
     if (part === '-n' || part === '--namespace') {
-      result.namespace = parts[i + 1];
+      result.namespace = parts[i + 1]?.replace(/^['"]|['"]$/g, '');
       i += 2;
       continue;
     }
@@ -500,6 +500,9 @@ function handleGetPods(parsed: ParsedCommand): CommandResult {
 
     if (parsed.output === 'json') {
       return { success: true, stdout: JSON.stringify(buildPodJson(podLine, ns, images), null, 2) };
+    }
+    if (parsed.output === 'yaml') {
+      return { success: true, stdout: yaml.dump(buildPodJson(podLine, ns, images)) };
     }
     if (parsed.flags.noHeaders) return { success: true, stdout: podLine };
     return { success: true, stdout: [header, podLine].join('\n') };

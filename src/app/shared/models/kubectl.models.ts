@@ -23,13 +23,6 @@ export interface KubeResource {
   [key: string]: string;
 }
 
-export interface PodDescribeData {
-  name: string;
-  details: string;
-  events: KubeResource[];
-  headers: string[];
-}
-
 export interface CommandTemplate {
   id: string;
   name: string;
@@ -111,11 +104,8 @@ export interface K8sEvent {
 
 export type OutputType =
   | 'table'
-  | 'events'
-  | 'multiple-pods'
   | 'multiple-tables'
   | 'multiple-yamls'
-  | 'pod-describe'
   | 'raw'
   | 'yaml'
   | 'streaming';
@@ -125,9 +115,7 @@ export interface ParsedOutput {
   data?: KubeResource[];
   headers?: string[];
   rawOutput?: string;
-  podData?: PodDescribeData[];
   tables?: TableData[];
   yamls?: YamlItem[];
-  hasEventsTable?: boolean;
   yamlContent?: string;
 }

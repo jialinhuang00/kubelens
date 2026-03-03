@@ -5,7 +5,7 @@ import { ClipboardService } from '../../../../shared/services/clipboard.service'
 import { PodPhase } from '../../../universe/models/graph.models';
 
 @Component({
-  selector: 'app-table-output',
+  selector: 'app-one-table',
   imports: [CommonModule],
   templateUrl: './table-output.component.html',
   styleUrl: './table-output.component.scss'

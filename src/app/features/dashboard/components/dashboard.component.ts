@@ -17,7 +17,7 @@ import { UiStateService } from '../services/ui-state.service';
 import { RolloutService } from '../services/rollout.service';
 import { RolloutStateService } from '../services/rollout-state.service';
 import { ExecutionContextService } from '../../../core/services/execution-context.service';
-import { KubeResource, PodDescribeData, CommandTemplate, TableData, YamlItem } from '../../../shared/models/kubectl.models';
+import { KubeResource, CommandTemplate, TableData, YamlItem } from '../../../shared/models/kubectl.models';
 import { ContextBarComponent, ResourceDropdown } from './context-bar/context-bar.component';
 import { CommandChipsComponent, ChipGroup } from './command-chips/command-chips.component';
 import { OutputDisplayComponent } from './output-display/output-display.component';
@@ -79,10 +79,8 @@ export class DashboardComponent implements OnInit {
   commandOutput = signal<string>('');
   results = signal<KubeResource[]>([]);
   headers = signal<string[]>([]);
-  hasEventsTable = signal<boolean>(false);
   yamlContent = signal<string>('');
   outputType = signal<OutputType>('raw');
-  podDescribeData = signal<PodDescribeData[]>([]);
   multipleTables = signal<TableData[]>([]);
   multipleYamls = signal<YamlItem[]>([]);
 
@@ -265,10 +263,8 @@ export class DashboardComponent implements OnInit {
     this.headers.set([]);
     this.commandOutput.set('');
     this.yamlContent.set('');
-    this.podDescribeData.set([]);
     this.multipleTables.set([]);
     this.multipleYamls.set([]);
-    this.hasEventsTable.set(false);
     this.outputType.set('raw');
 
     // Stop active stream if any
@@ -416,9 +412,7 @@ export class DashboardComponent implements OnInit {
     this.headers.set([]);
     this.commandOutput.set('');
     this.yamlContent.set('');
-    this.podDescribeData.set([]);
     this.multipleTables.set([]);
-    this.hasEventsTable.set(false);
 
     const userCommandGroup = ExecutionGroupGenerator.userCommand();
 
@@ -539,10 +533,8 @@ export class DashboardComponent implements OnInit {
     yamlContent: this.yamlContent(),
     multipleTables: this.multipleTables(),
     multipleYamls: this.multipleYamls(),
-    podDescribeData: this.podDescribeData(),
     commandOutput: this.commandOutput(),
-    customCommand: this.customCommand(),
-    hasEventsTable: this.hasEventsTable()
+    customCommand: this.customCommand()
   }));
 
   async stopStream() {
@@ -607,17 +599,6 @@ export class DashboardComponent implements OnInit {
         this.headers.set(parsedOutput.headers || []);
         this.results.set(parsedOutput.data || []);
         this.outputType.set('table');
-        break;
-      case 'events':
-        this.commandOutput.set(parsedOutput.rawOutput || '');
-        this.headers.set(parsedOutput.headers || []);
-        this.results.set(parsedOutput.data || []);
-        this.hasEventsTable.set(false);
-        this.outputType.set('events');
-        break;
-      case 'multiple-pods':
-        this.podDescribeData.set(parsedOutput.podData || []);
-        this.outputType.set('multiple-pods');
         break;
       case 'yaml':
         this.yamlContent.set(parsedOutput.yamlContent || '');

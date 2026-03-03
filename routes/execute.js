@@ -9,6 +9,16 @@ const router = express.Router();
 
 global.runningProcesses = global.runningProcesses || new Map();
 
+// Strip shell quotes from a single arg token: 'foo' → foo, "foo" → foo
+function stripQuotes(arg) {
+  return arg.replace(/^(['"])(.*)\1$/, '$2');
+}
+
+// Split command string into args array, stripping shell quotes from each token
+function parseArgs(command) {
+  return command.split(/\s+/).slice(1).map(stripQuotes);
+}
+
 // Split kubectl get all output into separate tables
 function splitGetAllTables(output) {
   const lines = output.split('\n');
@@ -113,7 +123,7 @@ router.post('/execute', async (req, res) => {
   }
 
   // Parse "kubectl <args...>" into execFile arguments
-  const args = command.split(/\s+/).slice(1);
+  const args = parseArgs(command);
 
   console.log(`Executing: ${command}`);
 
@@ -182,7 +192,7 @@ function mountStream(router, io) {
       streamId: streamId
     });
 
-    const args = command.split(/\s+/).slice(1);
+    const args = parseArgs(command);
     const kubectlProcess = spawn('kubectl', args);
 
     global.runningProcesses.set(streamId, kubectlProcess);
