@@ -26,26 +26,16 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BASE_DIR="${SCRIPT_DIR}/../k8s-snapshot"
 
 # Namespaced resource types to export — split into parallel batches
-# Batch 1: Pods (usually the most objects, benefits from running alone)
-# Batch 2: Core workloads
-# Batch 3: Config, auth & storage
-# Batch 4: Networking & scaling (typically few objects each)
+# Pods are handled separately (usually the most objects)
+# Finer-grained batches prevent slow resources (e.g. many secrets) from blocking others
+# CRDs are included as fixed batches — if they don't exist, kubectl will return empty (no overhead)
 NS_BATCHES=(
-  "pods"
-  "deployments,statefulsets,daemonsets,cronjobs,jobs"
-  "configmaps,secrets,serviceaccounts,persistentvolumeclaims,roles,rolebindings,resourcequotas,limitranges"
-  "services,ingresses,endpoints,networkpolicies,horizontalpodautoscalers,poddisruptionbudgets"
-)
-
-# CRD resource types — checked once at startup, skipped if CRDs not installed
-CRD_RESOURCES=(
-  gateways.gateway.networking.k8s.io
-  httproutes.gateway.networking.k8s.io
-  tcproutes.gateway.networking.k8s.io
-  virtualservices.networking.istio.io
-  destinationrules.networking.istio.io
-  serviceentries.networking.istio.io
-  applications.argoproj.io
+  "deployments,statefulsets,daemonsets,cronjobs,jobs"                                           # Batch 1: Workloads (5 types)
+  "services,ingresses,endpoints"                                                                # Batch 2: Networking core (3 types)
+  "configmaps,secrets,serviceaccounts"                                                          # Batch 3: Config & auth (3 types)
+  "persistentvolumeclaims,roles,rolebindings"                                                   # Batch 4: Storage & RBAC (3 types)
+  "networkpolicies,horizontalpodautoscalers,poddisruptionbudgets"                              # Batch 5: Policies (3 types)
+  "gateways.gateway.networking.k8s.io,httproutes.gateway.networking.k8s.io,tcproutes.gateway.networking.k8s.io,applications.argoproj.io"  # Batch 6: CRDs (Gateway API + ArgoCD)
 )
 
 # Cluster-scoped resource types
@@ -89,22 +79,8 @@ elif [[ ${#NAMESPACES[@]} -eq 0 ]]; then
   exit 1
 fi
 
-# --- Check CRDs in background (runs while first namespace exports) ---
-CRD_RESULT_FILE=$(mktemp)
-(
-  CRD_BATCH=""
-  for crd in "${CRD_RESOURCES[@]}"; do
-    if kubectl get "$crd" --all-namespaces --no-headers 2>/dev/null | head -1 | grep -q .; then
-      if [[ -n "$CRD_BATCH" ]]; then CRD_BATCH+=","; fi
-      CRD_BATCH+="$crd"
-      echo -e "${GREEN}CRD available: $crd${RESET}"
-    else
-      echo -e "${GRAY}CRD not found: $crd (skipping)${RESET}"
-    fi
-  done
-  echo "$CRD_BATCH" > "$CRD_RESULT_FILE"
-) &
-CRD_CHECK_PID=$!
+# No CRD checking needed — CRDs are included as fixed batches
+# If a CRD doesn't exist, kubectl get will return empty without error
 
 # --- Preflight ---
 CONTEXT=$(kubectl config current-context)
@@ -140,7 +116,6 @@ else
 fi
 
 # --- Export namespaced resources ---
-CRD_MERGED=false
 for ns in "${NAMESPACES[@]}"; do
   NS_START=$(date +%s)
   echo "=== Namespace: $ns ==="
@@ -160,7 +135,18 @@ for ns in "${NAMESPACES[@]}"; do
     ) &
   done
 
-  # Export pod reference snapshots (pod YAML is handled by the batch above)
+  # Export pods separately (usually many objects, deserves its own parallel task)
+  (
+    echo -e "  ${YELLOW}→ fetching pods${RESET}"
+    if kubectl get pods -n "$ns" -o json 2>/dev/null \
+      | node "${SCRIPT_DIR}/split-resources.js" "$NS_DIR" "$RESUME"; then
+      echo -e "  ${GREEN}← pods done${RESET}"
+    else
+      echo -e "  ${RED}← pods failed${RESET}"
+    fi
+  ) &
+
+  # Export pod reference snapshots
   if [[ "$RESUME" != "true" || ! -f "${NS_DIR}/pods-snapshot.txt" ]]; then
     (
       echo -e "  ${YELLOW}→ fetching pods-snapshot${RESET}"
@@ -185,27 +171,6 @@ for ns in "${NAMESPACES[@]}"; do
     ) &
   fi
   wait
-
-  # After first namespace's core batches finish, merge CRD results and backfill
-  if [[ "$CRD_MERGED" == "false" ]]; then
-    wait "$CRD_CHECK_PID" 2>/dev/null || true
-    CRD_BATCH=$(cat "$CRD_RESULT_FILE" 2>/dev/null)
-    rm -f "$CRD_RESULT_FILE"
-    if [[ -n "$CRD_BATCH" ]]; then
-      NS_BATCHES+=("$CRD_BATCH")
-      # Backfill: export CRDs for this first namespace
-      (
-        echo -e "  ${YELLOW}→ fetching ${CRD_BATCH}${RESET}"
-        if kubectl get "$CRD_BATCH" -n "$ns" -o json 2>/dev/null \
-          | node "${SCRIPT_DIR}/split-resources.js" "$NS_DIR" "$RESUME"; then
-          echo -e "  ${GREEN}← ${CRD_BATCH} done${RESET}"
-        else
-          echo -e "  ${RED}← ${CRD_BATCH} failed${RESET}"
-        fi
-      )
-    fi
-    CRD_MERGED=true
-  fi
 
   # Mark namespace as complete
   touch "${NS_DIR}/.done"
