@@ -2,15 +2,16 @@
   display: flex;
   flex-direction: column;
   background: var(--t-bg-panel);
-  border: 1px solid var(--t-border);
-  border-radius: var(--t-radius-md);
-  overflow: hidden;
-  box-shadow: var(--t-shadow-panel);
+  border: 2px solid;
+  border-color: color-mix(in srgb, var(--t-accent) 60%, #fff) color-mix(in srgb, var(--t-accent) 20%, #000) color-mix(in srgb, var(--t-accent) 20%, #000) color-mix(in srgb, var(--t-accent) 60%, #fff);
+  border-radius: 0;
+  overflow: visible;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6), var(--t-shadow-panel);
   transition: box-shadow 0.3s ease;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
 
   &.streaming {
-    border-color: var(--t-border-glow);
+    border-color: var(--t-accent) color-mix(in srgb, var(--t-accent) 30%, #000) color-mix(in srgb, var(--t-accent) 30%, #000) var(--t-accent);
     box-shadow: 0 0 20px rgba(128, 128, 128, 0.15), var(--t-shadow-panel);
   }
 
@@ -23,12 +24,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
-  background: var(--t-bg-panel);
-  border-bottom: 1px solid var(--t-border);
+  padding: 4px 6px 4px 8px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--t-accent) 12%, #0e0b08) 0%, color-mix(in srgb, var(--t-accent) 35%, #0e0b08) 100%);
+  border-bottom: 2px solid var(--t-accent);
   cursor: grab;
   user-select: none;
-  min-height: 32px;
+  min-height: 28px;
 
   &:active {
     cursor: grabbing;
@@ -56,8 +57,9 @@
 
 .panel-title {
   font-size: 11px;
-  font-weight: 600;
-  color: var(--t-text-primary);
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -93,29 +95,41 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--t-text-dim);
+  border-radius: 0;
+  background: #c0c0c0;
+  color: #000;
   cursor: pointer;
-  transition: all 0.15s ease;
+  flex-shrink: 0;
+  box-shadow:
+    inset 1px 1px 0 #fff,
+    inset -1px -1px 0 #808080,
+    inset 2px 2px 0 #dfdfdf,
+    inset -2px -2px 0 #404040;
 
   &:hover {
-    background: rgba(128, 128, 128, 0.1);
-    color: var(--t-text-primary);
+    background: #d0d0d0;
+  }
+
+  &:active {
+    box-shadow:
+      inset -1px -1px 0 #fff,
+      inset 1px 1px 0 #808080,
+      inset -2px -2px 0 #dfdfdf,
+      inset 2px 2px 0 #404040;
   }
 }
 
 .stop-btn:hover {
-  color: var(--t-error);
-  background: rgba(224, 112, 112, 0.1);
+  background: #e08080;
+  color: #fff;
 }
 
 .close-btn:hover {
-  color: var(--t-error);
-  background: rgba(224, 112, 112, 0.1);
+  background: #e08080;
+  color: #fff;
 }
 
 .panel-toolbar {
@@ -148,22 +162,32 @@
   font-size: 10px;
   font-family: inherit;
   padding: 2px 8px;
-  border-radius: 4px;
-  border: 1px solid var(--t-border);
-  background: transparent;
-  color: var(--t-text-dim);
+  border-radius: 0;
+  border: none;
+  background: #c0c0c0;
+  color: #000;
   cursor: pointer;
-  transition: all 0.15s ease;
   white-space: nowrap;
+  box-shadow:
+    inset 1px 1px 0 #fff,
+    inset -1px -1px 0 #808080,
+    inset 2px 2px 0 #dfdfdf,
+    inset -2px -2px 0 #404040;
 
   &:hover:not(.disabled) {
-    border-color: var(--t-accent);
-    color: var(--t-accent);
-    background: rgba(128, 128, 128, 0.06);
+    background: #d0d0d0;
+  }
+
+  &:active:not(.disabled) {
+    box-shadow:
+      inset -1px -1px 0 #fff,
+      inset 1px 1px 0 #808080,
+      inset -2px -2px 0 #dfdfdf,
+      inset 2px 2px 0 #404040;
   }
 
   &.disabled {
-    opacity: 0.3;
+    opacity: 0.4;
     cursor: not-allowed;
   }
 }
@@ -172,6 +196,7 @@
   flex: 1;
   overflow: auto;
   min-height: 0;
+  clip-path: inset(0);
 
   &::-webkit-scrollbar {
     width: 3px;
@@ -235,33 +260,95 @@
 
   .editable-run-btn {
     background: var(--t-accent);
-    color: var(--t-bg);
+    color: #000;
     border: none;
-    border-radius: var(--t-radius-sm);
+    border-radius: 0;
     font-size: 10px;
     font-weight: 700;
     padding: 4px 10px;
     cursor: pointer;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    box-shadow:
+      inset 1px 1px 0 color-mix(in srgb, var(--t-accent) 50%, #fff),
+      inset -1px -1px 0 color-mix(in srgb, var(--t-accent) 50%, #000),
+      inset 2px 2px 0 color-mix(in srgb, var(--t-accent) 20%, #fff),
+      inset -2px -2px 0 color-mix(in srgb, var(--t-accent) 20%, #000);
 
     &:hover {
-      opacity: 0.85;
+      background: color-mix(in srgb, var(--t-accent) 85%, #fff);
+    }
+
+    &:active {
+      box-shadow:
+        inset -1px -1px 0 color-mix(in srgb, var(--t-accent) 50%, #fff),
+        inset 1px 1px 0 color-mix(in srgb, var(--t-accent) 50%, #000),
+        inset -2px -2px 0 color-mix(in srgb, var(--t-accent) 20%, #fff),
+        inset 2px 2px 0 color-mix(in srgb, var(--t-accent) 20%, #000);
     }
   }
 
   .editable-dismiss-btn {
-    background: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: #c0c0c0;
     border: none;
-    color: var(--t-text-dim);
+    border-radius: 0;
+    color: #000;
     font-size: 14px;
     cursor: pointer;
-    padding: 2px 4px;
+    padding: 0;
     line-height: 1;
+    box-shadow:
+      inset 1px 1px 0 #fff,
+      inset -1px -1px 0 #808080,
+      inset 2px 2px 0 #dfdfdf,
+      inset -2px -2px 0 #404040;
 
     &:hover {
-      color: var(--t-error);
+      background: #e08080;
+      color: #fff;
     }
+
+    &:active {
+      box-shadow:
+        inset -1px -1px 0 #fff,
+        inset 1px 1px 0 #808080,
+        inset -2px -2px 0 #dfdfdf,
+        inset 2px 2px 0 #404040;
+    }
+  }
+}
+
+.resize-handle {
+  position: absolute;
+  z-index: 10;
+
+  &.resize-e {
+    right: -10px;
+    top: 10px;
+    bottom: 10px;
+    width: 20px;
+    cursor: ew-resize;
+  }
+
+  &.resize-s {
+    bottom: -10px;
+    left: 10px;
+    right: 10px;
+    height: 20px;
+    cursor: ns-resize;
+  }
+
+  &.resize-se {
+    right: -10px;
+    bottom: -10px;
+    width: 24px;
+    height: 24px;
+    cursor: se-resize;
   }
 }
 

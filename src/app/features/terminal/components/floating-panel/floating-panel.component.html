@@ -114,4 +114,11 @@
     }
     <app-output-display [data]="panel().outputData"></app-output-display>
   </div>
+
+  <!-- Resize handles -->
+  @if (!panel().isMaximized) {
+    <div class="resize-handle resize-e"  (mousedown)="onResizeStart($event, 'e')"></div>
+    <div class="resize-handle resize-s"  (mousedown)="onResizeStart($event, 's')"></div>
+    <div class="resize-handle resize-se" (mousedown)="onResizeStart($event, 'se')"></div>
+  }
 </div>

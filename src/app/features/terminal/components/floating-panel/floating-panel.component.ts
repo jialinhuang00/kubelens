@@ -164,6 +164,38 @@ export class FloatingPanelComponent {
     this.editableCommand.set('');
   }
 
+  onResizeStart(event: MouseEvent, direction: 'e' | 's' | 'se'): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const p = this.panel();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startW = p.size.width;
+    const startH = p.size.height;
+    const MIN_W = 280;
+    const MIN_H = 180;
+
+    const container = (event.target as HTMLElement).closest('.panel-area') as HTMLElement | null;
+    const maxW = container ? container.clientWidth  - p.position.x : Infinity;
+    const maxH = container ? container.clientHeight - p.position.y : Infinity;
+
+    const onMove = (e: MouseEvent) => {
+      const newSize = { width: startW, height: startH };
+      if (direction === 'e' || direction === 'se') newSize.width  = Math.min(maxW, Math.max(MIN_W, startW + e.clientX - startX));
+      if (direction === 's' || direction === 'se') newSize.height = Math.min(maxH, Math.max(MIN_H, startH + e.clientY - startY));
+      this.panelManager.updateSize(this.panel().id, newSize);
+    };
+
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
   private hasFetchedStatus = false;
 
   // Rollout handlers
