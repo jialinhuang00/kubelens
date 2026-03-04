@@ -428,9 +428,11 @@ const SPREADS: Spread[] = [
           'Global',
           '  <kbd>⌘K</kbd>       global resource search',
           '  <kbd>Esc</kbd>      close panel / deselect',
+          '  <kbd>H</kbd>        open this handbook',
           '  <kbd>M</kbd>        memory monitor',
           '',
           'Universe',
+          '  <kbd>S</kbd>        toggle sidebar',
           '  <kbd>F</kbd>        fit all nodes in view',
           '  <kbd>/</kbd>        search in namespace',
           '  <kbd>⌘K</kbd>       global search palette',
@@ -476,9 +478,11 @@ const SPREADS: Spread[] = [
           '全域',
           '  <kbd>⌘K</kbd>       全局資源搜尋',
           '  <kbd>Esc</kbd>      關閉面板 / 取消選取',
+          '  <kbd>H</kbd>        開啟本手冊',
           '  <kbd>M</kbd>        記憶體監控',
           '',
           'Universe',
+          '  <kbd>S</kbd>        收合 / 展開側欄',
           '  <kbd>F</kbd>        重置視角',
           '  <kbd>/</kbd>        在 Namespace 內搜尋',
           '  <kbd>⌘K</kbd>       全局搜尋面板',
@@ -620,11 +624,12 @@ const SPREADS: Spread[] = [
   template: `
     <div class="handbook-wrap">
       <!-- Trigger button -->
-      <button class="handbook-btn" (click)="open.set(true)" title="Handbook">
+      <button class="handbook-btn" (click)="open.set(true)" title="Handbook (H)">
         <svg width="15" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
           <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
         </svg>
+        <kbd class="handbook-key">H</kbd>
       </button>
 
       <!-- Overlay -->
@@ -688,7 +693,9 @@ const SPREADS: Spread[] = [
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 28px;
+      gap: 4px;
+      width: auto;
+      padding: 0 6px;
       height: 28px;
       border-radius: 6px;
       border: 1px solid var(--t-border);
@@ -698,6 +705,21 @@ const SPREADS: Spread[] = [
       transition: all 0.15s;
       &:hover { border-color: var(--t-accent); color: var(--t-accent); }
     }
+
+    .handbook-key {
+      font-family: monospace;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--t-text-dim);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--t-border);
+      border-bottom-width: 2px;
+      border-radius: 3px;
+      padding: 0 4px;
+      line-height: 1.6;
+      pointer-events: none;
+    }
+    .handbook-btn:hover .handbook-key { color: var(--t-accent); border-color: var(--t-accent); }
 
     .overlay {
       position: fixed;
@@ -901,4 +923,10 @@ export class HandbookComponent {
 
   @HostListener('document:keydown.escape')
   onEsc() { this.open.set(false); }
+
+  @HostListener('window:keydown.h', ['$event'])
+  onH(e: Event) {
+    if (((e as KeyboardEvent).target as HTMLElement)?.tagName === 'INPUT') return;
+    this.open.update(v => !v);
+  }
 }
