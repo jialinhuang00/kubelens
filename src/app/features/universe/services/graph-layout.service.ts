@@ -93,7 +93,6 @@ export class GraphLayoutService {
           const base = kindColors[n.data.kind] ?? '#888';
           if (!this.activeNodeIds) return base;
           if (this.activeNodeIds.has(n.data.id)) return base;
-          // Dimmed: parse hex and return with low alpha
           const r = parseInt(base.slice(1, 3), 16);
           const g = parseInt(base.slice(3, 5), 16);
           const b = parseInt(base.slice(5, 7), 16);
@@ -125,8 +124,8 @@ export class GraphLayoutService {
         scaleNodesOnZoom: true,
         fitViewOnInit: true,
         fitViewDelay: isLarge ? 800 : 500,
-        nodeGreyoutOpacity: 1.0, // we handle node dimming via nodeColor callback
-        linkGreyoutOpacity: 1.0, // we handle link dimming via linkColor callback
+        nodeGreyoutOpacity: 1.0,
+        linkGreyoutOpacity: 1.0,
         hoveredNodeRingColor: '#ffffff',
         focusedNodeRingColor: getComputedStyle(document.documentElement).getPropertyValue('--t-accent').trim() || '#e8b866',
         randomSeed: 42,
@@ -305,7 +304,6 @@ export class GraphLayoutService {
     for (const [ns, nsNodes] of nsGroups) {
       const center = nsCenters.get(ns) ?? { cx: 0, cy: 0 };
 
-      // Sub-group by category within namespace
       const catGroups: Record<string, GraphNode[]> = {};
       const orphanNodes: GraphNode[] = [];
 
@@ -319,7 +317,6 @@ export class GraphLayoutService {
         }
       }
 
-      // Place non-orphan nodes in concentric rings
       for (const [cat, nodes] of Object.entries(catGroups)) {
         const radius = categoryRadii[cat] ?? 100;
         const count = nodes.length;
@@ -339,7 +336,6 @@ export class GraphLayoutService {
         }
       }
 
-      // Place orphan nodes at outer edge
       if (orphanNodes.length > 0) {
         for (let i = 0; i < orphanNodes.length; i++) {
           const angle = (2 * Math.PI * i) / orphanNodes.length;
@@ -383,7 +379,6 @@ export class GraphLayoutService {
     this.activeNodeIds = nodeIds;
     this.activeEdgeKeys = edges ? new Set(edges.map(e => `${e.source}|${e.target}`)) : null;
     if (!this.graph) return;
-    // Force cosmos to re-evaluate color callbacks
     const kindColors = this.currentKindColors;
     const edgeColors = getThemedEdgeColors();
     this.graph.setConfig({
@@ -414,7 +409,6 @@ export class GraphLayoutService {
     this.activeNodeIds = null;
     this.activeEdgeKeys = null;
     this.graph.unselectNodes();
-    // Reset colors to full brightness
     const kindColors = this.currentKindColors;
     const edgeColors = getThemedEdgeColors();
     this.graph.setConfig({

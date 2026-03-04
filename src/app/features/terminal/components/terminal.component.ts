@@ -3,11 +3,12 @@ import { TerminalSidebarComponent } from './terminal-sidebar/terminal-sidebar.co
 import { PanelAreaComponent } from './panel-area/panel-area.component';
 import { ModeToggleComponent } from '../../../shared/components/mode-toggle/mode-toggle.component';
 import { ThemeSwitcherComponent } from '../../../shared/components/theme-switcher/theme-switcher.component';
+import { HandbookComponent } from '../../../shared/components/handbook/handbook.component';
 
 @Component({
   selector: 'app-terminal',
   standalone: true,
-  imports: [TerminalSidebarComponent, PanelAreaComponent, ModeToggleComponent, ThemeSwitcherComponent],
+  imports: [TerminalSidebarComponent, PanelAreaComponent, ModeToggleComponent, ThemeSwitcherComponent, HandbookComponent],
   templateUrl: './terminal.component.html',
   styleUrl: './terminal.component.scss',
 })

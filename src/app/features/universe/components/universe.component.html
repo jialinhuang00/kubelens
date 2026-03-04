@@ -153,21 +153,23 @@
     <!-- Vignette overlay -->
     <div class="vignette"></div>
 
-    <!-- Top-right actions -->
-    <div class="graph-actions">
-      <button class="action-btn" (click)="fitView()" title="Fit view (F)">
-        <span>&#x26F6;</span> Fit
-      </button>
-      <app-theme-switcher />
-      <app-mode-toggle (modeChanged)="onModeChanged()"></app-mode-toggle>
-    </div>
-
     <!-- Search hint — clickable, opens Cmd+K palette -->
     @if (!globalSearchOpen()) {
       <button class="search-hint" (click)="openGlobalSearch()">
         Search resources <kbd class="kbd">&#8984;K</kbd>
       </button>
     }
+
+    <!-- Top-right actions -->
+    <div class="graph-actions">
+      <button class="action-btn" (click)="fitView()" title="Fit view (F)">
+        <span>&#x26F6;</span> Fit
+      </button>
+      <app-handbook />
+      <app-theme-switcher />
+      <app-mode-toggle (modeChanged)="onModeChanged()"></app-mode-toggle>
+    </div>
+
 
     <!-- Zoom indicator -->
     <div class="zoom-indicator">
@@ -190,7 +192,6 @@
       <span><kbd class="kbd">Esc</kbd> Deselect</span>
       <span><kbd class="kbd">F</kbd> Fit view</span>
       <span>Scroll: Zoom</span>
-      <span><kbd class="kbd">&#8984;K</kbd> Search</span>
       @if (focusedNamespace()) {
         <span><kbd class="kbd">/</kbd> Search ns</span>
       }

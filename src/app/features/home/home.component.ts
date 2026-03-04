@@ -4,11 +4,12 @@ import { DataModeService } from '../../core/services/data-mode.service';
 import { K8sExportService } from '../../core/services/k8s-export.service';
 import { TickFlashDirective } from '../../shared/directives/tick-flash.directive';
 import { ThemeSwitcherComponent } from '../../shared/components/theme-switcher/theme-switcher.component';
+import { HandbookComponent } from '../../shared/components/handbook/handbook.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [RouterLink, TickFlashDirective, ThemeSwitcherComponent],
+  imports: [RouterLink, TickFlashDirective, ThemeSwitcherComponent, HandbookComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
 })

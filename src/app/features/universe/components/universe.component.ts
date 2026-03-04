@@ -20,6 +20,7 @@ import { ModeToggleComponent } from '../../../shared/components/mode-toggle/mode
 import { ThemeSwitcherComponent } from '../../../shared/components/theme-switcher/theme-switcher.component';
 import { BackLinkComponent } from '../../../shared/components/back-link/back-link.component';
 import { NamespaceChipsComponent } from '../../../shared/components/namespace-chips/namespace-chips.component';
+import { HandbookComponent } from '../../../shared/components/handbook/handbook.component';
 import { GraphDataService } from '../services/graph-data.service';
 import { GraphLayoutService, NodeLabel, NamespaceBoundary } from '../services/graph-layout.service';
 import {
@@ -39,7 +40,7 @@ import {
 
 @Component({
   selector: 'app-universe',
-  imports: [DecimalPipe, KeyValuePipe, NgTemplateOutlet, ModeToggleComponent, ThemeSwitcherComponent, BackLinkComponent, NamespaceChipsComponent],
+  imports: [DecimalPipe, KeyValuePipe, NgTemplateOutlet, ModeToggleComponent, ThemeSwitcherComponent, BackLinkComponent, NamespaceChipsComponent, HandbookComponent],
   templateUrl: './universe.component.html',
   styleUrls: ['./universe.component.scss'],
 })
