@@ -14,6 +14,16 @@ console.log('snapshot-handler loaded — use ?snapshot=true on requests to enabl
 
 app.use(express.json());
 
+// GET /api/debug/memory — server RSS for memory leak testing
+app.get('/api/debug/memory', (_req, res) => {
+  const m = process.memoryUsage();
+  res.json({
+    rss:      Math.round(m.rss      / 1024 / 1024),
+    heapUsed: Math.round(m.heapUsed / 1024 / 1024),
+    heapTotal:Math.round(m.heapTotal/ 1024 / 1024),
+  });
+});
+
 // Mount routes
 const { router: executeRouter, mountStream } = require('./routes/execute');
 const graphRouter = require('./routes/graph');
