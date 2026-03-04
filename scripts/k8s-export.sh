@@ -108,6 +108,7 @@ CRD_CHECK_PID=$!
 
 # --- Preflight ---
 CONTEXT=$(kubectl config current-context)
+EXPORT_START=$(date +%s)
 echo "Cluster context: $CONTEXT"
 echo "Export target:   $BASE_DIR"
 echo "Namespaces:      ${NAMESPACES[*]}"
@@ -141,6 +142,7 @@ fi
 # --- Export namespaced resources ---
 CRD_MERGED=false
 for ns in "${NAMESPACES[@]}"; do
+  NS_START=$(date +%s)
   echo "=== Namespace: $ns ==="
   NS_DIR="${BASE_DIR}/${ns}"
   mkdir -p "$NS_DIR"
@@ -207,6 +209,10 @@ for ns in "${NAMESPACES[@]}"; do
 
   # Mark namespace as complete
   touch "${NS_DIR}/.done"
+
+  NS_END=$(date +%s)
+  NS_ELAPSED=$((NS_END - NS_START))
+  echo -e "${GREEN}✓ Namespace $ns completed in ${NS_ELAPSED}s${RESET}"
   echo ""
 done
 
@@ -237,9 +243,18 @@ fi
 touch "${BASE_DIR}/.export-complete"
 
 # --- Summary ---
+EXPORT_END=$(date +%s)
+TOTAL_ELAPSED=$((EXPORT_END - EXPORT_START))
 TOTAL_FILES=$(find "$BASE_DIR" -type f ! -name '.export-complete' ! -name '.done' ! -name '*.tmp' | wc -l | tr -d ' ')
 TOTAL_SIZE=$(du -sh "$BASE_DIR" | cut -f1)
-echo "Done! Exported $TOTAL_FILES files ($TOTAL_SIZE) to k8s-snapshot/"
+
+echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${RESET}"
+echo -e "${GREEN}║  Export Complete                                         ║${RESET}"
+echo -e "${GREEN}╠══════════════════════════════════════════════════════════╣${RESET}"
+echo -e "${GREEN}║  Files:        ${TOTAL_FILES} files${RESET}"
+echo -e "${GREEN}║  Size:         ${TOTAL_SIZE}${RESET}"
+echo -e "${GREEN}║  Time:         ${TOTAL_ELAPSED}s${RESET}"
+echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${RESET}"
 echo ""
 echo "Tip: to restore a resource later:"
 echo "  kubectl apply -f k8s-snapshot/<namespace>/<resource>.yaml"
