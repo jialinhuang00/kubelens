@@ -27,6 +27,7 @@
     </div>
     <div class="panel-controls">
       @if (panel().isStreaming) {
+        <button class="toolbar-chip clear-btn" (click)="onClearOutput(); $event.stopPropagation()" title="Clear output">Clear</button>
         <button class="panel-btn stop-btn" (click)="onStop(); $event.stopPropagation()" title="Stop stream">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
         </button>

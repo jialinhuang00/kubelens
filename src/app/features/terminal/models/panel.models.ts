@@ -27,6 +27,7 @@ export interface PanelState {
   outputData: OutputData;
   activeCommand: string;
   streamStop: (() => Promise<void>) | null;
+  streamClear: (() => void) | null;
   templates: CommandTemplate[];
 }
 

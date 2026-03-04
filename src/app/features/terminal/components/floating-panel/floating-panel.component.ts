@@ -130,6 +130,10 @@ export class FloatingPanelComponent {
     this.panelExecution.stopStream(this.panel().id);
   }
 
+  onClearOutput(): void {
+    this.panelManager.clearPanelOutput(this.panel().id);
+  }
+
   onExecuteTemplate(template: CommandTemplate): void {
     const p = this.panel();
     const command = this.panelExecution.substituteCommand(

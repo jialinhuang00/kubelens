@@ -23,6 +23,7 @@ export interface StreamingResponse {
   streamId?: string;
   output$?: Observable<string>;
   stop?: () => Promise<void>;
+  clear?: () => void;
 }
 
 @Injectable({
@@ -253,11 +254,19 @@ export class KubectlService {
         }
       };
 
+      // Clear function — wipes client buffer and server buffer without stopping the stream
+      const clear = () => {
+        fullOutput = '';
+        outputSubject.next('');
+        this.http.post(`${this.API_BASE}/execute/stream/clear`, { streamId }).subscribe();
+      };
+
       return {
         isStreaming: true,
         streamId,
         output$: outputSubject.asObservable(),
-        stop
+        stop,
+        clear,
       };
 
     } catch (error) {

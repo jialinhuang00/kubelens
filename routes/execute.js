@@ -195,13 +195,12 @@ function mountStream(router, io) {
     const args = parseArgs(command);
     const kubectlProcess = spawn('kubectl', args);
 
-    global.runningProcesses.set(streamId, kubectlProcess);
-
-    let outputBuffer = '';
+    const bufferRef = { value: '' };
+    global.runningProcesses.set(streamId, { process: kubectlProcess, bufferRef });
 
     kubectlProcess.stdout.on('data', (data) => {
       const chunk = data.toString();
-      outputBuffer += chunk;
+      bufferRef.value += chunk;
       io.emit('stream-data', {
         streamId: streamId,
         type: 'stdout',
@@ -212,7 +211,7 @@ function mountStream(router, io) {
 
     kubectlProcess.stderr.on('data', (data) => {
       const chunk = data.toString();
-      outputBuffer += chunk;
+      bufferRef.value += chunk;
       io.emit('stream-data', {
         streamId: streamId,
         type: 'stderr',
@@ -226,7 +225,7 @@ function mountStream(router, io) {
       io.emit('stream-end', {
         streamId: streamId,
         exitCode: code,
-        fullOutput: outputBuffer,
+        fullOutput: bufferRef.value,
         timestamp: Date.now()
       });
       global.runningProcesses.delete(streamId);
@@ -251,15 +250,23 @@ function mountStream(router, io) {
       return res.status(400).json({ error: 'streamId is required' });
     }
 
-    const process = global.runningProcesses?.get(streamId);
-    if (process) {
-      process.kill('SIGTERM');
+    const entry = global.runningProcesses?.get(streamId);
+    if (entry) {
+      entry.process.kill('SIGTERM');
       global.runningProcesses.delete(streamId);
       console.log(`Terminated stream: ${streamId}`);
       res.json({ success: true, message: 'Stream terminated' });
     } else {
       res.status(404).json({ error: 'Stream not found' });
     }
+  });
+
+  // POST /api/execute/stream/clear
+  router.post('/execute/stream/clear', (req, res) => {
+    const { streamId } = req.body;
+    const entry = global.runningProcesses?.get(streamId);
+    if (entry) entry.bufferRef.value = '';
+    res.json({ success: true });
   });
 }
 

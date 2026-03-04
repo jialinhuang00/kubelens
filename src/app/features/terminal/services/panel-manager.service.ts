@@ -87,6 +87,7 @@ export class PanelManagerService {
       outputData: { ...EMPTY_OUTPUT_DATA },
       activeCommand: '',
       streamStop: null,
+      streamClear: null,
       templates,
     };
 
@@ -117,6 +118,7 @@ export class PanelManagerService {
       outputData: { ...EMPTY_OUTPUT_DATA },
       activeCommand: '',
       streamStop: null,
+      streamClear: null,
       templates: [],
     };
 
@@ -156,6 +158,15 @@ export class PanelManagerService {
 
   updatePanelOutput(id: string, partial: Partial<PanelState>): void {
     this.updatePanel(id, partial);
+  }
+
+  clearPanelOutput(id: string): void {
+    const panel = this.getPanel(id);
+    if (!panel) return;
+    panel.streamClear?.();
+    this.updatePanel(id, {
+      outputData: { ...EMPTY_OUTPUT_DATA, outputType: 'streaming', customCommand: panel.outputData.customCommand },
+    });
   }
 
   // Workspace operations

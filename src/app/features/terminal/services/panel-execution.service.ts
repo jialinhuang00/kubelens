@@ -46,6 +46,7 @@ export class PanelExecutionService {
       isStreaming: false,
       isLoading: false,
       streamStop: null,
+      streamClear: null,
     });
   }
 
@@ -66,6 +67,7 @@ export class PanelExecutionService {
       this.panelManager.updatePanelOutput(panelId, {
         isStreaming: true,
         streamStop: streamResponse.stop || null,
+        streamClear: streamResponse.clear || null,
         outputData: {
           ...EMPTY_OUTPUT_DATA,
           outputType: 'streaming',
@@ -96,6 +98,7 @@ export class PanelExecutionService {
             isStreaming: false,
             isLoading: false,
             streamStop: null,
+            streamClear: null,
             outputData: { ...parsed, customCommand: command },
           });
         },
@@ -104,6 +107,7 @@ export class PanelExecutionService {
             isStreaming: false,
             isLoading: false,
             streamStop: null,
+            streamClear: null,
             outputData: {
               ...EMPTY_OUTPUT_DATA,
               outputType: 'raw',
