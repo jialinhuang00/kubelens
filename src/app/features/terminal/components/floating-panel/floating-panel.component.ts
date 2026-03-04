@@ -68,7 +68,7 @@ export class FloatingPanelComponent {
   panelTitle = computed(() => {
     const p = this.panel();
     if (p.type === 'general') return 'Command Output';
-    return `${p.resourceKind}: ${p.resourceName}`;
+    return p.resourceName;
   });
 
   panelStyle = computed(() => {

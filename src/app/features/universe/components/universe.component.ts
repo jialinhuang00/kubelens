@@ -21,6 +21,7 @@ import { ThemeSwitcherComponent } from '../../../shared/components/theme-switche
 import { BackLinkComponent } from '../../../shared/components/back-link/back-link.component';
 import { NamespaceChipsComponent } from '../../../shared/components/namespace-chips/namespace-chips.component';
 import { HandbookComponent } from '../../../shared/components/handbook/handbook.component';
+import { MemMonitorComponent } from '../../../shared/components/mem-monitor/mem-monitor.component';
 import { GraphDataService } from '../services/graph-data.service';
 import { GraphLayoutService, NodeLabel, NamespaceBoundary } from '../services/graph-layout.service';
 import {
@@ -40,7 +41,7 @@ import {
 
 @Component({
   selector: 'app-universe',
-  imports: [DecimalPipe, KeyValuePipe, NgTemplateOutlet, ModeToggleComponent, ThemeSwitcherComponent, BackLinkComponent, NamespaceChipsComponent, HandbookComponent],
+  imports: [DecimalPipe, KeyValuePipe, NgTemplateOutlet, ModeToggleComponent, ThemeSwitcherComponent, BackLinkComponent, NamespaceChipsComponent, HandbookComponent, MemMonitorComponent],
   templateUrl: './universe.component.html',
   styleUrls: ['./universe.component.scss'],
 })
@@ -84,6 +85,12 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
 
   toggleSidebar(): void {
     this.sidebarCollapsed.update(v => !v);
+  }
+
+  @HostListener('window:keydown.s', ['$event'])
+  onSidebarKey(e: Event) {
+    if (((e as KeyboardEvent).target as HTMLElement)?.tagName === 'INPUT') return;
+    this.toggleSidebar();
   }
 
   // Floating detail panel position + drag

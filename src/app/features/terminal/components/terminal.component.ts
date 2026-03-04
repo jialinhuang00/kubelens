@@ -4,11 +4,12 @@ import { PanelAreaComponent } from './panel-area/panel-area.component';
 import { ModeToggleComponent } from '../../../shared/components/mode-toggle/mode-toggle.component';
 import { ThemeSwitcherComponent } from '../../../shared/components/theme-switcher/theme-switcher.component';
 import { HandbookComponent } from '../../../shared/components/handbook/handbook.component';
+import { MemMonitorComponent } from '../../../shared/components/mem-monitor/mem-monitor.component';
 
 @Component({
   selector: 'app-terminal',
   standalone: true,
-  imports: [TerminalSidebarComponent, PanelAreaComponent, ModeToggleComponent, ThemeSwitcherComponent, HandbookComponent],
+  imports: [TerminalSidebarComponent, PanelAreaComponent, ModeToggleComponent, ThemeSwitcherComponent, HandbookComponent, MemMonitorComponent],
   templateUrl: './terminal.component.html',
   styleUrl: './terminal.component.scss',
 })

@@ -51,7 +51,6 @@ export class TerminalSidebarComponent implements OnInit {
     if (this.selectedNamespace() === ns) return;
     this.selectedNamespace.set(ns);
     this.namespaceService.setCurrentNamespace(ns);
-    this.panelManager.closeAll();
     await this.resourceTree.loadForNamespace(ns);
   }
 

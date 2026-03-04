@@ -26,6 +26,9 @@
       }
     </div>
     <div class="panel-controls">
+      @if (panel().type === 'resource' && panel().namespace) {
+        <span class="panel-ns-badge">{{ panel().namespace }}</span>
+      }
       @if (panel().isStreaming) {
         <button class="toolbar-chip clear-btn" (click)="onClearOutput(); $event.stopPropagation()" title="Clear output">Clear</button>
         <button class="panel-btn stop-btn" (click)="onStop(); $event.stopPropagation()" title="Stop stream">
