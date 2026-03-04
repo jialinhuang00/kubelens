@@ -16,6 +16,7 @@
     <app-namespace-chips
       [namespaces]="namespaceNames()"
       [selected]="focusedNamespace()"
+      [disabled]="loading()"
       (select)="onNamespaceChipClick($event)"
     />
 

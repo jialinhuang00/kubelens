@@ -15,6 +15,7 @@ import { Router } from '@angular/router';
 import { DecimalPipe, KeyValuePipe, NgTemplateOutlet } from '@angular/common';
 import { DataModeService } from '../../../core/services/data-mode.service';
 import { ThemeService } from '../../../core/services/theme.service';
+import { NamespaceService } from '../../k8s/services/namespace.service';
 import { ModeToggleComponent } from '../../../shared/components/mode-toggle/mode-toggle.component';
 import { ThemeSwitcherComponent } from '../../../shared/components/theme-switcher/theme-switcher.component';
 import { BackLinkComponent } from '../../../shared/components/back-link/back-link.component';
@@ -48,6 +49,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly router = inject(Router);
   protected readonly dataModeService = inject(DataModeService);
   private readonly themeService = inject(ThemeService);
+  protected readonly namespaceService = inject(NamespaceService);
 
   @ViewChild('graphCanvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('searchInput') searchInputRef!: ElementRef<HTMLInputElement>;
@@ -134,21 +136,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly WORKLOAD_KINDS = new Set<NodeKind>(['Deployment', 'StatefulSet', 'DaemonSet', 'CronJob']);
   private dataCheckInterval: ReturnType<typeof setInterval> | null = null;
 
-  // Namespace list for overview panel
-  readonly namespaceList = computed(() => {
-    const data = this.graphData.data();
-    if (!data) return [];
-    // Count nodes per namespace
-    const nsCounts = new Map<string, number>();
-    for (const node of data.nodes) {
-      nsCounts.set(node.namespace, (nsCounts.get(node.namespace) ?? 0) + 1);
-    }
-    return [...nsCounts.entries()]
-      .map(([ns, count]) => ({ name: ns, count }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  });
-
-  readonly namespaceNames = computed(() => this.namespaceList().map(ns => ns.name));
+  readonly namespaceNames = this.namespaceService.namespaces;
 
   // Important kinds to show in overview (no namespace selected)
   private readonly OVERVIEW_KINDS = new Set<NodeKind>([
@@ -355,6 +343,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.dataModeService.refreshAvailability();
+    this.namespaceService.loadNamespaces();
     this.graphData.fetchGraph();
   }
 

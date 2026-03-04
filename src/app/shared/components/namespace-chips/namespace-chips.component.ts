@@ -20,7 +20,9 @@ import { FormsModule } from '@angular/forms';
           <button
             class="namespace-chip"
             [class.active]="selected() === ns"
-            (click)="select.emit(ns)"
+            [class.disabled]="disabled()"
+            [disabled]="disabled()"
+            (click)="!disabled() && select.emit(ns)"
           >
             {{ ns }}
           </button>
@@ -109,6 +111,11 @@ import { FormsModule } from '@angular/forms';
         color: var(--t-accent);
         background: rgba(128, 128, 128, 0.08);
       }
+
+      &.disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
     }
 
     .empty-hint {
@@ -121,6 +128,7 @@ import { FormsModule } from '@angular/forms';
 export class NamespaceChipsComponent {
   readonly namespaces = input.required<string[]>();
   readonly selected = input<string | null>(null);
+  readonly disabled = input(false);
   readonly select = output<string>();
 
   readonly filter = signal('');

@@ -14,6 +14,7 @@ export class NamespaceService {
 
   async loadNamespaces() {
     this.isLoading.set(true);
+    this.namespaces.set([]);
     try {
       const namespaces = await this.kubectlService.getNamespaces();
       this.namespaces.set(namespaces);
