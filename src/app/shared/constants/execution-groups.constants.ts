@@ -158,8 +158,11 @@ export class ExecutionGroupUtils {
   static shouldCancel(currentGroup?: string, targetGroup?: string): boolean {
     const currentPriority = this.getPriority(currentGroup);
     const targetPriority = this.getPriority(targetGroup);
-    
-    // Only higher or equal priority groups can cancel other groups
+
+    // Panel commands and namespace loading are independent — never cancel each other
+    if (this.isUserCommand(currentGroup) && this.isNamespaceResourceLoading(targetGroup)) return false;
+    if (this.isNamespaceResourceLoading(currentGroup) && this.isUserCommand(targetGroup)) return false;
+
     return currentPriority <= targetPriority;
   }
 }
