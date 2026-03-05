@@ -16,7 +16,6 @@ func registerExecute(mux *http.ServeMux) {
 
 // POST /api/execute
 // Runs a single kubectl command and returns stdout.
-// Snapshot mode (TODO step 9): intercepts and reads from k8s-snapshot/ instead.
 //
 // Typical commands:
 //   - kubectl get pods -n <ns>

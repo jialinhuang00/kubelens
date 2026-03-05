@@ -5,6 +5,7 @@ import { takeUntil, catchError } from 'rxjs/operators';
 import { KubectlResponse, ResourceType } from '../../shared/models/kubectl.models';
 import { WebSocketService } from './websocket.service';
 import { ExecutionContextService } from './execution-context.service';
+import { DataModeService } from './data-mode.service';
 import { ExecutionGroupUtils } from '../../shared/constants/execution-groups.constants';
 import { ExecutionDialogService } from './execution-dialog.service';
 import { API_BASE } from '../constants/api';
@@ -34,6 +35,7 @@ export class KubectlService {
   private websocketService = inject(WebSocketService);
   private executionContext = inject(ExecutionContextService);
   private executionDialog = inject(ExecutionDialogService);
+  private dataMode = inject(DataModeService);
   private readonly API_BASE = API_BASE;
   
   // Request cancellation and tracking
@@ -184,99 +186,52 @@ export class KubectlService {
   // Stream a long-running kubectl command (e.g. rollout status) via WebSocket
   async executeCommandStream(command: string): Promise<StreamingResponse> {
     const streamId = `stream_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const isSnapshot = this.dataMode.isSnapshotMode();
 
-    // Ensure WebSocket is connected
-    if (!this.websocketService.isConnected()) {
-      this.websocketService.connect();
-      // Wait for connection
-      await new Promise(resolve => {
-        const checkConnection = () => {
-          if (this.websocketService.isConnected()) {
-            resolve(void 0);
-          } else {
-            setTimeout(checkConnection, 100);
-          }
-        };
-        checkConnection();
-      });
-    }
+    const session = this.websocketService.connectStream(command, streamId, isSnapshot);
 
-    try {
-      // Start stream
-      const response = await firstValueFrom(this.http.post<any>(`${this.API_BASE}/execute/stream`, {
-        command,
-        streamId
-      }));
+    const outputSubject = new BehaviorSubject<string>('');
+    let fullOutput = '';
 
-      if (!response?.success) {
-        throw new Error(response?.error || 'Failed to start stream');
-      }
+    const dataSubscription = session.data$.subscribe(data => {
+      fullOutput += data.data;
+      outputSubject.next(fullOutput);
+    });
 
-      // Create output stream
-      const outputSubject = new BehaviorSubject<string>('');
-      let fullOutput = '';
+    const endSubscription = session.end$.subscribe(endData => {
+      outputSubject.next(endData.fullOutput);
+      outputSubject.complete();
+    });
 
-      // Listen for stream data
-      const dataSubscription = this.websocketService.getStreamData(streamId).subscribe(data => {
-        fullOutput += data.data;
-        outputSubject.next(fullOutput);
-      });
+    const errorSubscription = session.error$.subscribe(errorData => {
+      outputSubject.error(new Error(errorData.error));
+    });
 
-      // Listen for stream end
-      const endSubscription = this.websocketService.getStreamEnd(streamId).subscribe(endData => {
-        outputSubject.next(endData.fullOutput);
-        outputSubject.complete();
-        dataSubscription.unsubscribe();
-        endSubscription.unsubscribe();
-      });
-
-      // Listen for errors
-      const errorSubscription = this.websocketService.getStreamError(streamId).subscribe(errorData => {
-        outputSubject.error(new Error(errorData.error));
+    const stop = async () => {
+      try {
+        session.close();
+        await firstValueFrom(this.http.post(`${this.API_BASE}/execute/stream/stop`, { streamId }));
+      } catch { /* ignore */ } finally {
         dataSubscription.unsubscribe();
         endSubscription.unsubscribe();
         errorSubscription.unsubscribe();
-      });
+        outputSubject.complete();
+      }
+    };
 
-      // Stop function
-      const stop = async () => {
-        try {
-          await firstValueFrom(this.http.post(`${this.API_BASE}/execute/stream/stop`, {
-            streamId
-          }));
+    const clear = () => {
+      fullOutput = '';
+      outputSubject.next('');
+      this.http.post(`${this.API_BASE}/execute/stream/clear`, { streamId }).subscribe();
+    };
 
-          dataSubscription.unsubscribe();
-          endSubscription.unsubscribe();
-          errorSubscription.unsubscribe();
-          outputSubject.complete();
-        } catch (error) {
-          console.error('Error stopping stream:', error);
-        }
-      };
-
-      // Clear function — wipes client buffer and server buffer without stopping the stream
-      const clear = () => {
-        fullOutput = '';
-        outputSubject.next('');
-        this.http.post(`${this.API_BASE}/execute/stream/clear`, { streamId }).subscribe();
-      };
-
-      return {
-        isStreaming: true,
-        streamId,
-        output$: outputSubject.asObservable(),
-        stop,
-        clear,
-      };
-
-    } catch (error) {
-      return {
-        isStreaming: false,
-        streamId: undefined,
-        output$: undefined,
-        stop: undefined
-      };
-    }
+    return {
+      isStreaming: true,
+      streamId,
+      output$: outputSubject.asObservable(),
+      stop,
+      clear,
+    };
   }
 
   // Check if command requires streaming execution
