@@ -15,9 +15,10 @@ let exportState = {
   startedAt: null,
   totalNamespaces: 0,
   completedNamespaces: 0,
-  currentNamespace: '',
+  activeNamespaces: new Set(),
   activeResources: new Set(),
   fileCount: 0,
+  minEtaSeconds: null,
   error: null,
   output: '',
 };
@@ -73,7 +74,7 @@ router.post('/k8s-export/start', (req, res) => {
     startedAt: Date.now(),
     totalNamespaces: 0,
     completedNamespaces: 0,
-    currentNamespace: '',
+    activeNamespaces: new Set(),
     activeResources: new Set(),
     fileCount: 0,
     error: null,
@@ -118,9 +119,14 @@ router.post('/k8s-export/start', (req, res) => {
     const nsMatches = text.matchAll(/=== Namespace: (\S+?) ===/g);
     for (const m of nsMatches) {
       if (!skippedSet.has(m[1])) {
-        exportState.currentNamespace = m[1];
-        exportState.activeResources.clear();
+        exportState.activeNamespaces.add(m[1]);
       }
+    }
+
+    // Parse "✓ Namespace xxx completed" — remove from active set
+    const doneNsMatches = text.matchAll(/✓ Namespace (\S+) completed/g);
+    for (const m of doneNsMatches) {
+      exportState.activeNamespaces.delete(m[1]);
     }
 
     // Parse "→ fetching xxx" — resource/batch started downloading
@@ -192,21 +198,27 @@ router.get('/k8s-export/progress', async (req, res) => {
     }
   }
 
-  // ETA: elapsed / doneNs * remainingNs
+  // ETA: elapsed / doneNs * remainingNs — clamped to only decrease
   let etaSeconds = null;
   if (exportState.running && exportState.startedAt && doneNs > 0 && totalNamespaces > 0) {
     const elapsed = (Date.now() - exportState.startedAt) / 1000;
     const avgPerNs = elapsed / doneNs;
     const remaining = totalNamespaces - doneNs;
-    etaSeconds = Math.round(avgPerNs * remaining);
+    const rawEta = Math.round(avgPerNs * remaining);
+    // Clamp: ETA can only decrease, never jump upward
+    if (exportState.minEtaSeconds === null || rawEta < exportState.minEtaSeconds) {
+      exportState.minEtaSeconds = rawEta;
+    }
+    etaSeconds = exportState.minEtaSeconds;
   }
 
+  const activeNsList = [...exportState.activeNamespaces];
   const response = {
     running: exportState.running,
     paused,
     totalNamespaces,
     completedNamespaces: doneNs,
-    currentNamespace: exportState.currentNamespace,
+    currentNamespace: activeNsList.join(', '),
     activeResources: [...exportState.activeResources],
     fileCount: liveCount,
     etaSeconds,

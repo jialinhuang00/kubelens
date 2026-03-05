@@ -7,6 +7,7 @@
 #   ./scripts/k8s-export.sh -n demo -n kube-system   # multiple namespaces
 #   ./scripts/k8s-export.sh --cluster-scoped           # also export cluster-scoped resources
 #   ./scripts/k8s-export.sh --resume                    # skip already-exported files
+#   ./scripts/k8s-export.sh --jobs 3                    # parallel namespaces (default: 3)
 
 set -euo pipefail
 
@@ -22,6 +23,7 @@ NAMESPACES=()
 ALL_NS=true
 CLUSTER_SCOPED=false
 RESUME=false
+PARALLEL_NS=3
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BASE_DIR="${SCRIPT_DIR}/../k8s-snapshot"
 
@@ -58,8 +60,10 @@ while [[ $# -gt 0 ]]; do
       CLUSTER_SCOPED=true; shift ;;
     --resume)
       RESUME=true; shift ;;
+    --jobs)
+      PARALLEL_NS="$2"; shift 2 ;;
     -h|--help)
-      head -9 "$0" | tail -7; exit 0 ;;
+      head -10 "$0" | tail -8; exit 0 ;;
     *)
       echo "Unknown option: $1"; exit 1 ;;
   esac
@@ -88,6 +92,7 @@ EXPORT_START=$(date +%s)
 echo "Cluster context: $CONTEXT"
 echo "Export target:   $BASE_DIR"
 echo "Namespaces:      ${NAMESPACES[*]}"
+echo "Parallel jobs:   $PARALLEL_NS"
 echo ""
 
 # Clean previous snapshot (skip if resuming)
@@ -115,11 +120,13 @@ else
   rm -rf "$BASE_DIR"
 fi
 
-# --- Export namespaced resources ---
-for ns in "${NAMESPACES[@]}"; do
+# --- Namespace export function ---
+export_one_namespace() {
+  local ns="$1"
+  local NS_START NS_END NS_ELAPSED
   NS_START=$(date +%s)
   echo "=== Namespace: $ns ==="
-  NS_DIR="${BASE_DIR}/${ns}"
+  local NS_DIR="${BASE_DIR}/${ns}"
   mkdir -p "$NS_DIR"
 
   # Run all batches in parallel — each batch is one kubectl call
@@ -179,7 +186,31 @@ for ns in "${NAMESPACES[@]}"; do
   NS_ELAPSED=$((NS_END - NS_START))
   echo -e "${GREEN}✓ Namespace $ns completed in ${NS_ELAPSED}s${RESET}"
   echo ""
-done
+}
+
+# --- Export namespaced resources (parallel batches) ---
+if [[ ${#NAMESPACES[@]} -gt 0 ]]; then
+  _batch_count=0
+  _batch_pids=()
+
+  for ns in "${NAMESPACES[@]}"; do
+    export_one_namespace "$ns" &
+    _batch_pids+=($!)
+    _batch_count=$((_batch_count + 1))
+
+    if [[ $_batch_count -ge $PARALLEL_NS ]]; then
+      # Wait for this batch before starting the next
+      for _pid in "${_batch_pids[@]}"; do wait "$_pid" 2>/dev/null || true; done
+      _batch_pids=()
+      _batch_count=0
+    fi
+  done
+
+  # Wait for any remaining namespaces
+  if [[ ${#_batch_pids[@]} -gt 0 ]]; then
+    for _pid in "${_batch_pids[@]}"; do wait "$_pid" 2>/dev/null || true; done
+  fi
+fi
 
 # --- Export cluster-scoped resources ---
 if [[ "$CLUSTER_SCOPED" == "true" ]]; then
