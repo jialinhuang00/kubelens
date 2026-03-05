@@ -85,22 +85,23 @@ func handleExportStart(w http.ResponseWriter, r *http.Request) {
 	state.output = ""
 	state.mu.Unlock()
 
-	useGo := os.Getenv("USE_GO_EXPORT") == "true"
+	// Go server always uses the Go export binary.
+	// Falls back to scripts/k8s-export.sh if USE_BASH_EXPORT=true.
 	var cmd *exec.Cmd
-	if useGo {
-		binary := filepath.Join("cmd", "k8s-export", "k8s-export")
-		args := []string{}
-		if body.Resume {
-			args = append(args, "--resume")
-		}
-		cmd = exec.Command(binary, args...)
-	} else {
+	if os.Getenv("USE_BASH_EXPORT") == "true" {
 		script := filepath.Join("scripts", "k8s-export.sh")
 		args := []string{script}
 		if body.Resume {
 			args = append(args, "--resume")
 		}
 		cmd = exec.Command("bash", args...)
+	} else {
+		binary := filepath.Join("cmd", "k8s-export", "k8s-export")
+		args := []string{}
+		if body.Resume {
+			args = append(args, "--resume")
+		}
+		cmd = exec.Command(binary, args...)
 	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} // new process group for group kill
 	cmd.Dir = "."
