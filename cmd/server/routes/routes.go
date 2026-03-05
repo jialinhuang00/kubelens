@@ -7,4 +7,5 @@ func Register(mux *http.ServeMux) {
 	registerECR(mux)
 	registerResourceCounts(mux)
 	registerExecute(mux)
+	registerK8sExport(mux)
 }
