@@ -6,4 +6,5 @@ func Register(mux *http.ServeMux) {
 	registerStatus(mux)
 	registerECR(mux)
 	registerResourceCounts(mux)
+	registerExecute(mux)
 }
