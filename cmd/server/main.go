@@ -10,6 +10,14 @@ import (
 )
 
 func main() {
+	// PROJECT_ROOT lets the server find k8s-snapshot/, scripts/, etc.
+	// when invoked from a subdirectory (e.g. via npm run dev:go from cmd/server/).
+	if root := os.Getenv("PROJECT_ROOT"); root != "" {
+		if err := os.Chdir(root); err != nil {
+			log.Fatalf("chdir to PROJECT_ROOT %q: %v", root, err)
+		}
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3000"
