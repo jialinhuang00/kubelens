@@ -6,7 +6,7 @@ const fsp = fs.promises;
 
 const router = express.Router();
 
-const snapshotDir = path.join(__dirname, '..', 'k8s-snapshot');
+const snapshotDir = path.join(__dirname, '../..', 'k8s-snapshot');
 
 let exportState = {
   running: false,
@@ -83,8 +83,8 @@ router.post('/k8s-export/start', (req, res) => {
 
   const useGo = process.env.USE_GO_EXPORT === 'true';
   const scriptPath = useGo
-    ? path.join(__dirname, '..', 'cmd', 'k8s-export', 'k8s-export')
-    : path.join(__dirname, '..', 'scripts', 'k8s-export.sh');
+    ? path.join(__dirname, '../..', 'cmd', 'k8s-export', 'k8s-export')
+    : path.join(__dirname, '../..', 'scripts', 'k8s-export.sh');
 
   let spawnCmd, args;
   if (useGo) {
@@ -97,7 +97,7 @@ router.post('/k8s-export/start', (req, res) => {
   if (resume) args.push('--resume');
 
   const child = spawn(spawnCmd, args, {
-    cwd: path.join(__dirname, '..'),
+    cwd: path.join(__dirname, '../..'),
     env: { ...process.env },
     detached: true,  // new process group — enables group kill on pause
   });

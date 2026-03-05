@@ -116,7 +116,7 @@ router.get('/graph', async (req, res) => {
 
   try {
     if (isSnapshot) {
-      const rootDir = path.join(__dirname, '..');
+      const rootDir = path.join(__dirname, '../..');
       const localBackup = path.join(rootDir, 'k8s-snapshot');
       const fallbackPath = process.env.K8S_SNAPSHOT_PATH || localBackup;
 

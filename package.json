@@ -4,12 +4,12 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "dev": "concurrently \"tsx server.js\" \"ng serve\"",
+    "dev": "concurrently \"tsx api/index.js\" \"ng serve\"",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "test:utils": "tsx --test utils/**/*.spec.ts",
-    "test:utils:cov": "npx c8 --include='utils/*.ts' --exclude='utils/*.spec.ts' --exclude='utils/test-fixtures.ts' tsx --test 'utils/**/*.spec.ts'",
+    "test:utils": "tsx --test api/utils/**/*.spec.ts",
+    "test:utils:cov": "npx c8 --include='api/utils/*.ts' --exclude='api/utils/*.spec.ts' --exclude='api/utils/test-fixtures.ts' tsx --test 'api/utils/**/*.spec.ts'",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "screenshot": "playwright test e2e/screenshots.spec.ts"

@@ -12,13 +12,13 @@ import {
   type NodeKind, type NodeCategory, PodPhase,
   EdgeType, SourceField,
   type GraphNode, type GraphEdge, type PodNode, type GraphResult,
-} from '../shared/graph-types';
+} from '../../shared/graph-types';
 
 export {
   type NodeKind, type NodeCategory, PodPhase,
   EdgeType, SourceField,
   type GraphNode, type GraphEdge, type PodNode, type GraphResult,
-} from '../shared/graph-types';
+} from '../../shared/graph-types';
 
 /** Abstraction for fetching K8s items — allows swapping between realtime (kubectl) and snapshot (YAML). */
 export type GetItemsFn = (ns: string, resourceKey: string) => K8sItem[];

@@ -54,7 +54,7 @@ router.get('/realtime/ping', async (req, res) => {
 
 // GET /api/snapshot/ping
 router.get('/snapshot/ping', async (req, res) => {
-  const backupDir = path.join(__dirname, '..', 'k8s-snapshot');
+  const backupDir = path.join(__dirname, '../..', 'k8s-snapshot');
   let available = false;
 
   try {
