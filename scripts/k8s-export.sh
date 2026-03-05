@@ -123,6 +123,17 @@ fi
 # --- Namespace export function ---
 export_one_namespace() {
   local ns="$1"
+
+  # Reconstruct NS_BATCHES from numbered env vars when running in a GNU parallel subshell
+  if [[ -n "${_NS_BATCH_COUNT:-}" ]]; then
+    NS_BATCHES=()
+    local _i
+    for _i in $(seq 0 $((_NS_BATCH_COUNT - 1))); do
+      local _var="_NS_BATCH_${_i}"
+      NS_BATCHES+=("${!_var}")
+    done
+  fi
+
   local NS_START NS_END NS_ELAPSED
   NS_START=$(date +%s)
   echo "=== Namespace: $ns ==="
@@ -188,27 +199,39 @@ export_one_namespace() {
   echo ""
 }
 
-# --- Export namespaced resources (parallel batches) ---
+# --- Export namespaced resources ---
 if [[ ${#NAMESPACES[@]} -gt 0 ]]; then
-  _batch_count=0
-  _batch_pids=()
+  if command -v parallel &>/dev/null && [[ $PARALLEL_NS -gt 1 ]]; then
+    echo "Using GNU parallel (--jobs $PARALLEL_NS)"
+    # Export function and all variables needed by the subshell
+    export -f export_one_namespace
+    export BASE_DIR RESUME SCRIPT_DIR YELLOW GREEN RED GRAY RESET
+    export _NS_BATCH_COUNT=${#NS_BATCHES[@]}
+    for _i in "${!NS_BATCHES[@]}"; do
+      export "_NS_BATCH_${_i}=${NS_BATCHES[$_i]}"
+    done
+    printf "%s\n" "${NAMESPACES[@]}" | parallel --jobs "$PARALLEL_NS" export_one_namespace
+  else
+    # Bash batch fallback (no GNU parallel, or --jobs 1)
+    [[ $PARALLEL_NS -gt 1 ]] && echo "GNU parallel not found, falling back to batch mode"
+    _batch_count=0
+    _batch_pids=()
 
-  for ns in "${NAMESPACES[@]}"; do
-    export_one_namespace "$ns" &
-    _batch_pids+=($!)
-    _batch_count=$((_batch_count + 1))
+    for ns in "${NAMESPACES[@]}"; do
+      export_one_namespace "$ns" &
+      _batch_pids+=($!)
+      _batch_count=$((_batch_count + 1))
 
-    if [[ $_batch_count -ge $PARALLEL_NS ]]; then
-      # Wait for this batch before starting the next
+      if [[ $_batch_count -ge $PARALLEL_NS ]]; then
+        for _pid in "${_batch_pids[@]}"; do wait "$_pid" 2>/dev/null || true; done
+        _batch_pids=()
+        _batch_count=0
+      fi
+    done
+
+    if [[ ${#_batch_pids[@]} -gt 0 ]]; then
       for _pid in "${_batch_pids[@]}"; do wait "$_pid" 2>/dev/null || true; done
-      _batch_pids=()
-      _batch_count=0
     fi
-  done
-
-  # Wait for any remaining namespaces
-  if [[ ${#_batch_pids[@]} -gt 0 ]]; then
-    for _pid in "${_batch_pids[@]}"; do wait "$_pid" 2>/dev/null || true; done
   fi
 fi
 
