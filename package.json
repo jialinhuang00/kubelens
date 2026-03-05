@@ -5,6 +5,7 @@
     "ng": "ng",
     "start": "ng serve",
     "dev": "concurrently \"tsx api/index.js\" \"ng serve\"",
+    "dev:go": "concurrently \"go run ./cmd/server\" \"ng serve\"",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
