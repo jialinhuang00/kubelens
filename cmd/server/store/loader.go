@@ -1,6 +1,6 @@
-// Package snapshot reads and caches YAML/text files from k8s-snapshot/.
-// All other snapshot sub-packages depend on this.
-package snapshot
+// Package store reads and caches YAML/text files from k8s-snapshot/.
+// Routes use this package for offline snapshot mode.
+package store
 
 import (
 	"os"
