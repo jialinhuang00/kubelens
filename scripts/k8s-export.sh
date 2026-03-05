@@ -76,7 +76,7 @@ if [[ "$ALL_NS" == "true" ]]; then
     echo "ERROR: Cannot connect to cluster. Run 'aws sso login' and update kubeconfig first."
     exit 1
   fi
-  while IFS= read -r ns; do NAMESPACES+=("$ns"); done < <(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n')
+  while IFS= read -r ns; do NAMESPACES+=("$ns"); done < <(kubectl get namespaces -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}')
   echo "Discovered ${#NAMESPACES[@]} namespaces"
 elif [[ ${#NAMESPACES[@]} -eq 0 ]]; then
   echo "No namespaces specified. Use -n <namespace> or run without args for all."

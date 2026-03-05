@@ -81,11 +81,22 @@ router.post('/k8s-export/start', (req, res) => {
     output: '',
   };
 
-  const scriptPath = path.join(__dirname, '..', 'scripts', 'k8s-export.sh');
-  const args = [scriptPath];
+  const useGo = process.env.USE_GO_EXPORT === 'true';
+  const scriptPath = useGo
+    ? path.join(__dirname, '..', 'cmd', 'k8s-export', 'k8s-export')
+    : path.join(__dirname, '..', 'scripts', 'k8s-export.sh');
+
+  let spawnCmd, args;
+  if (useGo) {
+    spawnCmd = scriptPath;
+    args = [];
+  } else {
+    spawnCmd = 'bash';
+    args = [scriptPath];
+  }
   if (resume) args.push('--resume');
 
-  const child = spawn('bash', args, {
+  const child = spawn(spawnCmd, args, {
     cwd: path.join(__dirname, '..'),
     env: { ...process.env },
     detached: true,  // new process group — enables group kill on pause
