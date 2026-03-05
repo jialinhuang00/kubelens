@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+
+	"kubecmds-viz/server/store"
 )
 
 var resourceTypes = []string{
@@ -40,8 +42,12 @@ func handleResourceCounts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: snapshot mode — reads counts from k8s-snapshot/ YAML files.
-	// Implemented in step 8 after snapshot/ package is ported.
+	// Snapshot mode — reads counts from k8s-snapshot/ YAML files.
+	if r.URL.Query().Get("snapshot") == "true" {
+		counts := store.GetResourceCounts(ns)
+		writeJSON(w, http.StatusOK, map[string]any{"success": true, "counts": counts})
+		return
+	}
 
 	type result struct {
 		key   string
