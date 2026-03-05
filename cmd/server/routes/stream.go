@@ -106,6 +106,11 @@ func handleStreamWS(w http.ResponseWriter, r *http.Request) {
 	streamsMu.Unlock()
 
 	defer func() {
+		// Kill kubectl if WebSocket closes before the process finishes
+		// (e.g. user navigates away without pressing stop).
+		if proc.cmd.Process != nil {
+			proc.cmd.Process.Kill()
+		}
 		streamsMu.Lock()
 		delete(streams, init.StreamID)
 		streamsMu.Unlock()
