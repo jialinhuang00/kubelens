@@ -210,7 +210,7 @@ if [[ ${#NAMESPACES[@]} -gt 0 ]]; then
     for _i in "${!NS_BATCHES[@]}"; do
       export "_NS_BATCH_${_i}=${NS_BATCHES[$_i]}"
     done
-    printf "%s\n" "${NAMESPACES[@]}" | parallel --jobs "$PARALLEL_NS" export_one_namespace
+    printf "%s\n" "${NAMESPACES[@]}" | parallel --jobs "$PARALLEL_NS" --line-buffer export_one_namespace
   else
     # Bash batch fallback (no GNU parallel, or --jobs 1)
     [[ $PARALLEL_NS -gt 1 ]] && echo "GNU parallel not found, falling back to batch mode"

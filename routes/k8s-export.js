@@ -88,6 +88,7 @@ router.post('/k8s-export/start', (req, res) => {
   const child = spawn('bash', args, {
     cwd: path.join(__dirname, '..'),
     env: { ...process.env },
+    detached: true,  // new process group — enables group kill on pause
   });
 
   exportState.pid = child.pid;
@@ -235,7 +236,7 @@ router.post('/k8s-export/stop', (req, res) => {
   }
 
   try {
-    process.kill(exportState.pid, 'SIGTERM');
+    process.kill(-exportState.pid, 'SIGTERM');  // negative = kill entire process group
     exportState.running = false;
     exportState.paused = true;
     res.json({ stopped: true });
