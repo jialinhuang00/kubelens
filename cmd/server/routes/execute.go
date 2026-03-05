@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"kubecmds-viz/server/store"
 )
 
 func registerExecute(mux *http.ServeMux) {
@@ -36,7 +38,17 @@ func handleExecute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: snapshot mode — step 9 after snapshot/ package is ported.
+	// Snapshot mode — dispatch to store instead of live kubectl.
+	if r.URL.Query().Get("snapshot") == "true" {
+		result := store.HandleCommand(body.Command)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"success": result.Success,
+			"stdout":  result.Stdout,
+			"error":   result.Error,
+			"command": body.Command,
+		})
+		return
+	}
 
 	args := parseCommand(body.Command)
 
