@@ -167,6 +167,8 @@
   .bar-go-bug      { background: linear-gradient(90deg, #8a4040, #e07070); }
   .bar-go-fixed    { background: linear-gradient(90deg, #b08820, #e8b866); }
   .bar-nodejs      { background: linear-gradient(90deg, #1a4a5a, #6aaccc); }
+  .bar-node-workers { background: linear-gradient(90deg, #1a3a5a, #4a8aaa); }
+  .bar-node-procs   { background: linear-gradient(90deg, #1a2a50, #506aaa); }
 
   /* ── RACE DETAIL PANEL ── */
   .race-detail {
@@ -549,47 +551,40 @@
     border-color: var(--gold);
   }
 
-  /* proportional memory bar chart */
-  .smc-chart {
+  /* dot grid memory chart — each dot = 1 MB */
+  .dot-grid-chart {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.25rem;
     margin-top: 1.25rem;
   }
 
-  .smc-row {
-    display: grid;
-    grid-template-columns: 160px 1fr 110px;
-    align-items: center;
-    gap: 0.75rem;
+  .dot-row-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
     font-family: monospace;
     font-size: 0.8rem;
+    margin-bottom: 0.35rem;
   }
 
   .smc-label { color: var(--text-dim); }
 
-  .smc-track {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    height: 28px;
-    position: relative;
-    overflow: hidden;
+  .dot-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    min-height: 10px;
   }
 
-  .smc-bar {
-    height: 100%;
-    width: 0;
-    border-radius: 3px;
-    transition: width 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    position: relative;
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 1px;
+    background: var(--border);
+    transition: background 0.04s;
   }
 
-  .smc-bar-proc     { background: linear-gradient(90deg, #5a1a1a, #e07070); }
-  .smc-bar-thread   { background: linear-gradient(90deg, #4a2a0a, #d4956a); }
-  .smc-bar-goroutine { background: linear-gradient(90deg, #0a3a0a, #6dca82); }
-
-  /* goroutine bar is so thin the label must live outside */
   .smc-value {
     font-family: monospace;
     font-size: 0.82rem;
@@ -1087,7 +1082,7 @@
           <line x1="180" y1="46" x2="180" y2="68" class="tree-edge"/>
           <rect x="75" y="68" width="210" height="36" rx="6" class="node-box pool"/>
           <text x="180" y="83" class="node-text gold">@k8s/client-node pool</text>
-          <text x="180" y="96" class="node-text dim">HTTP/2, keep-alive</text>
+          <text x="180" y="96" class="node-text dim">HTTP/1.1 (no HTTP/2)</text>
 
           <!-- Promises -->
           <line x1="180" y1="104" x2="180" y2="120" class="tree-edge"/>
@@ -1127,11 +1122,11 @@
           <!-- Cost summary -->
           <rect x="40" y="298" width="280" height="80" rx="8" fill="#161616" stroke="#2e2e2e" stroke-width="1"/>
           <text x="180" y="318" class="node-text gold">Cost summary</text>
-          <text x="180" y="338" class="node-text dim">1 process, conn reused (no TLS)</text>
+          <text x="180" y="338" class="node-text dim">1 process, ~95 TCP handshakes</text>
           <text x="180" y="354" class="node-text dim">I/O concurrent, CPU sequential</text>
-          <text x="180" y="370" class="node-text dim">real result: 17s</text>
+          <text x="180" y="370" class="node-text dim">real result: 16s</text>
 
-          <text x="180" y="404" class="node-text dim">real result: 17s</text>
+          <text x="180" y="404" class="node-text dim">real result: 16s</text>
           <rect x="40" y="414" width="240" height="8" rx="4" fill="none" stroke="#1a3a4a" stroke-width="1"/>
           <rect x="40" y="414" width="28"  height="8" rx="4" fill="#6aaccc"/>
         </svg>
@@ -1143,11 +1138,83 @@
     <div class="tl-item"><div class="tl-box proc"></div> OS Process — has PID, own memory, TLS per spawn</div>
     <div class="tl-item"><div class="tl-box goroutine"></div> Goroutine — logical unit, no PID, no new TLS</div>
     <div class="tl-item"><div class="tl-box promise"></div> Promise — async I/O concurrent, CPU sequential</div>
-    <div class="tl-item"><div class="tl-box pool"></div> Connection pool — HTTP/2 keep-alive, shared</div>
+    <div class="tl-item"><div class="tl-box pool"></div> Connection pool — shared within process</div>
+  </div>
+
+  <!-- TCP Handshake Analysis -->
+  <div class="elo-wrap" style="margin-top:2rem;">
+    <h3>TCP Handshake Count — Measured via netstat TIME_WAIT</h3>
+    <div style="font-family:monospace;font-size:0.8rem;color:var(--text-dim);margin-bottom:1.25rem;line-height:1.7;">
+      Each TCP connection that closes leaves a <code style="color:var(--gold)">TIME_WAIT</code> state for ~60s.
+      Counting accumulated TIME_WAITs after an export reveals the true number of unique connections opened.
+    </div>
+    <div style="font-family:monospace;font-size:0.78rem;color:var(--text-dim);margin-bottom:1rem;">
+      Monitor command:
+      <code style="display:block;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:0.5rem 0.75rem;margin-top:0.4rem;color:var(--text);">netstat -an | grep -E 'EKS_IP_1|EKS_IP_2' | awk '{print $6}' | sort | uniq -c</code>
+    </div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:0.8rem;">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border);color:var(--text-dim);">
+            <th style="text-align:left;padding:0.4rem 0.75rem;">Mode</th>
+            <th style="text-align:right;padding:0.4rem 0.75rem;">TCP handshakes</th>
+            <th style="text-align:left;padding:0.4rem 0.75rem;">Why</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:0.4rem 0.75rem;color:var(--gold)">Go (fixed)</td>
+            <td style="text-align:right;padding:0.4rem 0.75rem;color:var(--success)">1</td>
+            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">HTTP/2 multiplex — 1 TCP for all 528 requests. Peak 1 ESTABLISHED.</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">Node.js workers=4</td>
+            <td style="text-align:right;padding:0.4rem 0.75rem;color:var(--success)">32</td>
+            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">4 pools, each serves fixed ns set — connections persist per pool. Fewer total than single-thread.</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">Node.js procs=4</td>
+            <td style="text-align:right;padding:0.4rem 0.75rem;color:var(--warning)">43</td>
+            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">Same N=4 as workers. Each OS process has a completely separate TCP stack — 11 more unique connections than worker threads.</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:0.4rem 0.75rem;color:var(--info)">Node.js single-thread</td>
+            <td style="text-align:right;padding:0.4rem 0.75rem;color:var(--warning)">84</td>
+            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">Peak 66 SYN_SENT (3 ns × 22 req). Work-stealing semaphore causes more connection cycling than workers.</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">Bash sequential / batch</td>
+            <td style="text-align:right;padding:0.4rem 0.75rem;color:var(--text-dim)">0 observed</td>
+            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">Run takes 60–108s. TIME_WAIT (60s) expires mid-run. Peak ~21 ESTABLISHED per batch.</td>
+          </tr>
+          <tr>
+            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">GNU parallel –jobs 8</td>
+            <td style="text-align:right;padding:0.4rem 0.75rem;color:var(--text-dim)">0 observed</td>
+            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">Peak 19 ESTABLISHED, 6 SYN_SENT. 216 new TLS across 43s run — connections cycle too fast to accumulate in polling.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="font-family:monospace;font-size:0.78rem;color:var(--text-dim);margin-top:1rem;line-height:1.7;">
+      <strong style="color:var(--warning)">Surprising: workers=4 has fewer connections (32) than single-thread (84).</strong>
+      Each worker handles a fixed set of namespaces and keeps its pool alive across all of them.
+      Single-thread work-stealing rotates namespaces faster — connections from closing namespaces overlap with new ones opening, causing more TCP cycling.
+      Workers win on connection efficiency, but single-thread wins on speed via work-stealing (no idle slots).
+      <br><br>
+      <strong style="color:var(--warning)">Bash has 0 accumulated TIME_WAIT — not because of reuse, but because of expiry.</strong>
+      Bash sequential takes ~108s total. Each namespace takes ~4.5s. TIME_WAIT lasts 60s.
+      By the time namespace 14 finishes, namespace 1's TIME_WAIT has already expired. No accumulation.
+      <br><br>
+      <strong style="color:var(--warning)">Why Node.js can't use HTTP/2:</strong>
+      <code style="color:var(--info)">@kubernetes/client-node</code> uses Node.js <code style="color:var(--info)">https</code> module (HTTP/1.1).
+      The <code style="color:var(--info)">http2</code> module is a completely separate API — no automatic upgrade.
+      ALPN negotiation (which Go's client-go uses) cannot happen through the <code style="color:var(--info)">https</code> module.
+      Result: connections torn down between ns batches, TIME_WAIT accumulates to 84.
+    </div>
   </div>
 
   <div class="elo-wrap">
-    <h3>Why Node.js worker_threads (23s) is faster than bash (69s) but slower than Go (5s)</h3>
+    <h3>Why single-thread Node.js (16s) beats workers=4 (23s) but loses to Go (11s)</h3>
     <div class="elo-grid">
       <div>
         <div class="elo-heading"><strong>Node.js + worker_threads</strong> — N OS threads，每個 worker 獨立 event loop</div>
@@ -1178,11 +1245,12 @@
           <span class="elo-lane-label">Worker 2</span>
           <div class="elo-track" style="border-color:transparent;background:transparent"></div>
         </div>
-        <div class="elo-total" style="color:var(--warning)">workers=4, timeout=10s &nbsp;→&nbsp; 23s（23 namespaces）</div>
+        <div class="elo-total" style="color:var(--warning)">workers=4 → 23s · single-thread → 16s（24 namespaces）</div>
         <div class="elo-note">
-          Connection reused (no TLS overhead)<br>
+          ~32 TCP handshakes per worker pool (4 pools × ~8 each)<br>
           I/O concurrent ✓ — CPU per-worker parallel ✓<br>
-          <span style="color:var(--warning)">注意：workers × 28 = 峰值 HTTPS 連線數。workers=8 → system freeze</span><br>
+          <span style="color:var(--warning)">Static ns allocation: slow namespaces stall their worker. Single-thread semaphore avoids this.</span><br>
+          <span style="color:var(--warning)">注意：workers × 8 = 實際 TCP 連線數（8 API clients per worker，各自 1 pool）。22 in-flight requests ≠ 22 connections</span><br>
           <span style="color:var(--info)">Timeout 需用 AbortController，Promise.race 不會真正關閉 TCP connection</span>
         </div>
       </div>
@@ -1208,9 +1276,10 @@
             <div class="elo-bar elo-bar-parallel" id="gor-t3"></div>
           </div>
         </div>
-        <div class="elo-total fast">total ≈ slowest single goroutine &nbsp;→&nbsp; 5s</div>
+        <div class="elo-total fast">HTTP/2 multiplex: 1 TCP for all requests → 11s</div>
         <div class="elo-note">
-          Connection reused (no TLS overhead)<br>
+          HTTP/2 via ALPN: 1 TCP, all goroutines multiplex over it<br>
+          Node.js https module cannot upgrade to HTTP/2 (different API)<br>
           I/O concurrent ✓ — CPU callbacks parallel ✓
         </div>
       </div>
@@ -1274,34 +1343,31 @@
   </div>
 
   <div class="spawn-section">
-    <h3>Spawn 1000 of each — total stack memory (proportional)</h3>
+    <h3>Spawn 1000 of each — total stack memory</h3>
     <div class="spawn-controls">
       <button class="spawn-btn" onclick="runSpawn()">Animate</button>
       <button class="spawn-btn" onclick="resetSpawn()">Reset</button>
-      <span class="chip">Bar width = actual memory proportion</span>
+      <span class="chip">Each dot = 1 MB</span>
     </div>
 
-    <div class="smc-chart">
-      <div class="smc-row">
-        <span class="smc-label">OS Process × 1000</span>
-        <div class="smc-track"><div class="smc-bar smc-bar-proc" id="smb-proc"></div></div>
-        <span class="smc-value warn" id="smv-proc">—</span>
+    <div class="dot-grid-chart">
+      <div>
+        <div class="dot-row-label">
+          <span class="smc-label">OS Thread × 1000</span>
+          <span class="smc-value warn" id="smv-thread">—</span>
+        </div>
+        <div class="dot-grid" id="dg-thread"></div>
+        <div class="smc-note" id="smn-thread"></div>
       </div>
-      <div class="smc-note" id="smn-proc"></div>
 
-      <div class="smc-row">
-        <span class="smc-label">OS Thread × 1000</span>
-        <div class="smc-track"><div class="smc-bar smc-bar-thread" id="smb-thread"></div></div>
-        <span class="smc-value warn" id="smv-thread">—</span>
+      <div>
+        <div class="dot-row-label">
+          <span class="smc-label">Goroutine × 1000</span>
+          <span class="smc-value ok" id="smv-goroutine">—</span>
+        </div>
+        <div class="dot-grid" id="dg-goroutine"></div>
+        <div class="smc-note" id="smn-goroutine"></div>
       </div>
-      <div class="smc-note" id="smn-thread"></div>
-
-      <div class="smc-row">
-        <span class="smc-label">Goroutine × 1000</span>
-        <div class="smc-track"><div class="smc-bar smc-bar-goroutine" id="smb-goroutine"></div></div>
-        <span class="smc-value ok" id="smv-goroutine">—</span>
-      </div>
-      <div class="smc-note" id="smn-goroutine"></div>
     </div>
   </div>
 </section>
@@ -1312,7 +1378,7 @@
 <section class="section" id="bucket">
   <h1>§ 04</h1>
   <h2>Token Bucket Rate Limiter</h2>
-  <p class="lead">client-go defaults to QPS=5, Burst=10. That bottleneck turned a 6s export into 103s.</p>
+  <p class="lead">client-go defaults to QPS=5, Burst=10. That bottleneck turned an 11s export into 103s.</p>
 
   <div class="bucket-layout">
     <div class="bucket-controls">
@@ -1443,80 +1509,153 @@ const RACE_DATA = [
     bnType: 'warn',
   },
   {
-    label: 'GNU parallel –jobs 3',
-    time: 69,
+    label: 'GNU parallel –jobs 8 (sweet spot)',
+    time: 43,
     barClass: 'bar-gnu-par',
     color: '#6dca82',
     math: [
-      { n: '3', unit: 'slots', cls: 'accent' },
+      { n: '8', unit: 'slots', cls: 'accent' },
       { sep: true },
       { n: '24', unit: 'namespaces' },
-      { op: '÷' },
-      { n: '3', unit: '≈ 8 rounds' },
       { sep: true },
-      { n: '216', unit: 'total spawns' },
+      { n: '216', unit: 'total kubectl spawns' },
     ],
     flow: [
-      { text: 'slot 1: [ns1 ──────────] [ns6 ──────] …', col: 'success' },
-      { text: 'slot 2: [ns2 ──────] [ns5 ──────────] …', col: 'success' },
-      { text: 'slot 3: [ns3 ────] [ns4 ─────] [ns7 ──] …', col: 'success' },
+      { text: 'Work-stealing: always 8 slots running', col: 'success' },
       { text: '' },
-      { text: '  ns3 finishes first → slot 3 takes ns4 immediately', col: 'dim' },
-      { text: '  ns2 finishes next  → slot 2 takes ns5', col: 'dim' },
-      { text: '  ns1 finishes last  → slot 1 takes ns6', col: 'dim' },
+      { text: 'slot 1: [ns1 ──────────] [ns9 ──────] …', col: 'success' },
+      { text: 'slot 2: [ns2 ──────] [ns10 ──────────] …', col: 'success' },
+      { text: '  ...', col: 'dim' },
+      { text: 'slot 8: [ns8 ────] [ns15 ─────] …', col: 'success' },
       { text: '' },
-      { text: 'vs bash --jobs 3 (batch mode):', col: 'dim' },
-      { text: '  slot 1: [ns1 ──────────] [idle ──] [ns4 …', col: 'warn' },
-      { text: '  slot 2: [ns2 ──────] [idle ──────] [ns5 …', col: 'warn' },
-      { text: '  slot 3: [ns3 ────] [idle ────────] [ns6 …', col: 'warn' },
-      { text: '  all slots idle — waiting for ns1 to finish', col: 'warn' },
+      { text: 'any slot done → next ns starts immediately', col: 'dim' },
+      { text: '' },
+      { text: 'vs bash batch (–jobs 8):', col: 'dim' },
+      { text: '  [ns1..ns8] wait for slowest → [ns9..ns16] …', col: 'warn' },
+      { text: '  ≈ 60s (slots idle at batch boundaries)', col: 'warn' },
+      { text: '' },
+      { text: 'each namespace = 9 kubectl processes × new TLS', col: 'dim' },
     ],
     keypoints: [
-      'Real-time slot scheduling — no batch boundaries',
-      'Reduces wall time 26% vs batch mode (94s → 69s)',
-      'Still 9 subprocess spawns per namespace',
-      'Process overhead is the remaining floor',
+      'Work-stealing: no idle slots at batch boundaries',
+      'Sweet spot –jobs 8: 43s (–jobs 3 was 69s)',
+      'Still 216 kubectl process spawns across the run',
+      '216 TLS handshakes — no connection reuse possible',
     ],
-    bottleneck: 'Still spawning 216 kubectl processes. No batch stall, but process cost remains.',
+    bottleneck: '216 TLS handshakes (9 kubectl per ns, each a new process). Process spawn is the floor.',
     bnType: 'info',
   },
   {
-    label: 'Node.js @k8s/client-node',
-    time: 17,
+    label: 'Node.js workers=4',
+    time: 23,
+    barClass: 'bar-node-workers',
+    color: '#4a8aaa',
+    math: [
+      { n: '4', unit: 'workers', cls: 'accent' },
+      { op: '×' },
+      { n: '22', unit: 'API calls / ns' },
+      { op: '=' },
+      { n: '~88', unit: 'peak concurrent', cls: 'warn' },
+      { sep: true },
+      { n: '~32', unit: 'TCP handshakes' },
+    ],
+    flow: [
+      { text: '// Namespaces statically round-robin assigned', col: 'dim' },
+      { text: 'Worker 0: [ns0, ns4, ns8, …]  (sequential)', col: 'info' },
+      { text: 'Worker 1: [ns1, ns5, ns9, …]  (sequential)', col: 'info' },
+      { text: 'Worker 2: [ns2, ns6, ns10, …] (sequential)', col: 'info' },
+      { text: 'Worker 3: [ns3, ns7, ns11, …] (sequential)', col: 'info' },
+      { text: '' },
+      { text: 'each worker: per-ns Promise.all(22 calls)', col: 'dim' },
+      { text: '' },
+      { text: 'Problem: each worker has its own HTTP pool', col: 'warn' },
+      { text: '  4 pools × ~8 conns = ~32 TCP handshakes', col: 'warn' },
+      { text: '' },
+      { text: 'Problem: istio-system (180 roles) → Worker 2 stalls', col: 'warn' },
+      { text: '  while other workers finish early and wait', col: 'warn' },
+    ],
+    keypoints: [
+      'No process spawn — in-process API client',
+      'Static assignment: slow ns blocks its worker',
+      '4 separate HTTP pools = 4× more TCP handshakes vs single-thread',
+      'workers=4 sweet spot: 23s (workers=5 → 31s, API pressure)',
+    ],
+    bottleneck: 'Static namespace assignment + pool fragmentation. Slow namespace stalls its worker.',
+    bnType: 'warn',
+  },
+  {
+    label: 'Node.js procs=3',
+    time: 23,
+    barClass: 'bar-node-procs',
+    color: '#506aaa',
+    math: [
+      { n: '3', unit: 'child procs', cls: 'accent' },
+      { sep: true },
+      { n: '~24', unit: 'TCP handshakes' },
+      { sep: true },
+      { n: '~450ms', unit: 'spawn overhead', cls: 'warn' },
+    ],
+    flow: [
+      { text: '// Each child = separate Node.js process', col: 'dim' },
+      { text: 'Proc A (PID 1234): [ns0, ns3, ns6, …]', col: 'info' },
+      { text: 'Proc B (PID 1235): [ns1, ns4, ns7, …]', col: 'info' },
+      { text: 'Proc C (PID 1236): [ns2, ns5, ns8, …]', col: 'info' },
+      { text: '' },
+      { text: 'each proc: sequential ns loop with per-ns Promise.all', col: 'dim' },
+      { text: '' },
+      { text: 'V8 init + kubeconfig load per proc: ~150ms', col: 'warn' },
+      { text: '3 procs × 150ms = ~450ms cold-start overhead', col: 'warn' },
+      { text: '' },
+      { text: 'OS-level pool isolation: TCP state not shared', col: 'warn' },
+      { text: '  procs=6 → API throttling, hangs (6 × full V8 heap)', col: 'error' },
+    ],
+    keypoints: [
+      'Same static-assignment problem as workers',
+      'Extra cost: V8 cold-start ~150ms per process',
+      'Durability cliff: procs=6 hangs (RAM pressure)',
+      'GNU parallel tolerates more slots (stateless per job)',
+    ],
+    bottleneck: 'V8 cold-start × N procs + static assignment + isolated OS TCP stacks per process.',
+    bnType: 'warn',
+  },
+  {
+    label: 'Node.js single-thread (jobs=3)',
+    time: 16,
     barClass: 'bar-nodejs',
     color: '#6aaccc',
     math: [
-      { n: '24', unit: 'Promises' },
+      { n: '3', unit: 'concurrent ns', cls: 'accent' },
       { op: '×' },
-      { n: '9', unit: 'API calls / ns' },
+      { n: '22', unit: 'API calls / ns' },
       { op: '=' },
-      { n: '216', unit: 'total API calls' },
+      { n: '~66', unit: 'peak in-flight', cls: 'ok' },
       { sep: true },
-      { n: '1 thread', unit: 'event loop', cls: 'warn' },
+      { n: '~95', unit: 'TCP handshakes' },
     ],
     flow: [
-      { text: 'Promise.all(namespaces.map(async ns => {', col: 'gold' },
-      { text: '  await Promise.all([', col: 'gold' },
-      { text: '    fetchDeployments(ns),', col: 'success', note: 'conn reused' },
-      { text: '    fetchServices(ns),    ', col: 'success', note: 'conn reused' },
-      { text: '    fetchPods(ns),        ', col: 'success', note: 'conn reused' },
-      { text: '    ... 9 total', col: 'success' },
+      { text: '// Semaphore: always 3 namespaces in-progress', col: 'dim' },
+      { text: 'runWithConcurrency(namespaces, jobs=3, ns => {', col: 'gold' },
+      { text: '  return exportOneNamespace(ns)  // work-stealing', col: 'gold' },
+      { text: '})' },
+      { text: '' },
+      { text: 'exportOneNamespace(ns):', col: 'gold' },
+      { text: '  Promise.all([', col: 'gold' },
+      { text: '    fetchDeployments(ns), fetchStatefulSets(ns), …', col: 'success' },
+      { text: '    fetchServices(ns), fetchIngresses(ns), …', col: 'success' },
+      { text: '    … 22 calls per namespace', col: 'success' },
       { text: '  ])', col: 'gold' },
-      { text: '}))' },
       { text: '' },
-      { text: '216 HTTP calls: all in-flight concurrently \u2713', col: 'success' },
-      { text: 'but callbacks queue on 1 thread:', col: 'warn' },
-      { text: '  write YAML \u2192 write YAML \u2192 write YAML \u2192 ...', col: 'warn' },
-      { text: '' },
-      { text: 'no subprocess spawn, TLS reused \u2192 17s', col: 'success' },
+      { text: 'peak: 3 ns × 22 = ~66 concurrent requests', col: 'success' },
+      { text: 'netstat: 66 ESTABLISHED observed, ~95 TIME_WAIT total', col: 'dim' },
+      { text: '  (keep-alive not effective across ns batches)', col: 'warn' },
     ],
     keypoints: [
-      'No subprocess spawn \u2014 zero TLS handshake overhead',
-      '216 HTTP calls fly concurrently (async I/O)',
-      'Callbacks process sequentially on 1 OS thread',
-      'YAML serialisation is CPU-bound \u2014 tasks take turns',
+      'Semaphore work-stealing: no idle slots, no slow-ns stall',
+      '1 HTTP pool shared across all namespaces',
+      '~95 TCP handshakes total (netstat TIME_WAIT confirmed)',
+      'HTTP/1.1 only — @kubernetes/client-node uses https not http2',
     ],
-    bottleneck: 'Event loop 預設 1 thread: I/O 並行，CPU callbacks 排隊。可加 worker_threads 做 CPU 並行，但 Go goroutine 由 runtime 自動分配，零額外設定。',
+    bottleneck: 'HTTP/1.1 only — keep-alive not reused across namespace batches (~95 handshakes). Go HTTP/2 does it in 1.',
     bnType: 'info',
   },
   {
@@ -1558,40 +1697,40 @@ const RACE_DATA = [
     bnType: 'error',
   },
   {
-    label: 'Go (fixed)',
-    time: 6,
+    label: 'Go (fixed, HTTP/2)',
+    time: 11,
     barClass: 'bar-go-fixed',
     color: '#e8b866',
     math: [
       { n: '24', unit: 'goroutines' },
       { op: '×' },
-      { n: '9', unit: 'API calls / ns' },
+      { n: '22', unit: 'API calls / ns' },
       { op: '=' },
-      { n: '216', unit: 'total API calls' },
+      { n: '~528', unit: 'total API calls' },
       { sep: true },
-      { n: 'QPS=100', unit: 'Burst=200', cls: 'ok' },
+      { n: '1', unit: 'TCP connection', cls: 'ok' },
     ],
     flow: [
-      { text: 'all goroutines fire simultaneously:', col: 'dim' },
+      { text: 'ALPN negotiation: client-go → HTTP/2 automatically', col: 'gold' },
       { text: '' },
-      { text: '  ns1 goroutine: GET .../deployments  ← token ✓', col: 'success' },
-      { text: '  ns2 goroutine: GET .../services     ← token ✓', col: 'success' },
-      { text: '  ns3 goroutine: GET .../pods         ← token ✓', col: 'success' },
-      { text: '  ... all 216 calls within burst=200', col: 'success' },
+      { text: '  ns1 goroutine: GET .../deployments  ← stream 1', col: 'success' },
+      { text: '  ns2 goroutine: GET .../services     ← stream 3', col: 'success' },
+      { text: '  ns3 goroutine: GET .../pods         ← stream 5', col: 'success' },
+      { text: '  ... all ~528 calls multiplexed over 1 TCP', col: 'success' },
       { text: '' },
-      { text: '  single TLS connection, reused for all 216 calls', col: 'gold' },
-      { text: '  no fork(), no per-call handshake', col: 'gold' },
+      { text: '  1 TLS handshake total for entire export', col: 'gold' },
+      { text: '  no fork(), no per-call TLS, no keep-alive issues', col: 'gold' },
       { text: '' },
-      { text: 'all 24 namespaces export concurrently', col: 'dim' },
-      { text: '  API server responds fast → ~6s total', col: 'success' },
+      { text: 'goroutines: 2–8KB stack, scheduler handles parallelism', col: 'dim' },
+      { text: '  24 ns concurrent → API server responds → 11s', col: 'success' },
     ],
     keypoints: [
-      'QPS=100 Burst=200: all 216 calls within burst capacity',
-      'No waiting — goroutines run truly in parallel',
-      '1 TLS handshake total (connection pool reused)',
-      'API server was never the bottleneck',
+      'HTTP/2 via ALPN: 1 TCP connection, all requests multiplex',
+      'Node.js https module cannot upgrade to HTTP/2',
+      'Goroutines: 2–8KB stack vs 1MB OS thread',
+      '1 TLS handshake vs ~95 for Node.js single-thread',
     ],
-    bottleneck: 'No bottleneck. The old limiter was pessimistically slow for an internal cluster.',
+    bottleneck: 'No bottleneck. HTTP/2 + goroutines eliminate every overhead that plagues the other approaches.',
     bnType: 'ok',
   }
 ];
@@ -1767,51 +1906,46 @@ buildPrimVisual('vis-process',   'process');
 buildPrimVisual('vis-thread',    'thread');
 buildPrimVisual('vis-goroutine', 'goroutine');
 
-// Spawn simulation — proportional memory bar chart
-// max = 1 GB (process × 1000), goroutine = 2 MB = 0.2% of max
-const SPAWN_MAX_KB = 1000 * 1024; // 1 GB in KB
-
+// Spawn simulation — dot grid (each dot = 1 MB)
 const SPAWN_ITEMS = [
-  {
-    id: 'proc',
-    stackKB: 1024,        // 1 MB per process
-    label: '~1,000 MB  (1 GB)',
-    note: '1 MB stack × 1,000 = 1,000 MB',
-    cls: 'warn',
-  },
-  {
-    id: 'thread',
-    stackKB: 1024,        // 1 MB per thread
-    label: '~1,000 MB  (1 GB)',
-    note: '1 MB stack × 1,000 = 1,000 MB  (same as process)',
-    cls: 'warn',
-  },
-  {
-    id: 'goroutine',
-    stackKB: 2,           // 2 KB per goroutine
-    label: '~2 MB',
-    note: '2 KB stack × 1,000 = 2 MB  —  500× less than a process',
-    cls: 'ok',
-  },
+  { id: 'thread',    dots: 8000, color: '#d4956a', label: '~8,000 MB (8 GB)', note: '8 MB stack × 1,000 = 8,000 MB  (Linux/macOS default)', cls: 'warn' },
+  { id: 'goroutine', dots: 2,    color: '#6dca82', label: '~2 MB',            note: '2 KB stack × 1,000 = 2 MB  —  4,000× less than a thread', cls: 'ok' },
 ];
 
-function runSpawn() {
-  SPAWN_ITEMS.forEach((item, idx) => {
-    const totalKB  = item.stackKB * 1000;
-    const pct      = (totalKB / SPAWN_MAX_KB * 100).toFixed(2);
+// Pre-create all dot elements on page load
+SPAWN_ITEMS.forEach(item => {
+  const grid = document.getElementById(`dg-${item.id}`);
+  for (let i = 0; i < item.dots; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    d.dataset.color = item.color;
+    grid.appendChild(d);
+  }
+});
 
-    setTimeout(() => {
-      document.getElementById(`smb-${item.id}`).style.width = pct + '%';
+function runSpawn() {
+  SPAWN_ITEMS.forEach((item, itemIdx) => {
+    const dots = Array.from(document.getElementById(`dg-${item.id}`).children);
+    const batchSize = Math.max(1, Math.ceil(item.dots / 40));
+    let i = 0;
+    function step() {
+      const end = Math.min(i + batchSize, dots.length);
+      for (; i < end; i++) dots[i].style.background = item.color;
+      if (i < dots.length) { requestAnimationFrame(step); return; }
       document.getElementById(`smv-${item.id}`).textContent = item.label;
+      document.getElementById(`smv-${item.id}`).className = `smc-value ${item.cls}`;
       document.getElementById(`smn-${item.id}`).textContent = item.note;
-    }, idx * 150);
+    }
+    setTimeout(() => requestAnimationFrame(step), itemIdx * 300);
   });
 }
 
 function resetSpawn() {
   SPAWN_ITEMS.forEach(item => {
-    document.getElementById(`smb-${item.id}`).style.width = '0';
+    Array.from(document.getElementById(`dg-${item.id}`).children)
+      .forEach(d => d.style.background = '');
     document.getElementById(`smv-${item.id}`).textContent = '—';
+    document.getElementById(`smv-${item.id}`).className = 'smc-value';
     document.getElementById(`smn-${item.id}`).textContent = '';
   });
 }
