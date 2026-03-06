@@ -8,6 +8,13 @@
 //   node scripts/k8s-export-node.js --resume             # skip completed
 'use strict';
 
+const Y = '\x1b[33m'; // yellow  — → fetching
+const G = '\x1b[32m'; // green   — ← done, ✓ completed, banner
+const R = '\x1b[31m'; // red     — errors
+const _ = '\x1b[0m';  // reset
+const NS_W = 20;
+const nsTag = ns => ('[' + ns + ']').padEnd(NS_W);
+
 const k8s  = require('@kubernetes/client-node');
 const yaml = require('js-yaml');
 const fs   = require('fs').promises;
@@ -289,7 +296,7 @@ function formatTable(rows) {
 
 async function exportOneNamespace(clients, ns, baseDir, doResume) {
   const start = Date.now();
-  console.log(`=== Namespace: ${ns} ===`);
+  console.log(`${ns} start`);
 
   const nsDir = path.join(baseDir, ns);
   await fs.mkdir(nsDir, { recursive: true });
@@ -299,28 +306,27 @@ async function exportOneNamespace(clients, ns, baseDir, doResume) {
   // 6 standard batches + CRD batches, all concurrent
   const batchPromises = NS_BATCHES.map(async batch => {
     const label = batch.join(',');
-    console.log(`  → fetching ${label}`);
+    console.log(`${Y}  → ${nsTag(ns)} fetching ${label}${_}`);
     const results = await Promise.all(batch.map(rt => fetchOne(fetchers, ns, rt)));
     const items = results.flat();
     await writeBatchResults(nsDir, items, doResume);
-    console.log(`  ← ${label} done`);
+    console.log(`${G}  ← ${nsTag(ns)} ${label} done${_}`);
   });
 
   const crdPromises = CRD_BATCHES.map(async batch => {
     const label = batch.map(b => b.plural).join(',');
-    console.log(`  → fetching ${label}`);
+    console.log(`${Y}  → ${nsTag(ns)} fetching ${label}${_}`);
     const results = await Promise.all(batch.map(crd => fetchCRD(clients.customObjs, ns, crd)));
     const items = results.flat();
     await writeBatchResults(nsDir, items, doResume);
-    console.log(`  ← ${label} done`);
+    console.log(`${G}  ← ${nsTag(ns)} ${label} done${_}`);
   });
 
   // Pods: fetch once, write 3 outputs
   const podsPromise = (async () => {
-    console.log('  → fetching pods');
+    console.log(`${Y}  → ${nsTag(ns)} fetching pods${_}`);
     const pods = await fetchOne(fetchers, ns, 'pods');
     await writeBatchResults(nsDir, pods, doResume);
-    console.log('  ← pods done');
 
     const snapPath = path.join(nsDir, 'pods-snapshot.txt');
     const imgPath  = path.join(nsDir, 'pods-images.txt');
@@ -331,13 +337,13 @@ async function exportOneNamespace(clients, ns, baseDir, doResume) {
     if (!(doResume && await fileExists(imgPath))) {
       await atomicWrite(imgPath, formatPodsImages(pods));
     }
-    console.log(`  ← pods done (${pods.length} pods)`);
+    console.log(`${G}  ← ${nsTag(ns)} pods done (${pods.length} pods)${_}`);
   })();
 
   await Promise.all([...batchPromises, ...crdPromises, podsPromise]);
 
   await touchFile(path.join(nsDir, '.done'));
-  console.log(`✓ Namespace ${ns} completed in ${Math.round((Date.now() - start) / 1000)}s\n`);
+  console.log(`${G}✓ Namespace ${ns} completed in ${Math.round((Date.now() - start) / 1000)}s${_}\n`);
 }
 
 async function fileExists(fpath) {
@@ -415,7 +421,7 @@ async function main() {
     const remaining = [];
     for (const ns of namespaces) {
       if (await fileExists(path.join(baseDir, ns, '.done'))) {
-        console.log(`=== Namespace: ${ns} === (complete, skipping)`);
+        console.log(`${ns} skipping (complete)`);
       } else {
         remaining.push(ns);
       }

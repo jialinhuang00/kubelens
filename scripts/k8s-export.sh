@@ -104,7 +104,7 @@ if [[ "$RESUME" == "true" ]]; then
   REMAINING=()
   for ns in "${NAMESPACES[@]}"; do
     if [[ -f "${BASE_DIR}/${ns}/.done" ]]; then
-      echo -e "${GRAY}=== Namespace: $ns === (complete, skipping)${RESET}"
+      printf "${GRAY}[%-20s] skipping (complete)${RESET}\n" "$ns"
     else
       REMAINING+=("$ns")
     fi
@@ -136,55 +136,58 @@ export_one_namespace() {
 
   local NS_START NS_END NS_ELAPSED
   NS_START=$(date +%s)
-  echo "=== Namespace: $ns ==="
+  echo "$ns start"
   local NS_DIR="${BASE_DIR}/${ns}"
   mkdir -p "$NS_DIR"
+
+  local NS_TAG
+  NS_TAG=$(printf '[%-18s]' "$ns")
 
   # Run all batches in parallel — each batch is one kubectl call
   for batch in "${NS_BATCHES[@]}"; do
     (
-      echo -e "  ${YELLOW}→ fetching ${batch}${RESET}"
+      echo -e "  ${YELLOW}→ ${NS_TAG} fetching ${batch}${RESET}"
       if kubectl get "$batch" -n "$ns" -o json 2>/dev/null \
         | node "${SCRIPT_DIR}/split-resources.js" "$NS_DIR" "$RESUME"; then
-        echo -e "  ${GREEN}← ${batch} done${RESET}"
+        echo -e "  ${GREEN}← ${NS_TAG} ${batch} done${RESET}"
       else
-        echo -e "  ${RED}← ${batch} failed${RESET}"
+        echo -e "  ${RED}← ${NS_TAG} ${batch} failed${RESET}"
       fi
     ) &
   done
 
   # Export pods separately (usually many objects, deserves its own parallel task)
   (
-    echo -e "  ${YELLOW}→ fetching pods${RESET}"
+    echo -e "  ${YELLOW}→ ${NS_TAG} fetching pods${RESET}"
     if kubectl get pods -n "$ns" -o json 2>/dev/null \
       | node "${SCRIPT_DIR}/split-resources.js" "$NS_DIR" "$RESUME"; then
-      echo -e "  ${GREEN}← pods done${RESET}"
+      echo -e "  ${GREEN}← ${NS_TAG} pods done${RESET}"
     else
-      echo -e "  ${RED}← pods failed${RESET}"
+      echo -e "  ${RED}← ${NS_TAG} pods failed${RESET}"
     fi
   ) &
 
   # Export pod reference snapshots
   if [[ "$RESUME" != "true" || ! -f "${NS_DIR}/pods-snapshot.txt" ]]; then
     (
-      echo -e "  ${YELLOW}→ fetching pods-snapshot${RESET}"
+      echo -e "  ${YELLOW}→ ${NS_TAG} fetching pods-snapshot${RESET}"
       if kubectl get pods -n "$ns" -o wide > "${NS_DIR}/pods-snapshot.txt.tmp" 2>/dev/null \
         && mv "${NS_DIR}/pods-snapshot.txt.tmp" "${NS_DIR}/pods-snapshot.txt"; then
-        echo -e "  ${GREEN}← pods-snapshot done${RESET}"
+        echo -e "  ${GREEN}← ${NS_TAG} pods-snapshot done${RESET}"
       else
-        echo -e "  ${RED}← pods-snapshot failed${RESET}"
+        echo -e "  ${RED}← ${NS_TAG} pods-snapshot failed${RESET}"
       fi
     ) &
   fi
   if [[ "$RESUME" != "true" || ! -f "${NS_DIR}/pods-images.txt" ]]; then
     (
-      echo -e "  ${YELLOW}→ fetching pods-images${RESET}"
+      echo -e "  ${YELLOW}→ ${NS_TAG} fetching pods-images${RESET}"
       if kubectl get pods -n "$ns" -o custom-columns="POD:metadata.name,IMAGE:spec.containers[*].image" \
         > "${NS_DIR}/pods-images.txt.tmp" 2>/dev/null \
         && mv "${NS_DIR}/pods-images.txt.tmp" "${NS_DIR}/pods-images.txt"; then
-        echo -e "  ${GREEN}← pods-images done${RESET}"
+        echo -e "  ${GREEN}← ${NS_TAG} pods-images done${RESET}"
       else
-        echo -e "  ${RED}← pods-images failed${RESET}"
+        echo -e "  ${RED}← ${NS_TAG} pods-images failed${RESET}"
       fi
     ) &
   fi

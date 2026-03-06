@@ -11,6 +11,13 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+const (
+	colorYellow = "\033[33m" // → fetching
+	colorGreen  = "\033[32m" // ← done, ✓ completed, banner
+	colorRed    = "\033[31m" // errors
+	colorReset  = "\033[0m"
+)
+
 // nsBatches mirrors the NS_BATCHES array in k8s-export.sh.
 // Each element is a comma-separated list of resource types for one kubectl call.
 var nsBatches = []string{
@@ -49,11 +56,12 @@ func exportAllNamespaces(k8sClient kubernetes.Interface, dynClient dynamic.Inter
 // The pods goroutine fetches pods once and writes pods.yaml, pods-snapshot.txt, pods-images.txt.
 func exportOneNamespace(k8sClient kubernetes.Interface, dynClient dynamic.Interface, ns, baseDir string, resume bool) {
 	start := time.Now()
-	fmt.Printf("=== Namespace: %s ===\n", ns)
+	fmt.Printf("%s start\n", ns)
 
+	nsTag := fmt.Sprintf("%-20s", "["+ns+"]")
 	nsDir := filepath.Join(baseDir, ns)
 	if err := os.MkdirAll(nsDir, 0755); err != nil {
-		fmt.Printf("  ERROR: mkdir %s: %v\n", nsDir, err)
+		fmt.Printf("%s  ERROR: mkdir %s: %v%s\n", colorRed, nsDir, err, colorReset)
 		return
 	}
 
@@ -65,12 +73,12 @@ func exportOneNamespace(k8sClient kubernetes.Interface, dynClient dynamic.Interf
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			fmt.Printf("  \u2192 fetching %s\n", batch)
+			fmt.Printf("%s  → %s fetching %s%s\n", colorYellow, nsTag, batch, colorReset)
 			items := fetchBatch(dynClient, ns, batch)
 			if _, err := writeBatchResults(nsDir, items, resume); err != nil {
-				fmt.Printf("  \u2190 %s failed: %v\n", batch, err)
+				fmt.Printf("%s  ← %s %s failed: %v%s\n", colorRed, nsTag, batch, err, colorReset)
 			} else {
-				fmt.Printf("  \u2190 %s done\n", batch)
+				fmt.Printf("%s  ← %s %s done%s\n", colorGreen, nsTag, batch, colorReset)
 			}
 		}()
 	}
@@ -80,39 +88,33 @@ func exportOneNamespace(k8sClient kubernetes.Interface, dynClient dynamic.Interf
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Printf("  \u2192 fetching pods\n")
+		fmt.Printf("%s  → %s fetching pods%s\n", colorYellow, nsTag, colorReset)
 		podList, err := fetchPodsTyped(k8sClient, ns)
 		if err != nil {
-			fmt.Printf("  \u2190 pods failed: %v\n", err)
+			fmt.Printf("%s  ← %s pods failed: %v%s\n", colorRed, nsTag, err, colorReset)
 			return
 		}
 
 		// pods.yaml — convert to unstructured and write as a List.
 		if _, werr := writeBatchResults(nsDir, podsToUnstructured(podList), resume); werr != nil {
-			fmt.Printf("  \u2190 pods failed: %v\n", werr)
+			fmt.Printf("%s  ← %s pods failed: %v%s\n", colorRed, nsTag, werr, colorReset)
 		} else {
-			fmt.Printf("  \u2190 pods done\n")
+			fmt.Printf("%s  ← %s pods done%s\n", colorGreen, nsTag, colorReset)
 		}
 
 		// pods-snapshot.txt
 		snapPath := filepath.Join(nsDir, "pods-snapshot.txt")
 		if !(resume && fileExists(snapPath)) {
-			fmt.Printf("  \u2192 fetching pods-snapshot\n")
 			if err := writeText(snapPath, formatPodsWide(podList)); err != nil {
-				fmt.Printf("  \u2190 pods-snapshot failed: %v\n", err)
-			} else {
-				fmt.Printf("  \u2190 pods-snapshot done\n")
+				fmt.Printf("%s  ← %s pods-snapshot failed: %v%s\n", colorRed, nsTag, err, colorReset)
 			}
 		}
 
 		// pods-images.txt
 		imgPath := filepath.Join(nsDir, "pods-images.txt")
 		if !(resume && fileExists(imgPath)) {
-			fmt.Printf("  \u2192 fetching pods-images\n")
 			if err := writeText(imgPath, formatPodsImages(podList)); err != nil {
-				fmt.Printf("  \u2190 pods-images failed: %v\n", err)
-			} else {
-				fmt.Printf("  \u2190 pods-images done\n")
+				fmt.Printf("%s  ← %s pods-images failed: %v%s\n", colorRed, nsTag, err, colorReset)
 			}
 		}
 	}()
@@ -121,7 +123,7 @@ func exportOneNamespace(k8sClient kubernetes.Interface, dynClient dynamic.Interf
 
 	touchFile(filepath.Join(nsDir, ".done"))
 	elapsed := int(time.Since(start).Seconds())
-	fmt.Printf("\u2713 Namespace %s completed in %ds\n\n", ns, elapsed)
+	fmt.Printf("%s✓ Namespace %s completed in %ds%s\n\n", colorGreen, ns, elapsed, colorReset)
 }
 
 // fileExists returns true if path exists and is a regular file.
