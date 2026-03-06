@@ -1,7 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DataModeService } from '../../core/services/data-mode.service';
-import { K8sExportService } from '../../core/services/k8s-export.service';
+import { K8sExportService, ExportMode } from '../../core/services/k8s-export.service';
 import { TickFlashDirective } from '../../shared/directives/tick-flash.directive';
 import { ThemeSwitcherComponent } from '../../shared/components/theme-switcher/theme-switcher.component';
 import { HandbookComponent } from '../../shared/components/handbook/handbook.component';
@@ -32,6 +32,15 @@ export class HomeComponent implements OnInit {
 
   pauseExport() {
     this.exportService.pauseExport();
+  }
+
+  setMode(mode: ExportMode) {
+    this.exportService.mode.set(mode);
+  }
+
+  setWorkers(event: Event) {
+    const v = parseInt((event.target as HTMLInputElement).value, 10);
+    if (v >= 1 && v <= 16) this.exportService.workers.set(v);
   }
 
   async onExportDone() {

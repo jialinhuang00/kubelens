@@ -3,6 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE } from '../constants/api';
 
+export type ExportMode = 'bash' | 'node' | 'workers' | 'go';
+
 interface ExportProgress {
   running: boolean;
   paused: boolean;
@@ -12,6 +14,7 @@ interface ExportProgress {
   activeResources: string[];
   fileCount: number;
   etaSeconds: number | null;
+  elapsedSeconds: number | null;
   error: string | null;
 }
 
@@ -42,9 +45,12 @@ export class K8sExportService {
   activeResources = signal<string[]>([]);
   fileCount = signal(0);
   eta = signal('');
+  elapsed = signal('');
   progress = signal(0);
   error = signal<string | null>(null);
   done = signal(false);
+  mode = signal<ExportMode>('workers');
+  workers = signal(4);
 
   async checkState(): Promise<void> {
     if (this.pollTimer) return;
@@ -71,6 +77,7 @@ export class K8sExportService {
     this.done.set(false);
     this.error.set(null);
     this.paused.set(false);
+    this.elapsed.set('');
 
     if (!resume) {
       this.completedNs.set(0);
@@ -81,8 +88,10 @@ export class K8sExportService {
     }
 
     try {
+      const body: Record<string, unknown> = { resume, mode: this.mode() };
+      if (this.mode() === 'workers') body['workers'] = this.workers();
       await firstValueFrom(
-        this.http.post(`${API_BASE}/k8s-export/start`, { resume })
+        this.http.post(`${API_BASE}/k8s-export/start`, body)
       );
       this.isRunning.set(true);
       this.startPolling();
@@ -113,6 +122,7 @@ export class K8sExportService {
     this.activeResources.set(data.activeResources);
     this.fileCount.set(data.fileCount);
     this.eta.set(data.etaSeconds != null ? this.formatEta(data.etaSeconds) : '');
+    this.elapsed.set(data.elapsedSeconds != null ? `${data.elapsedSeconds}s` : '');
     this.error.set(data.error);
 
     if (data.totalNamespaces > 0) {

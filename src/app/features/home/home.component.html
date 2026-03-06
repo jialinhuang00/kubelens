@@ -70,7 +70,7 @@
     </div>
   } @else if (exportService.done()) {
     <div class="export-panel export-done">
-      <p class="export-success">Export complete — {{ exportService.fileCount() }} files exported</p>
+      <p class="export-success">Export complete — {{ exportService.fileCount() }} files@if (exportService.elapsed()) { in {{ exportService.elapsed() }}}</p>
       <button class="export-btn" (click)="onExportDone()">Continue</button>
     </div>
   } @else if (exportService.error()) {
@@ -84,10 +84,30 @@
       <p class="hint hint-error">kubectl not available and no snapshot found</p>
     } @else if (!dataModeService.realtimeAvailable()) {
       <p class="hint">kubectl not available — using snapshot mode</p>
-    } @else if (!dataModeService.snapshotAvailable()) {
+    } @else {
       <div class="export-panel">
-        <p class="hint">No snapshot found. Export your cluster data to get started.</p>
-        <button class="export-btn" (click)="startExport()">Export Snapshot</button>
+        @if (dataModeService.snapshotAvailable()) {
+          <p class="hint">Re-export to refresh your cluster snapshot.</p>
+        } @else {
+          <p class="hint">No snapshot found. Export your cluster data to get started.</p>
+        }
+        <div class="export-mode-btns">
+          <button class="mode-chip" [class.active]="exportService.mode() === 'bash'"    (click)="setMode('bash')">bash</button>
+          <button class="mode-chip" [class.active]="exportService.mode() === 'node'"    (click)="setMode('node')">node</button>
+          <button class="mode-chip" [class.active]="exportService.mode() === 'workers'" (click)="setMode('workers')">workers</button>
+          <button class="mode-chip" [class.active]="exportService.mode() === 'go'"      (click)="setMode('go')">go</button>
+        </div>
+        @if (exportService.mode() === 'workers') {
+          <div class="export-workers-row">
+            <label class="workers-label">workers</label>
+            <input class="workers-input" type="number" min="1" max="16"
+              [value]="exportService.workers()"
+              (change)="setWorkers($event)" />
+          </div>
+        }
+        <button class="export-btn" (click)="startExport()">
+          {{ dataModeService.snapshotAvailable() ? 'Re-export Snapshot' : 'Export Snapshot' }}
+        </button>
       </div>
     }
   }

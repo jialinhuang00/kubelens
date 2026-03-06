@@ -354,6 +354,69 @@
   margin: 0;
 }
 
+.export-mode-btns {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  justify-content: center;
+}
+
+.mode-chip {
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  color: var(--t-text-secondary);
+  background: transparent;
+  border: 1px solid var(--t-border);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: var(--t-accent);
+    color: var(--t-accent);
+  }
+
+  &.active {
+    background: var(--t-accent);
+    border-color: var(--t-accent);
+    color: var(--t-text-on-accent);
+  }
+}
+
+.export-workers-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.workers-label {
+  font-size: 10px;
+  color: var(--t-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.workers-input {
+  width: 48px;
+  padding: 2px 6px;
+  font-size: 11px;
+  background: var(--t-surface);
+  border: 1px solid var(--t-border);
+  border-radius: 3px;
+  color: var(--t-text);
+  text-align: center;
+
+  &:focus {
+    outline: none;
+    border-color: var(--t-accent);
+  }
+}
+
 .export-btn {
   padding: 6px 16px;
   font-size: 11px;

@@ -13,6 +13,7 @@ let exportState = {
   paused: false,
   pid: null,
   startedAt: null,
+  elapsedSeconds: null,
   totalNamespaces: 0,
   completedNamespaces: 0,
   activeNamespaces: new Set(),
@@ -66,12 +67,17 @@ router.post('/k8s-export/start', (req, res) => {
   }
 
   const resume = req.body?.resume === true;
+  // mode: 'bash' | 'node' | 'workers' | 'go'  (default: 'bash')
+  const mode = req.body?.mode ?? 'bash';
+  // workers: number of parallel worker threads (workers mode only)
+  const workers = Number.isInteger(req.body?.workers) ? req.body.workers : null;
 
   exportState = {
     running: true,
     paused: false,
     pid: null,
     startedAt: Date.now(),
+    elapsedSeconds: null,
     totalNamespaces: 0,
     completedNamespaces: 0,
     activeNamespaces: new Set(),
@@ -81,18 +87,20 @@ router.post('/k8s-export/start', (req, res) => {
     output: '',
   };
 
-  const useGo = process.env.USE_GO_EXPORT === 'true';
-  const scriptPath = useGo
-    ? path.join(__dirname, '../..', 'cmd', 'k8s-export', 'k8s-export')
-    : path.join(__dirname, '../..', 'scripts', 'k8s-export.sh');
-
   let spawnCmd, args;
-  if (useGo) {
-    spawnCmd = scriptPath;
+  if (mode === 'go') {
+    spawnCmd = path.join(__dirname, '../..', 'cmd', 'k8s-export', 'k8s-export');
     args = [];
+  } else if (mode === 'workers') {
+    spawnCmd = process.execPath;
+    args = [path.join(__dirname, '../..', 'scripts', 'k8s-export-node-workers.js')];
+    if (workers) args.push('--workers', String(workers));
+  } else if (mode === 'node') {
+    spawnCmd = process.execPath;
+    args = [path.join(__dirname, '../..', 'scripts', 'k8s-export-node.js')];
   } else {
     spawnCmd = 'bash';
-    args = [scriptPath];
+    args = [path.join(__dirname, '../..', 'scripts', 'k8s-export.sh')];
   }
   if (resume) args.push('--resume');
 
@@ -163,6 +171,9 @@ router.post('/k8s-export/start', (req, res) => {
   });
 
   child.on('close', (code) => {
+    exportState.elapsedSeconds = exportState.startedAt
+      ? Math.round((Date.now() - exportState.startedAt) / 1000)
+      : null;
     exportState.running = false;
     exportState.pid = null;
     countFiles(snapshotDir).then(c => { exportState.fileCount = c; });
@@ -225,6 +236,9 @@ router.get('/k8s-export/progress', async (req, res) => {
   }
 
   const activeNsList = [...exportState.activeNamespaces];
+  const elapsedSeconds = exportState.running && exportState.startedAt
+    ? Math.round((Date.now() - exportState.startedAt) / 1000)
+    : exportState.elapsedSeconds;
   const response = {
     running: exportState.running,
     paused,
@@ -234,6 +248,7 @@ router.get('/k8s-export/progress', async (req, res) => {
     activeResources: [...exportState.activeResources],
     fileCount: liveCount,
     etaSeconds,
+    elapsedSeconds,
     error: exportState.error,
   };
 

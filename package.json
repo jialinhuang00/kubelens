@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "dev": "concurrently \"tsx api/index.js\" \"ng serve\"",
+    "dev": "concurrently \"tsx api/index.js\" \"ng serve\"; stty sane",
     "build:export": "cd cmd/k8s-export && go build -o k8s-export .",
     "dev:go": "npm run build:export && concurrently \"PROJECT_ROOT=$PWD go -C cmd/server run .\" \"ng serve\"",
     "build": "ng build",
@@ -40,6 +40,7 @@
     "@angular/platform-browser": "^20.2.4",
     "@angular/router": "^20.2.4",
     "@cosmograph/cosmos": "^1.6.1",
+    "@kubernetes/client-node": "^1.4.0",
     "@tailwindcss/postcss": "^4.1.12",
     "dotenv": "^17.3.1",
     "express": "^5.1.0",
