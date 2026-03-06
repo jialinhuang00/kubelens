@@ -1,0 +1,2104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K8s Export: Node.js vs Go</title>
+<style>
+  :root {
+    --bg: #0e0b08;
+    --surface: #1c1610;
+    --surface2: #261e14;
+    --gold: #e8b866;
+    --gold-dim: #b88c3a;
+    --text: #e8dcc8;
+    --text-dim: #a09080;
+    --success: #6dca82;
+    --error: #e07070;
+    --warning: #d4956a;
+    --info: #6aaccc;
+    --border: #3a2e1e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(14, 11, 8, 0.95);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 1.5rem;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+  }
+
+  nav a {
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: 1rem 1.25rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    font-family: monospace;
+  }
+
+  nav a:hover, nav a.active {
+    color: var(--gold);
+    border-bottom-color: var(--gold);
+  }
+
+  /* ── LAYOUT ── */
+  .section {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 4rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  h1 {
+    font-size: 1.1rem;
+    color: var(--gold);
+    font-family: monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+
+  h2 {
+    font-size: 1.75rem;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+  }
+
+  .lead {
+    color: var(--text-dim);
+    max-width: 600px;
+    margin-bottom: 2.5rem;
+    font-size: 0.95rem;
+  }
+
+  /* ── SECTION 1 — RACE ── */
+  .race-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .race-row {
+    display: grid;
+    grid-template-columns: 220px 1fr 56px;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+  }
+
+  .race-label {
+    font-family: monospace;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    text-align: right;
+    transition: color 0.2s;
+  }
+
+  .race-row:hover .race-label,
+  .race-row.active .race-label {
+    color: var(--gold);
+  }
+
+  .race-track {
+    background: var(--surface);
+    border-radius: 4px;
+    height: 32px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    position: relative;
+  }
+
+  .race-bar {
+    height: 100%;
+    width: 0;
+    border-radius: 3px;
+    transition: width 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+  }
+
+  .race-bar-inner-label {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: rgba(0,0,0,0.7);
+    font-weight: 700;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s 0.8s;
+  }
+
+  .race-bar.animated .race-bar-inner-label {
+    opacity: 1;
+  }
+
+  .race-time {
+    font-family: monospace;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .bar-bash-seq    { background: linear-gradient(90deg, #7a5c2a, #a07840); }
+  .bar-bash-batch  { background: linear-gradient(90deg, #8a6830, #b08848); }
+  .bar-gnu-par     { background: linear-gradient(90deg, #5a8a50, #6dca82); }
+  .bar-go-bug      { background: linear-gradient(90deg, #8a4040, #e07070); }
+  .bar-go-fixed    { background: linear-gradient(90deg, #b08820, #e8b866); }
+  .bar-nodejs      { background: linear-gradient(90deg, #1a4a5a, #6aaccc); }
+
+  /* ── RACE DETAIL PANEL ── */
+  .race-detail {
+    margin-top: 1.5rem;
+    background: var(--surface2);
+    border: 1px solid var(--gold-dim);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    display: none;
+  }
+
+  .race-detail.visible { display: block; }
+
+  .detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.75rem;
+  }
+
+  .detail-name {
+    font-family: monospace;
+    font-size: 1rem;
+    color: var(--gold);
+    font-weight: 700;
+  }
+
+  .detail-time {
+    font-family: monospace;
+    font-size: 1.4rem;
+    font-weight: 700;
+  }
+
+  /* math row: 24 ns × 9 calls/ns = 216 total */
+  .detail-math {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+    font-family: monospace;
+    font-size: 0.88rem;
+  }
+
+  .dm-num {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.1rem 0.5rem;
+    line-height: 1;
+  }
+
+  .dm-num.accent { border-color: var(--gold-dim); color: var(--gold); }
+  .dm-num.warn   { border-color: var(--warning);  color: var(--warning); }
+  .dm-num.ok     { border-color: var(--success);  color: var(--success); }
+
+  .dm-unit { color: var(--text-dim); font-size: 0.78rem; }
+  .dm-op   { color: var(--text-dim); font-size: 1rem; padding: 0 0.1rem; }
+  .dm-sep  { color: var(--border); font-size: 1rem; }
+
+  /* two-column layout: flow | aside */
+  .detail-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+
+  @media (max-width: 700px) {
+    .detail-cols { grid-template-columns: 1fr; }
+  }
+
+  .detail-flow {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    font-family: monospace;
+    font-size: 0.77rem;
+    line-height: 1.95;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .flow-note {
+    color: #5a7a5a;
+    padding-left: 0.5rem;
+  }
+
+  .detail-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .detail-bottleneck {
+    background: var(--bg);
+    border: 1px solid;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    font-family: monospace;
+    font-size: 0.82rem;
+    line-height: 1.6;
+  }
+
+  .bn-label {
+    display: block;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 0.4rem;
+  }
+
+  .detail-keypoints {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    font-family: monospace;
+    font-size: 0.8rem;
+    line-height: 1.9;
+    color: var(--text-dim);
+  }
+
+  .kp-row { display: flex; gap: 0.4rem; }
+  .kp-bullet { color: var(--gold-dim); flex-shrink: 0; }
+
+  /* ── SECTION 2 — PROCESS TREE ── */
+  .tree-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 2rem;
+  }
+
+  @media (max-width: 900px) {
+    .tree-grid { grid-template-columns: 1fr; }
+    .race-row { grid-template-columns: 140px 1fr 48px; }
+    .race-label { font-size: 0.72rem; }
+  }
+
+  .tree-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+  }
+
+  .tree-panel h3 {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: var(--gold);
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tree-svg-wrap {
+    overflow-x: auto;
+  }
+
+  svg.tree { width: 100%; }
+
+  .node-box {
+    fill: var(--surface2);
+    stroke: var(--border);
+    stroke-width: 1.5;
+    rx: 6;
+  }
+
+  /* OS Process — orange, solid border */
+  .node-box.root,
+  .node-box.proc {
+    fill: #2a1808;
+    stroke: var(--warning);
+    stroke-width: 1.5;
+  }
+
+  /* Goroutine — green, DASHED border (logical unit, not OS-visible) */
+  .node-box.goroutine {
+    fill: #0a1e0a;
+    stroke: var(--success);
+    stroke-width: 1.5;
+    stroke-dasharray: 6 3;
+  }
+
+  /* Connection pool — gold, solid */
+  .node-box.pool {
+    fill: #1e1a0a;
+    stroke: var(--gold-dim);
+    stroke-width: 1.5;
+  }
+
+  /* Promise — info/blue, dashed (concurrent async, single-threaded callbacks) */
+  .node-box.promise {
+    fill: #0a1420;
+    stroke: var(--info);
+    stroke-width: 1.5;
+    stroke-dasharray: 6 3;
+  }
+
+  /* Tree legend */
+  .tree-legend {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+    font-family: monospace;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+  }
+
+  .tl-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .tl-box {
+    width: 18px;
+    height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .tl-box.proc     { background: #2a1808; border: 1.5px solid var(--warning); }
+  .tl-box.goroutine {
+    background: #0a1e0a;
+    border: 1.5px dashed var(--success);
+  }
+  .tl-box.pool     { background: #1e1a0a; border: 1.5px solid var(--gold-dim); }
+  .tl-box.promise  { background: #0a1420; border: 1.5px dashed var(--info); }
+
+  .node-text {
+    fill: var(--text);
+    font-family: monospace;
+    font-size: 11px;
+    dominant-baseline: middle;
+    text-anchor: middle;
+  }
+
+  .node-text.dim { fill: var(--text-dim); }
+  .node-text.gold { fill: var(--gold); font-weight: 700; }
+
+  .tree-edge {
+    stroke: var(--border);
+    stroke-width: 1.5;
+    fill: none;
+    stroke-dasharray: 4 3;
+  }
+
+  .badge {
+    font-family: monospace;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 10px;
+  }
+
+  .badge-warn { fill: #3a2010; stroke: var(--warning); stroke-width: 1; }
+  .badge-ok   { fill: #0a2a0a; stroke: var(--success);  stroke-width: 1; }
+  .badge-text-warn { fill: var(--warning); font-family: monospace; font-size: 9px; dominant-baseline: middle; text-anchor: middle; }
+  .badge-text-ok   { fill: var(--success);  font-family: monospace; font-size: 9px; dominant-baseline: middle; text-anchor: middle; }
+
+  /* ── SECTION 3 — PRIMITIVES ── */
+  .prim-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  @media (max-width: 640px) {
+    .prim-grid { grid-template-columns: 1fr; }
+  }
+
+  .prim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .prim-card h3 {
+    font-family: monospace;
+    font-size: 1rem;
+    color: var(--gold);
+    text-align: center;
+  }
+
+  .prim-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .prim-stat {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid var(--border);
+    font-family: monospace;
+  }
+
+  .prim-stat span:first-child { color: var(--text-dim); }
+  .prim-stat span:last-child  { color: var(--text); }
+
+  .prim-visual {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .mem-block {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: 1px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-family: monospace;
+    font-weight: 700;
+    cursor: default;
+    transition: transform 0.15s;
+  }
+
+  .mem-block:hover { transform: scale(1.1); }
+
+  .mem-isolated { background: #2a1a0a; border-color: var(--warning); color: var(--warning); }
+  .mem-shared   { background: #0a1a2a; border-color: var(--info);    color: var(--info); }
+  .mem-tiny     { background: #0a2a0a; border-color: var(--success); color: var(--success); }
+
+  .spawn-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+  }
+
+  .spawn-section h3 {
+    font-family: monospace;
+    color: var(--gold);
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+
+  .spawn-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+  }
+
+  .spawn-btn {
+    background: var(--surface2);
+    border: 1px solid var(--gold-dim);
+    color: var(--gold);
+    padding: 0.5rem 1.25rem;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+
+  .spawn-btn:hover {
+    background: #2a2010;
+    border-color: var(--gold);
+  }
+
+  /* proportional memory bar chart */
+  .smc-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1.25rem;
+  }
+
+  .smc-row {
+    display: grid;
+    grid-template-columns: 160px 1fr 110px;
+    align-items: center;
+    gap: 0.75rem;
+    font-family: monospace;
+    font-size: 0.8rem;
+  }
+
+  .smc-label { color: var(--text-dim); }
+
+  .smc-track {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    height: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .smc-bar {
+    height: 100%;
+    width: 0;
+    border-radius: 3px;
+    transition: width 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    position: relative;
+  }
+
+  .smc-bar-proc     { background: linear-gradient(90deg, #5a1a1a, #e07070); }
+  .smc-bar-thread   { background: linear-gradient(90deg, #4a2a0a, #d4956a); }
+  .smc-bar-goroutine { background: linear-gradient(90deg, #0a3a0a, #6dca82); }
+
+  /* goroutine bar is so thin the label must live outside */
+  .smc-value {
+    font-family: monospace;
+    font-size: 0.82rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .smc-value.warn { color: var(--warning); }
+  .smc-value.ok   { color: var(--success); }
+
+  .smc-note {
+    grid-column: 2 / 4;
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    padding-left: 2px;
+    margin-top: -0.5rem;
+  }
+
+  .prim-stat-highlight {
+    background: rgba(109, 202, 130, 0.06);
+    border-radius: 4px;
+    padding: 0.3rem 0.2rem;
+    margin: 0 -0.2rem;
+  }
+
+  @keyframes pop-in {
+    0%   { transform: scale(0); opacity: 0; }
+    70%  { transform: scale(1.3); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* ── EVENT LOOP vs GOROUTINE ── */
+  .elo-wrap {
+    margin-top: 2.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+  }
+
+  .elo-wrap h3 {
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: var(--gold);
+    margin-bottom: 1.5rem;
+  }
+
+  .elo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  @media (max-width: 640px) {
+    .elo-grid { grid-template-columns: 1fr; }
+  }
+
+  .elo-heading {
+    font-family: monospace;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .elo-heading strong { color: var(--text); }
+
+  .elo-lane {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-family: monospace;
+    font-size: 0.75rem;
+  }
+
+  .elo-lane-label {
+    color: var(--text-dim);
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .elo-track {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    height: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .elo-bar {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    border-radius: 2px;
+    width: 0;
+    transition: width 1.2s ease-out;
+  }
+
+  .elo-bar-single   { background: linear-gradient(90deg, #1a4a5a, #6aaccc); }
+  .elo-bar-parallel { background: linear-gradient(90deg, #0a3a20, #6dca82); }
+
+  .elo-total {
+    font-family: monospace;
+    font-size: 0.78rem;
+    margin-top: 1rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    text-align: center;
+  }
+
+  .elo-total.slow { background: #1a0e08; color: var(--warning); border: 1px solid #3a2010; }
+  .elo-total.fast { background: #0a1e0a; color: var(--success); border: 1px solid #1a3a1a; }
+
+  .elo-note {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 0.75rem;
+    line-height: 1.7;
+  }
+
+  .elo-io-row {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+  }
+
+  .elo-io-chip {
+    font-family: monospace;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .elo-io-chip.visible { opacity: 1; }
+  .elo-io-chip.io-flying { background: #0a2030; border: 1px solid var(--info); color: var(--info); }
+
+  /* ── SECTION 4 — TOKEN BUCKET ── */
+  .bucket-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  @media (max-width: 640px) {
+    .bucket-layout { grid-template-columns: 1fr; }
+  }
+
+  .bucket-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .bucket-toggle {
+    display: flex;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .bucket-toggle button {
+    flex: 1;
+    padding: 0.7rem 0.5rem;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-family: monospace;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    line-height: 1.3;
+  }
+
+  .bucket-toggle button.active {
+    background: var(--surface2);
+    color: var(--gold);
+  }
+
+  .bucket-stats {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-family: monospace;
+    font-size: 0.82rem;
+  }
+
+  .bucket-stats .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.2rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .bucket-stats .stat-row:last-child { border-bottom: none; }
+  .stat-label { color: var(--text-dim); }
+  .stat-val   { color: var(--text); }
+  .stat-val.gold { color: var(--gold); font-weight: 700; }
+  .stat-val.warn { color: var(--warning); }
+
+  .bucket-canvas-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+  }
+
+  #bucketCanvas {
+    display: block;
+    width: 100%;
+    border-radius: 6px;
+  }
+
+  .bucket-legend {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    font-family: monospace;
+    color: var(--text-dim);
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  .btn-primary {
+    background: var(--surface2);
+    border: 1px solid var(--gold-dim);
+    color: var(--gold);
+    padding: 0.6rem 1.5rem;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary:hover {
+    background: #2a2010;
+    border-color: var(--gold);
+  }
+
+  /* ── HERO ── */
+  .hero {
+    text-align: center;
+    padding: 4rem 1.5rem 3rem;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .hero h1 {
+    font-size: 0.9rem;
+    color: var(--gold-dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+
+  .hero h2 {
+    font-size: 2.2rem;
+    line-height: 1.25;
+    margin-bottom: 1rem;
+  }
+
+  .hero p {
+    color: var(--text-dim);
+    font-size: 1rem;
+  }
+
+  .speedup-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #2a1e00, #3a2c08);
+    border: 1px solid var(--gold);
+    border-radius: 8px;
+    padding: 0.6rem 1.5rem;
+    font-family: monospace;
+    font-size: 1.5rem;
+    color: var(--gold);
+    font-weight: 700;
+    margin: 1.5rem auto;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── MISC ── */
+  .chip {
+    display: inline-block;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 7px;
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+
+  .chip.gold { border-color: var(--gold-dim); color: var(--gold); }
+</style>
+</head>
+<body>
+
+<nav id="topnav">
+  <a href="#race"    class="active">§1 Export Race</a>
+  <a href="#tree">§2 Process Tree</a>
+  <a href="#prims">§3 Process / Thread / Goroutine</a>
+  <a href="#bucket">§4 Token Bucket</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <h1>Node.js vs Go · K8s Export</h1>
+  <h2>145 seconds became 6.</h2>
+  <p>Four interactive sections. One cluster export story.</p>
+  <div class="speedup-badge">24× faster</div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SECTION 1 — THE EXPORT RACE
+════════════════════════════════════════ -->
+<section class="section" id="race">
+  <h1>§ 01</h1>
+  <h2>The Export Race</h2>
+  <p class="lead">Click any bar to learn what changed — and why the bug cost 17× of the potential.</p>
+
+  <div class="race-chart" id="raceChart"></div>
+  <div class="race-detail" id="raceDetail"></div>
+</section>
+
+<!-- ════════════════════════════════════════
+     SECTION 2 — PROCESS TREE
+════════════════════════════════════════ -->
+<section class="section" id="tree">
+  <h1>§ 02</h1>
+  <h2>Process Tree Comparison</h2>
+  <p class="lead">This is an <strong>architectural</strong> comparison, not a language one. Node.js also has <code style="background:var(--surface2);padding:1px 5px;border-radius:3px;font-size:0.85em">@kubernetes/client-node</code> for direct API access — the left side shows the <em>subprocess approach</em> (bash + kubectl), which is what our export script uses.</p>
+
+  <div class="tree-grid">
+    <div class="tree-panel">
+      <h3>bash + kubectl (subprocess)</h3>
+      <div class="tree-svg-wrap">
+        <svg class="tree" viewBox="0 0 360 435" xmlns="http://www.w3.org/2000/svg">
+          <!-- Root -->
+          <rect x="100" y="10" width="160" height="36" rx="6" class="node-box root"/>
+          <text x="180" y="28" class="node-text gold">Node.js web server</text>
+
+          <!-- Bash -->
+          <line x1="180" y1="46" x2="180" y2="68" class="tree-edge"/>
+          <rect x="100" y="68" width="160" height="36" rx="6" class="node-box proc"/>
+          <text x="180" y="86" class="node-text">bash (spawned)</text>
+
+          <!-- Connectors to children -->
+          <line x1="180" y1="104" x2="180" y2="120" class="tree-edge"/>
+          <line x1="180" y1="120" x2="60"  y2="120" class="tree-edge"/>
+          <line x1="180" y1="120" x2="180" y2="120" class="tree-edge"/>
+          <line x1="180" y1="120" x2="300" y2="120" class="tree-edge"/>
+          <line x1="60"  y1="120" x2="60"  y2="140" class="tree-edge"/>
+          <line x1="180" y1="120" x2="180" y2="140" class="tree-edge"/>
+          <line x1="300" y1="120" x2="300" y2="140" class="tree-edge"/>
+
+          <!-- kubectl -->
+          <rect x="10" y="140" width="100" height="36" rx="6" class="node-box proc"/>
+          <text x="60" y="155" class="node-text">kubectl</text>
+          <text x="60" y="168" class="node-text dim">×9 per ns</text>
+
+          <!-- split-resources -->
+          <rect x="130" y="140" width="100" height="36" rx="6" class="node-box proc"/>
+          <text x="180" y="155" class="node-text">split-res.js</text>
+          <text x="180" y="168" class="node-text dim">×7 per ns</text>
+
+          <!-- ns batch label -->
+          <rect x="238" y="140" width="100" height="36" rx="6" class="node-box proc"/>
+          <text x="288" y="155" class="node-text">×3 namespaces</text>
+          <text x="288" y="168" class="node-text dim">~48 procs total</text>
+
+          <!-- TLS badge on kubectl -->
+          <rect x="4" y="188" width="112" height="22" rx="10" class="badge badge-warn"/>
+          <text x="60" y="199" class="badge-text-warn">new TLS ~100ms</text>
+
+          <!-- Dotted = repeat -->
+          <text x="180" y="240" class="node-text dim" text-anchor="middle">↕ repeated per namespace</text>
+
+          <!-- Cost summary box -->
+          <rect x="40" y="298" width="280" height="80" rx="8" fill="#161616" stroke="#2e2e2e" stroke-width="1"/>
+          <text x="180" y="318" class="node-text gold">Cost summary</text>
+          <text x="180" y="338" class="node-text dim">~48 processes spawned</text>
+          <text x="180" y="354" class="node-text dim">~48 TLS handshakes (~4.8s)</text>
+          <text x="180" y="370" class="node-text dim">fork/exec overhead per call</text>
+
+          <!-- waterfall -->
+          <text x="180" y="404" class="node-text dim">sequential export: 145s</text>
+          <rect x="40" y="414" width="240" height="8" rx="4" fill="#7a5c2a"/>
+          <rect x="40" y="414" width="20"  height="8" rx="4" fill="#a07840"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="tree-panel">
+      <h3>Go binary</h3>
+      <div class="tree-svg-wrap">
+        <svg class="tree" viewBox="0 0 360 435" xmlns="http://www.w3.org/2000/svg">
+          <!-- Root -->
+          <rect x="100" y="10" width="160" height="36" rx="6" class="node-box root"/>
+          <text x="180" y="28" class="node-text gold">Go process (1 PID)</text>
+
+          <!-- Connection pool -->
+          <line x1="180" y1="46" x2="180" y2="68" class="tree-edge"/>
+          <rect x="90" y="68" width="180" height="36" rx="6" class="node-box pool"/>
+          <text x="180" y="83" class="node-text gold">client-go connection pool</text>
+          <text x="180" y="96" class="node-text dim">HTTP/2, keep-alive</text>
+
+          <!-- Goroutines -->
+          <line x1="180" y1="104" x2="180" y2="120" class="tree-edge"/>
+          <line x1="180" y1="120" x2="80"  y2="120" class="tree-edge"/>
+          <line x1="180" y1="120" x2="180" y2="120" class="tree-edge"/>
+          <line x1="180" y1="120" x2="280" y2="120" class="tree-edge"/>
+          <line x1="80"  y1="120" x2="80"  y2="140" class="tree-edge"/>
+          <line x1="180" y1="120" x2="180" y2="140" class="tree-edge"/>
+          <line x1="280" y1="120" x2="280" y2="140" class="tree-edge"/>
+
+          <rect x="30"  y="140" width="100" height="36" rx="6" class="node-box goroutine"/>
+          <text x="80" y="155" class="node-text">goroutine</text>
+          <text x="80" y="168" class="node-text dim">ns1 → reused</text>
+
+          <rect x="130" y="140" width="100" height="36" rx="6" class="node-box goroutine"/>
+          <text x="180" y="155" class="node-text">goroutine</text>
+          <text x="180" y="168" class="node-text dim">ns2 → reused</text>
+
+          <rect x="230" y="140" width="100" height="36" rx="6" class="node-box goroutine"/>
+          <text x="280" y="155" class="node-text">goroutine</text>
+          <text x="280" y="168" class="node-text dim">ns3 → reused</text>
+
+          <!-- OK badges -->
+          <rect x="24" y="188" width="112" height="22" rx="10" class="badge badge-ok"/>
+          <text x="80" y="199" class="badge-text-ok">conn reused ✓</text>
+          <rect x="124" y="188" width="112" height="22" rx="10" class="badge badge-ok"/>
+          <text x="180" y="199" class="badge-text-ok">conn reused ✓</text>
+          <rect x="224" y="188" width="112" height="22" rx="10" class="badge badge-ok"/>
+          <text x="280" y="199" class="badge-text-ok">conn reused ✓</text>
+
+          <!-- Rate limiter -->
+          <line x1="180" y1="216" x2="180" y2="238" class="tree-edge"/>
+          <rect x="80" y="238" width="200" height="44" rx="6" fill="#161616" stroke="#2e2e2e" stroke-width="1"/>
+          <text x="180" y="256" class="node-text gold">Rate limiter (token bucket)</text>
+          <text x="180" y="272" class="node-text">Burst=10 → Burst=200</text>
+
+          <!-- Cost summary -->
+          <rect x="40" y="298" width="280" height="80" rx="8" fill="#161616" stroke="#2e2e2e" stroke-width="1"/>
+          <text x="180" y="318" class="node-text gold">Cost summary</text>
+          <text x="180" y="338" class="node-text dim">1 process, N goroutines (~2KB ea)</text>
+          <text x="180" y="354" class="node-text dim">TLS handshake: once, then reused</text>
+          <text x="180" y="370" class="node-text dim">fixed export: 6s</text>
+
+          <text x="180" y="404" class="node-text dim">fixed export: 6s</text>
+          <rect x="40" y="414" width="240" height="8" rx="4" fill="none" stroke="#3a2a18" stroke-width="1"/>
+          <rect x="40" y="414" width="20"  height="8" rx="4" fill="#e8b866"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="tree-panel">
+      <h3>Node.js @kubernetes/client-node</h3>
+      <div class="tree-svg-wrap">
+        <svg class="tree" viewBox="0 0 360 435" xmlns="http://www.w3.org/2000/svg">
+          <!-- Root -->
+          <rect x="100" y="10" width="160" height="36" rx="6" class="node-box root"/>
+          <text x="180" y="28" class="node-text gold">Node.js web server</text>
+
+          <!-- Connection pool -->
+          <line x1="180" y1="46" x2="180" y2="68" class="tree-edge"/>
+          <rect x="75" y="68" width="210" height="36" rx="6" class="node-box pool"/>
+          <text x="180" y="83" class="node-text gold">@k8s/client-node pool</text>
+          <text x="180" y="96" class="node-text dim">HTTP/2, keep-alive</text>
+
+          <!-- Promises -->
+          <line x1="180" y1="104" x2="180" y2="120" class="tree-edge"/>
+          <line x1="180" y1="120" x2="80"  y2="120" class="tree-edge"/>
+          <line x1="180" y1="120" x2="180" y2="120" class="tree-edge"/>
+          <line x1="180" y1="120" x2="280" y2="120" class="tree-edge"/>
+          <line x1="80"  y1="120" x2="80"  y2="140" class="tree-edge"/>
+          <line x1="180" y1="120" x2="180" y2="140" class="tree-edge"/>
+          <line x1="280" y1="120" x2="280" y2="140" class="tree-edge"/>
+
+          <rect x="30"  y="140" width="100" height="36" rx="6" class="node-box promise"/>
+          <text x="80" y="155" class="node-text">Promise</text>
+          <text x="80" y="168" class="node-text dim">ns1 reused</text>
+
+          <rect x="130" y="140" width="100" height="36" rx="6" class="node-box promise"/>
+          <text x="180" y="155" class="node-text">Promise</text>
+          <text x="180" y="168" class="node-text dim">ns2 reused</text>
+
+          <rect x="230" y="140" width="100" height="36" rx="6" class="node-box promise"/>
+          <text x="280" y="155" class="node-text">Promise</text>
+          <text x="280" y="168" class="node-text dim">ns3 reused</text>
+
+          <!-- OK badges: I/O concurrent -->
+          <rect x="24" y="188" width="112" height="22" rx="10" class="badge badge-ok"/>
+          <text x="80" y="199" class="badge-text-ok">I/O concurrent ✓</text>
+          <rect x="124" y="188" width="112" height="22" rx="10" class="badge badge-ok"/>
+          <text x="180" y="199" class="badge-text-ok">I/O concurrent ✓</text>
+          <rect x="224" y="188" width="112" height="22" rx="10" class="badge badge-ok"/>
+          <text x="280" y="199" class="badge-text-ok">I/O concurrent ✓</text>
+
+          <!-- Event loop single-thread callout -->
+          <line x1="180" y1="216" x2="180" y2="238" class="tree-edge"/>
+          <rect x="60" y="238" width="240" height="44" rx="6" fill="#161616" stroke="#2e2e2e" stroke-width="1"/>
+          <text x="180" y="256" class="node-text" style="fill:#6aaccc">Event loop (1 thread)</text>
+          <text x="180" y="272" class="node-text dim">callbacks queue sequentially</text>
+
+          <!-- Cost summary -->
+          <rect x="40" y="298" width="280" height="80" rx="8" fill="#161616" stroke="#2e2e2e" stroke-width="1"/>
+          <text x="180" y="318" class="node-text gold">Cost summary</text>
+          <text x="180" y="338" class="node-text dim">1 process, conn reused (no TLS)</text>
+          <text x="180" y="354" class="node-text dim">I/O concurrent, CPU sequential</text>
+          <text x="180" y="370" class="node-text dim">real result: 17s</text>
+
+          <text x="180" y="404" class="node-text dim">real result: 17s</text>
+          <rect x="40" y="414" width="240" height="8" rx="4" fill="none" stroke="#1a3a4a" stroke-width="1"/>
+          <rect x="40" y="414" width="28"  height="8" rx="4" fill="#6aaccc"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="tree-legend">
+    <div class="tl-item"><div class="tl-box proc"></div> OS Process — has PID, own memory, TLS per spawn</div>
+    <div class="tl-item"><div class="tl-box goroutine"></div> Goroutine — logical unit, no PID, no new TLS</div>
+    <div class="tl-item"><div class="tl-box promise"></div> Promise — async I/O concurrent, CPU sequential</div>
+    <div class="tl-item"><div class="tl-box pool"></div> Connection pool — HTTP/2 keep-alive, shared</div>
+  </div>
+
+  <div class="elo-wrap">
+    <h3>Why Node.js worker_threads (23s) is faster than bash (69s) but slower than Go (5s)</h3>
+    <div class="elo-grid">
+      <div>
+        <div class="elo-heading"><strong>Node.js + worker_threads</strong> — N OS threads，每個 worker 獨立 event loop</div>
+        <div style="font-family:monospace;font-size:0.75rem;color:var(--info);margin-bottom:0.5rem;">workers=4：4 個 namespace 同時跑，各自 I/O concurrent</div>
+        <div class="elo-io-row">
+          <span class="elo-io-chip io-flying" data-elo="io">GET deploys</span>
+          <span class="elo-io-chip io-flying" data-elo="io">GET services</span>
+          <span class="elo-io-chip io-flying" data-elo="io">GET pods</span>
+          <span class="elo-io-chip io-flying" data-elo="io">GET configmaps</span>
+          <span class="elo-io-chip io-flying" data-elo="io">GET secrets</span>
+          <span class="elo-io-chip io-flying" data-elo="io">GET ingresses</span>
+          <span class="elo-io-chip io-flying" data-elo="io">GET hpa</span>
+          <span class="elo-io-chip io-flying" data-elo="io">GET roles</span>
+          <span class="elo-io-chip io-flying" data-elo="io">GET crds</span>
+        </div>
+        <div style="font-family:monospace;font-size:0.75rem;color:var(--warning);margin-bottom:0.5rem;">CPU phase: 每個 worker 有自己的 thread，不互搶</div>
+        <div class="elo-lane">
+          <span class="elo-lane-label">Worker 0</span>
+          <div class="elo-track">
+            <div class="elo-bar elo-bar-single" id="elo-t1"></div>
+          </div>
+        </div>
+        <div class="elo-lane">
+          <span class="elo-lane-label">Worker 1</span>
+          <div class="elo-track" style="border-color:transparent;background:transparent"></div>
+        </div>
+        <div class="elo-lane">
+          <span class="elo-lane-label">Worker 2</span>
+          <div class="elo-track" style="border-color:transparent;background:transparent"></div>
+        </div>
+        <div class="elo-total" style="color:var(--warning)">workers=4, timeout=10s &nbsp;→&nbsp; 23s（23 namespaces）</div>
+        <div class="elo-note">
+          Connection reused (no TLS overhead)<br>
+          I/O concurrent ✓ — CPU per-worker parallel ✓<br>
+          <span style="color:var(--warning)">注意：workers × 28 = 峰值 HTTPS 連線數。workers=8 → system freeze</span><br>
+          <span style="color:var(--info)">Timeout 需用 AbortController，Promise.race 不會真正關閉 TCP connection</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="elo-heading"><strong>Go</strong> — M:N scheduler (multiple OS threads)</div>
+        <div style="font-family:monospace;font-size:0.75rem;color:var(--success);margin-bottom:0.5rem;">All goroutines run truly in parallel</div>
+        <div class="elo-lane">
+          <span class="elo-lane-label">G:deploys</span>
+          <div class="elo-track">
+            <div class="elo-bar elo-bar-parallel" id="gor-t1"></div>
+          </div>
+        </div>
+        <div class="elo-lane">
+          <span class="elo-lane-label">G:services</span>
+          <div class="elo-track">
+            <div class="elo-bar elo-bar-parallel" id="gor-t2"></div>
+          </div>
+        </div>
+        <div class="elo-lane">
+          <span class="elo-lane-label">G:pods</span>
+          <div class="elo-track">
+            <div class="elo-bar elo-bar-parallel" id="gor-t3"></div>
+          </div>
+        </div>
+        <div class="elo-total fast">total ≈ slowest single goroutine &nbsp;→&nbsp; 5s</div>
+        <div class="elo-note">
+          Connection reused (no TLS overhead)<br>
+          I/O concurrent ✓ — CPU callbacks parallel ✓
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════
+     SECTION 3 — PRIMITIVES
+════════════════════════════════════════ -->
+<section class="section" id="prims">
+  <h1>§ 03</h1>
+  <h2>Process / Thread / Goroutine</h2>
+  <p class="lead">Three concurrency primitives. One determines why Go can spawn 1000 workers without sweating.</p>
+
+  <div class="prim-grid">
+
+    <div class="prim-card">
+      <h3>OS Process</h3>
+      <div class="prim-visual" id="vis-process">
+        <!-- filled by JS -->
+      </div>
+      <div class="prim-stats">
+        <div class="prim-stat"><span>Memory</span><span>Own space</span></div>
+        <div class="prim-stat"><span>Stack</span><span>~1 MB</span></div>
+        <div class="prim-stat"><span>Create</span><span>fork()</span></div>
+        <div class="prim-stat"><span>OS visible</span><span>PID ✓</span></div>
+        <div class="prim-stat"><span>Stop</span><span>kill -9</span></div>
+        <div class="prim-stat"><span>Context switch</span><span style="color:var(--error)">~10,000 ns</span></div>
+      </div>
+    </div>
+
+    <div class="prim-card">
+      <h3>OS Thread</h3>
+      <div class="prim-visual" id="vis-thread">
+      </div>
+      <div class="prim-stats">
+        <div class="prim-stat"><span>Memory</span><span>Shared (heap)</span></div>
+        <div class="prim-stat"><span>Stack</span><span>~1 MB</span></div>
+        <div class="prim-stat"><span>Create</span><span>pthread_create()</span></div>
+        <div class="prim-stat"><span>OS visible</span><span>TID ✓</span></div>
+        <div class="prim-stat"><span>Stop</span><span>pthread_cancel()</span></div>
+        <div class="prim-stat"><span>Context switch</span><span style="color:var(--warning)">~1,000 ns</span></div>
+      </div>
+    </div>
+
+    <div class="prim-card">
+      <h3>Goroutine</h3>
+      <div class="prim-visual" id="vis-goroutine">
+      </div>
+      <div class="prim-stats">
+        <div class="prim-stat"><span>Memory</span><span>Shared (heap)</span></div>
+        <div class="prim-stat"><span>Stack</span><span>~2 KB (grows)</span></div>
+        <div class="prim-stat"><span>Create</span><span>go func()</span></div>
+        <div class="prim-stat"><span>OS visible</span><span>No</span></div>
+        <div class="prim-stat"><span>Stop</span><span>channel / return</span></div>
+        <div class="prim-stat prim-stat-highlight"><span>Context switch</span><span style="color:var(--success)">~100 ns <small>(10× faster than thread)</small></span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="spawn-section">
+    <h3>Spawn 1000 of each — total stack memory (proportional)</h3>
+    <div class="spawn-controls">
+      <button class="spawn-btn" onclick="runSpawn()">Animate</button>
+      <button class="spawn-btn" onclick="resetSpawn()">Reset</button>
+      <span class="chip">Bar width = actual memory proportion</span>
+    </div>
+
+    <div class="smc-chart">
+      <div class="smc-row">
+        <span class="smc-label">OS Process × 1000</span>
+        <div class="smc-track"><div class="smc-bar smc-bar-proc" id="smb-proc"></div></div>
+        <span class="smc-value warn" id="smv-proc">—</span>
+      </div>
+      <div class="smc-note" id="smn-proc"></div>
+
+      <div class="smc-row">
+        <span class="smc-label">OS Thread × 1000</span>
+        <div class="smc-track"><div class="smc-bar smc-bar-thread" id="smb-thread"></div></div>
+        <span class="smc-value warn" id="smv-thread">—</span>
+      </div>
+      <div class="smc-note" id="smn-thread"></div>
+
+      <div class="smc-row">
+        <span class="smc-label">Goroutine × 1000</span>
+        <div class="smc-track"><div class="smc-bar smc-bar-goroutine" id="smb-goroutine"></div></div>
+        <span class="smc-value ok" id="smv-goroutine">—</span>
+      </div>
+      <div class="smc-note" id="smn-goroutine"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════
+     SECTION 4 — TOKEN BUCKET
+════════════════════════════════════════ -->
+<section class="section" id="bucket">
+  <h1>§ 04</h1>
+  <h2>Token Bucket Rate Limiter</h2>
+  <p class="lead">client-go defaults to QPS=5, Burst=10. That bottleneck turned a 6s export into 103s.</p>
+
+  <div class="bucket-layout">
+    <div class="bucket-controls">
+      <div class="bucket-toggle">
+        <button id="btn-slow" class="active" onclick="setMode('slow')">QPS=5 Burst=10<br><small>(default / buggy)</small></button>
+        <button id="btn-fast" onclick="setMode('fast')">QPS=100 Burst=200<br><small>(fixed)</small></button>
+      </div>
+
+      <div class="bucket-stats" id="bucketStats">
+        <div class="stat-row"><span class="stat-label">QPS (refill/s)</span><span class="stat-val" id="bstat-qps">5</span></div>
+        <div class="stat-row"><span class="stat-label">Burst (capacity)</span><span class="stat-val" id="bstat-burst">10</span></div>
+        <div class="stat-row"><span class="stat-label">Tokens now</span><span class="stat-val gold" id="bstat-tokens">10</span></div>
+        <div class="stat-row"><span class="stat-label">Requests queued</span><span class="stat-val warn" id="bstat-queued">0</span></div>
+        <div class="stat-row"><span class="stat-label">Total requests</span><span class="stat-val" id="bstat-total">0</span></div>
+        <div class="stat-row"><span class="stat-label">Est. wait (100 req)</span><span class="stat-val warn" id="bstat-wait">—</span></div>
+      </div>
+
+      <button class="btn-primary" onclick="fireBurst()">Fire 30 requests</button>
+      <button class="btn-primary" onclick="resetBucket()">Reset</button>
+
+      <div style="font-family:monospace;font-size:0.8rem;color:var(--text-dim);line-height:1.8;">
+        <div>QPS=5, Burst=10 →</div>
+        <div style="color:var(--warning);">100 requests = ~18s wait</div>
+        <div style="margin-top:0.5rem;">QPS=100, Burst=200 →</div>
+        <div style="color:var(--success);">100 requests = &lt;0.1s wait</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="bucket-canvas-wrap">
+        <canvas id="bucketCanvas" width="380" height="340"></canvas>
+      </div>
+      <div class="bucket-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#e8b866"></div> Token (available)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#6dca82"></div> Request (served)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e07070"></div> Request (waiting)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div style="text-align:center;padding:3rem;color:var(--text-dim);font-family:monospace;font-size:0.8rem;border-top:1px solid var(--border);">
+  kubecmds-viz · Node.js vs Go export explainer · vanilla JS
+</div>
+
+<script>
+// ════════════════════════════════════════
+// SECTION 1 — RACE CHART
+// ════════════════════════════════════════
+
+const RACE_DATA = [
+  {
+    label: 'Bash sequential',
+    time: 145,
+    barClass: 'bar-bash-seq',
+    color: '#a07840',
+    math: [
+      { n: '24', unit: 'namespaces' },
+      { op: '×' },
+      { n: '9', unit: 'kubectl / ns' },
+      { op: '=' },
+      { n: '216', unit: 'total kubectl spawns', cls: 'accent' },
+      { sep: true },
+      { n: '1', unit: 'at a time', cls: 'warn' },
+    ],
+    flow: [
+      { text: 'ns1:', col: 'gold' },
+      { text: '  kubectl get deployments  -n ns1', note: 'new proc + TLS ~100ms' },
+      { text: '  kubectl get services     -n ns1', note: 'new proc + TLS ~100ms' },
+      { text: '  kubectl get pods         -n ns1', note: 'new proc + TLS ~100ms' },
+      { text: '  kubectl get configmaps   -n ns1', note: 'new proc + TLS ~100ms' },
+      { text: '  kubectl get secrets      -n ns1', note: 'new proc + TLS ~100ms' },
+      { text: '  kubectl get ingresses    -n ns1', note: 'new proc + TLS ~100ms' },
+      { text: '  kubectl get hpa,pdb      -n ns1', note: 'new proc + TLS ~100ms' },
+      { text: '  kubectl get events       -n ns1', note: 'new proc + TLS ~100ms' },
+      { text: '  kubectl get crds                ', note: 'new proc + TLS ~100ms' },
+      { text: 'ns2: (waits for ns1 to finish)', col: 'dim' },
+      { text: '  kubectl get deployments  -n ns2', note: 'new proc + TLS ~100ms' },
+      { text: '  ... × 9 more' , col: 'dim' },
+      { text: 'ns3 … ns24: same pattern', col: 'dim' },
+    ],
+    keypoints: [
+      'Each kubectl = fork + exec + TLS handshake',
+      '216 calls × ~100ms = ~21s on handshakes alone',
+      'Namespace 2 cannot start until namespace 1 finishes',
+      'API server sits idle while processes spin up',
+    ],
+    bottleneck: '216 TLS handshakes + sequential wait = ~50s wasted before any real work',
+    bnType: 'warn',
+  },
+  {
+    label: 'Bash –jobs 3 batch',
+    time: 94,
+    barClass: 'bar-bash-batch',
+    color: '#b08848',
+    math: [
+      { n: '24', unit: 'namespaces' },
+      { op: '÷' },
+      { n: '3', unit: 'per batch', cls: 'accent' },
+      { op: '=' },
+      { n: '8', unit: 'batches' },
+      { sep: true },
+      { n: '216', unit: 'total spawns' },
+    ],
+    flow: [
+      { text: 'batch 1:', col: 'gold' },
+      { text: '  [ns1] [ns2] [ns3]  ← run in parallel' },
+      { text: '  bash `wait` ─────── blocks until ALL 3 done', col: 'warn' },
+      { text: '' },
+      { text: 'batch 2:', col: 'gold' },
+      { text: '  [ns4] [ns5] [ns6]  ← starts after slowest of batch 1' },
+      { text: '  bash `wait` .......' , col: 'warn' },
+      { text: '' },
+      { text: 'batch 8:', col: 'gold' },
+      { text: '  [ns22] [ns23] [ns24]' },
+      { text: '  └─ done' },
+      { text: '' },
+      { text: 'example: if ns1=8s, ns2=3s, ns3=5s', col: 'dim' },
+      { text: '  batch 1 = 8s  (not the avg 5.3s)', col: 'dim' },
+    ],
+    keypoints: [
+      '3× faster than sequential — but capped by slowest ns',
+      'Idle slots wait for the slowest in the batch',
+      'Still 216 process spawns with TLS overhead',
+      '8 synchronous barriers slow things down',
+    ],
+    bottleneck: 'Synchronous batch barrier: slowest namespace in each batch stalls all others',
+    bnType: 'warn',
+  },
+  {
+    label: 'GNU parallel –jobs 3',
+    time: 69,
+    barClass: 'bar-gnu-par',
+    color: '#6dca82',
+    math: [
+      { n: '3', unit: 'slots', cls: 'accent' },
+      { sep: true },
+      { n: '24', unit: 'namespaces' },
+      { op: '÷' },
+      { n: '3', unit: '≈ 8 rounds' },
+      { sep: true },
+      { n: '216', unit: 'total spawns' },
+    ],
+    flow: [
+      { text: 'slot 1: [ns1 ──────────] [ns6 ──────] …', col: 'success' },
+      { text: 'slot 2: [ns2 ──────] [ns5 ──────────] …', col: 'success' },
+      { text: 'slot 3: [ns3 ────] [ns4 ─────] [ns7 ──] …', col: 'success' },
+      { text: '' },
+      { text: '  ns3 finishes first → slot 3 takes ns4 immediately', col: 'dim' },
+      { text: '  ns2 finishes next  → slot 2 takes ns5', col: 'dim' },
+      { text: '  ns1 finishes last  → slot 1 takes ns6', col: 'dim' },
+      { text: '' },
+      { text: 'vs bash --jobs 3 (batch mode):', col: 'dim' },
+      { text: '  slot 1: [ns1 ──────────] [idle ──] [ns4 …', col: 'warn' },
+      { text: '  slot 2: [ns2 ──────] [idle ──────] [ns5 …', col: 'warn' },
+      { text: '  slot 3: [ns3 ────] [idle ────────] [ns6 …', col: 'warn' },
+      { text: '  all slots idle — waiting for ns1 to finish', col: 'warn' },
+    ],
+    keypoints: [
+      'Real-time slot scheduling — no batch boundaries',
+      'Reduces wall time 26% vs batch mode (94s → 69s)',
+      'Still 9 subprocess spawns per namespace',
+      'Process overhead is the remaining floor',
+    ],
+    bottleneck: 'Still spawning 216 kubectl processes. No batch stall, but process cost remains.',
+    bnType: 'info',
+  },
+  {
+    label: 'Node.js @k8s/client-node',
+    time: 17,
+    barClass: 'bar-nodejs',
+    color: '#6aaccc',
+    math: [
+      { n: '24', unit: 'Promises' },
+      { op: '×' },
+      { n: '9', unit: 'API calls / ns' },
+      { op: '=' },
+      { n: '216', unit: 'total API calls' },
+      { sep: true },
+      { n: '1 thread', unit: 'event loop', cls: 'warn' },
+    ],
+    flow: [
+      { text: 'Promise.all(namespaces.map(async ns => {', col: 'gold' },
+      { text: '  await Promise.all([', col: 'gold' },
+      { text: '    fetchDeployments(ns),', col: 'success', note: 'conn reused' },
+      { text: '    fetchServices(ns),    ', col: 'success', note: 'conn reused' },
+      { text: '    fetchPods(ns),        ', col: 'success', note: 'conn reused' },
+      { text: '    ... 9 total', col: 'success' },
+      { text: '  ])', col: 'gold' },
+      { text: '}))' },
+      { text: '' },
+      { text: '216 HTTP calls: all in-flight concurrently \u2713', col: 'success' },
+      { text: 'but callbacks queue on 1 thread:', col: 'warn' },
+      { text: '  write YAML \u2192 write YAML \u2192 write YAML \u2192 ...', col: 'warn' },
+      { text: '' },
+      { text: 'no subprocess spawn, TLS reused \u2192 17s', col: 'success' },
+    ],
+    keypoints: [
+      'No subprocess spawn \u2014 zero TLS handshake overhead',
+      '216 HTTP calls fly concurrently (async I/O)',
+      'Callbacks process sequentially on 1 OS thread',
+      'YAML serialisation is CPU-bound \u2014 tasks take turns',
+    ],
+    bottleneck: 'Event loop 預設 1 thread: I/O 並行，CPU callbacks 排隊。可加 worker_threads 做 CPU 並行，但 Go goroutine 由 runtime 自動分配，零額外設定。',
+    bnType: 'info',
+  },
+  {
+    label: 'Go (rate limit bug)',
+    time: 103,
+    barClass: 'bar-go-bug',
+    color: '#e07070',
+    math: [
+      { n: '24', unit: 'goroutines' },
+      { op: '×' },
+      { n: '9', unit: 'API calls / ns' },
+      { op: '=' },
+      { n: '216', unit: 'total API calls' },
+      { sep: true },
+      { n: 'QPS=5', unit: 'Burst=10', cls: 'warn' },
+    ],
+    flow: [
+      { text: 'all goroutines fire simultaneously:', col: 'dim' },
+      { text: '' },
+      { text: '  ns1 goroutine: GET .../deployments  ← token ✓', col: 'success' },
+      { text: '  ns2 goroutine: GET .../deployments  ← token ✓', col: 'success' },
+      { text: '  ns3 goroutine: GET .../deployments  ← token ✓', col: 'success' },
+      { text: '  ... × 10  (burst=10 exhausted)', col: 'dim' },
+      { text: '' },
+      { text: '  ns11 goroutine: GET .../deployments  ← wait 200ms', col: 'warn' },
+      { text: '  ns12 goroutine: GET .../deployments  ← wait 400ms', col: 'warn' },
+      { text: '  ns13 goroutine: GET .../deployments  ← wait 600ms', col: 'warn' },
+      { text: '  ...' , col: 'warn' },
+      { text: '' },
+      { text: '206 remaining calls × 200ms avg = ~41s waiting', col: 'error' },
+    ],
+    keypoints: [
+      '1 process, 1 TLS connection — no spawn overhead',
+      'But QPS=5 refills 1 token every 200ms',
+      'After burst=10: 206 calls queue up behind rate limiter',
+      '41s of pure waiting → slower than bash sequential',
+    ],
+    bottleneck: 'QPS=5 Burst=10 default: 206 queued calls × 200ms avg wait ≈ 41s wasted',
+    bnType: 'error',
+  },
+  {
+    label: 'Go (fixed)',
+    time: 6,
+    barClass: 'bar-go-fixed',
+    color: '#e8b866',
+    math: [
+      { n: '24', unit: 'goroutines' },
+      { op: '×' },
+      { n: '9', unit: 'API calls / ns' },
+      { op: '=' },
+      { n: '216', unit: 'total API calls' },
+      { sep: true },
+      { n: 'QPS=100', unit: 'Burst=200', cls: 'ok' },
+    ],
+    flow: [
+      { text: 'all goroutines fire simultaneously:', col: 'dim' },
+      { text: '' },
+      { text: '  ns1 goroutine: GET .../deployments  ← token ✓', col: 'success' },
+      { text: '  ns2 goroutine: GET .../services     ← token ✓', col: 'success' },
+      { text: '  ns3 goroutine: GET .../pods         ← token ✓', col: 'success' },
+      { text: '  ... all 216 calls within burst=200', col: 'success' },
+      { text: '' },
+      { text: '  single TLS connection, reused for all 216 calls', col: 'gold' },
+      { text: '  no fork(), no per-call handshake', col: 'gold' },
+      { text: '' },
+      { text: 'all 24 namespaces export concurrently', col: 'dim' },
+      { text: '  API server responds fast → ~6s total', col: 'success' },
+    ],
+    keypoints: [
+      'QPS=100 Burst=200: all 216 calls within burst capacity',
+      'No waiting — goroutines run truly in parallel',
+      '1 TLS handshake total (connection pool reused)',
+      'API server was never the bottleneck',
+    ],
+    bottleneck: 'No bottleneck. The old limiter was pessimistically slow for an internal cluster.',
+    bnType: 'ok',
+  }
+];
+
+const MAX_TIME = 145;
+
+function renderMath(math) {
+  return math.map(m => {
+    if (m.op)  return `<span class="dm-op">${m.op}</span>`;
+    if (m.sep) return `<span class="dm-sep">·</span>`;
+    return `<span class="dm-num${m.cls ? ' '+m.cls : ''}">${m.n}</span><span class="dm-unit"> ${m.unit}</span>`;
+  }).join(' ');
+}
+
+function renderFlow(flow) {
+  return flow.map(line => {
+    const col = line.col === 'gold'    ? 'var(--gold)' :
+                line.col === 'dim'     ? 'var(--text-dim)' :
+                line.col === 'warn'    ? 'var(--warning)' :
+                line.col === 'error'   ? 'var(--error)' :
+                line.col === 'success' ? 'var(--success)' : 'var(--text)';
+    const note = line.note ? `<span class="flow-note"># ${line.note}</span>` : '';
+    return `<span style="color:${col}">${escHtml(line.text)}</span>${note}`;
+  }).join('\n');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderDetail(d) {
+  const bnColor = d.bnType === 'ok'    ? 'var(--success)' :
+                  d.bnType === 'error' ? 'var(--error)' :
+                  d.bnType === 'info'  ? 'var(--info)' : 'var(--warning)';
+  const kps = d.keypoints.map(k =>
+    `<div class="kp-row"><span class="kp-bullet">→</span><span>${k}</span></div>`
+  ).join('');
+
+  return `
+    <div class="detail-header">
+      <span class="detail-name">${d.label}</span>
+      <span class="detail-time" style="color:${d.color}">${d.time}s</span>
+    </div>
+    <div class="detail-math">${renderMath(d.math)}</div>
+    <div class="detail-cols">
+      <div class="detail-flow">${renderFlow(d.flow)}</div>
+      <div class="detail-aside">
+        <div class="detail-keypoints">${kps}</div>
+        <div class="detail-bottleneck" style="border-color:${bnColor}">
+          <span class="bn-label">Bottleneck</span>
+          <span style="color:${bnColor}">${d.bottleneck}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function buildRaceChart() {
+  const chart = document.getElementById('raceChart');
+  const detail = document.getElementById('raceDetail');
+
+  RACE_DATA.forEach((d, i) => {
+    const row = document.createElement('div');
+    row.className = 'race-row';
+    row.dataset.i = i;
+
+    const pct = (d.time / MAX_TIME * 100).toFixed(1);
+
+    row.innerHTML = `
+      <div class="race-label">${d.label}</div>
+      <div class="race-track">
+        <div class="race-bar ${d.barClass}" data-pct="${pct}" style="width:0">
+          <span class="race-bar-inner-label">${d.time}s</span>
+        </div>
+      </div>
+      <div class="race-time" style="color:${d.color}">${d.time}s</div>
+    `;
+
+    row.addEventListener('click', () => {
+      document.querySelectorAll('.race-row').forEach(r => r.classList.remove('active'));
+      row.classList.add('active');
+      detail.innerHTML = renderDetail(RACE_DATA[i]);
+      detail.classList.add('visible');
+    });
+
+    chart.appendChild(row);
+  });
+
+  // animate bars after a tick
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      document.querySelectorAll('.race-bar').forEach(bar => {
+        const pct = bar.dataset.pct;
+        bar.style.width = pct + '%';
+        bar.classList.add('animated');
+      });
+    }, 200);
+
+    // auto-open first entry
+    setTimeout(() => {
+      document.querySelector('.race-row').click();
+    }, 600);
+  });
+}
+
+buildRaceChart();
+
+// ════════════════════════════════════════
+// SECTION 2 — EVENT LOOP ANIMATION
+// ════════════════════════════════════════
+
+(function initEloAnimation() {
+  const ioChips = document.querySelectorAll('[data-elo="io"]');
+  const eloBar  = document.getElementById('elo-t1');
+  const gorBars = ['gor-t1','gor-t2','gor-t3'].map(id => document.getElementById(id));
+
+  let started = false;
+
+  function startAnim() {
+    if (started) return;
+    started = true;
+
+    // I/O chips appear staggered
+    ioChips.forEach((chip, i) => {
+      setTimeout(() => chip.classList.add('visible'), i * 80);
+    });
+
+    // Event loop: single bar fills to 100% (representing sequential callbacks)
+    setTimeout(() => {
+      if (eloBar) eloBar.style.width = '100%';
+    }, 300);
+
+    // Go bars: all fill simultaneously to 17% (5s / 29s max ≈ 17%)
+    setTimeout(() => {
+      gorBars.forEach(b => { if (b) b.style.width = '29%'; });
+    }, 300);
+  }
+
+  const section = document.getElementById('tree');
+  if (!section) return;
+
+  const obs = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) {
+      setTimeout(startAnim, 500);
+      obs.disconnect();
+    }
+  }, { threshold: 0.2 });
+  obs.observe(section);
+})();
+
+// ════════════════════════════════════════
+// SECTION 3 — PRIMITIVES VISUALS
+// ════════════════════════════════════════
+
+function buildPrimVisual(id, type) {
+  const el = document.getElementById(id);
+  const configs = {
+    process: { cls: 'mem-isolated', label: 'P', count: 4, note: 'isolated' },
+    thread:  { cls: 'mem-shared',   label: 'T', count: 6, note: 'shared heap' },
+    goroutine: { cls: 'mem-tiny',   label: 'G', count: 12, note: '~2KB each' }
+  };
+  const c = configs[type];
+  for (let i = 0; i < c.count; i++) {
+    const b = document.createElement('div');
+    b.className = `mem-block ${c.cls}`;
+    b.title = c.note;
+    b.textContent = c.label;
+    el.appendChild(b);
+  }
+}
+
+buildPrimVisual('vis-process',   'process');
+buildPrimVisual('vis-thread',    'thread');
+buildPrimVisual('vis-goroutine', 'goroutine');
+
+// Spawn simulation — proportional memory bar chart
+// max = 1 GB (process × 1000), goroutine = 2 MB = 0.2% of max
+const SPAWN_MAX_KB = 1000 * 1024; // 1 GB in KB
+
+const SPAWN_ITEMS = [
+  {
+    id: 'proc',
+    stackKB: 1024,        // 1 MB per process
+    label: '~1,000 MB  (1 GB)',
+    note: '1 MB stack × 1,000 = 1,000 MB',
+    cls: 'warn',
+  },
+  {
+    id: 'thread',
+    stackKB: 1024,        // 1 MB per thread
+    label: '~1,000 MB  (1 GB)',
+    note: '1 MB stack × 1,000 = 1,000 MB  (same as process)',
+    cls: 'warn',
+  },
+  {
+    id: 'goroutine',
+    stackKB: 2,           // 2 KB per goroutine
+    label: '~2 MB',
+    note: '2 KB stack × 1,000 = 2 MB  —  500× less than a process',
+    cls: 'ok',
+  },
+];
+
+function runSpawn() {
+  SPAWN_ITEMS.forEach((item, idx) => {
+    const totalKB  = item.stackKB * 1000;
+    const pct      = (totalKB / SPAWN_MAX_KB * 100).toFixed(2);
+
+    setTimeout(() => {
+      document.getElementById(`smb-${item.id}`).style.width = pct + '%';
+      document.getElementById(`smv-${item.id}`).textContent = item.label;
+      document.getElementById(`smn-${item.id}`).textContent = item.note;
+    }, idx * 150);
+  });
+}
+
+function resetSpawn() {
+  SPAWN_ITEMS.forEach(item => {
+    document.getElementById(`smb-${item.id}`).style.width = '0';
+    document.getElementById(`smv-${item.id}`).textContent = '—';
+    document.getElementById(`smn-${item.id}`).textContent = '';
+  });
+}
+
+// ════════════════════════════════════════
+// SECTION 4 — TOKEN BUCKET ANIMATION
+// ════════════════════════════════════════
+
+const canvas = document.getElementById('bucketCanvas');
+const ctx = canvas.getContext('2d');
+
+const DPR = window.devicePixelRatio || 1;
+canvas.width  = 380 * DPR;
+canvas.height = 340 * DPR;
+canvas.style.width  = '380px';
+canvas.style.height = '340px';
+ctx.scale(DPR, DPR);
+
+const W = 380, H = 340;
+
+const MODES = {
+  slow: { qps: 5,   burst: 10  },
+  fast: { qps: 100, burst: 200 }
+};
+
+let mode = 'slow';
+let tokens = MODES[mode].burst;
+let requests = [];
+let totalServed = 0;
+let lastTime = null;
+let tokenFrac = 0;
+let animId = null;
+
+// bucket dimensions
+const BX = 110, BY = 60, BW = 160, BH = 200;
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-slow').classList.toggle('active', m === 'slow');
+  document.getElementById('btn-fast').classList.toggle('active', m === 'fast');
+  resetBucket();
+}
+
+function resetBucket() {
+  tokens = MODES[mode].burst;
+  requests = [];
+  totalServed = 0;
+  tokenFrac = 0;
+  lastTime = null;
+  updateBucketStats();
+}
+
+function fireBurst() {
+  for (let i = 0; i < 30; i++) {
+    requests.push({
+      x: W + 20 + i * 12,
+      y: BY + 20 + Math.random() * (BH - 40),
+      state: 'flying',
+      waitMs: 0,
+    });
+  }
+}
+
+function updateBucketStats() {
+  const cfg = MODES[mode];
+  document.getElementById('bstat-qps').textContent    = cfg.qps;
+  document.getElementById('bstat-burst').textContent  = cfg.burst;
+  document.getElementById('bstat-tokens').textContent = Math.floor(tokens);
+  const waiting = requests.filter(r => r.state === 'waiting').length;
+  document.getElementById('bstat-queued').textContent = waiting;
+  document.getElementById('bstat-total').textContent  = totalServed;
+  const over = Math.max(0, 100 - cfg.burst);
+  const waitSec = over / cfg.qps;
+  document.getElementById('bstat-wait').textContent = waitSec < 0.5 ? '<0.5s' : waitSec.toFixed(1) + 's';
+}
+
+function bucketPath() {
+  ctx.beginPath();
+  ctx.moveTo(BX + 10, BY);
+  ctx.lineTo(BX + BW - 10, BY);
+  ctx.lineTo(BX + BW, BY + BH);
+  ctx.lineTo(BX, BY + BH);
+  ctx.closePath();
+}
+
+function drawBucket() {
+  const cfg  = MODES[mode];
+  const cx   = BX + BW / 2;
+  const tok  = Math.floor(tokens);
+  const pct  = tok / cfg.burst;
+  const fillH = Math.max(0, BH * pct);
+  const fillY = BY + BH - fillH;
+
+  // Background
+  bucketPath();
+  ctx.fillStyle = '#0e0b08';
+  ctx.fill();
+
+  // Water fill — drains visibly as tokens consumed
+  ctx.save();
+  bucketPath();
+  ctx.clip();
+  ctx.fillStyle = pct < 0.15 ? '#3a0a0a'        // red tint: nearly empty
+                : pct < 0.5  ? '#2a1808'         // amber tint: half
+                :               '#0a2018';        // green tint: plenty
+  ctx.fillRect(BX - 2, fillY, BW + 4, fillH + 2);
+  ctx.restore();
+
+  // Border
+  bucketPath();
+  ctx.strokeStyle = '#e8b866';
+  ctx.lineWidth   = 2;
+  ctx.stroke();
+
+  // ── Large token count — the primary indicator ──
+  const numColor = pct < 0.15 ? '#e07070'
+                 : pct < 0.5  ? '#d4956a'
+                 :               '#6dca82';
+  ctx.fillStyle    = numColor;
+  ctx.font         = `bold ${cfg.burst > 99 ? 34 : 44}px monospace`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(tok, cx, BY + BH / 2 - 8);
+
+  ctx.fillStyle    = '#686860';
+  ctx.font         = '10px monospace';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(`/ ${cfg.burst} tokens`, cx, BY + BH / 2 + 20);
+
+  // Label
+  ctx.fillStyle = '#e8b866';
+  ctx.font      = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('Token Bucket', cx, BY - 10);
+
+  // Refill annotation
+  ctx.fillStyle = '#6aaccc';
+  ctx.font      = '9px monospace';
+  ctx.fillText(`refill: +${cfg.qps}/s`, cx, BY - 30);
+
+  // Refill arrow (dashed, into bucket)
+  ctx.strokeStyle = '#6aaccc';
+  ctx.lineWidth   = 1.5;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.moveTo(cx, BY - 26);
+  ctx.lineTo(cx, BY - 4);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#6aaccc';
+  ctx.beginPath();
+  ctx.moveTo(cx, BY - 2);
+  ctx.lineTo(cx - 5, BY - 11);
+  ctx.lineTo(cx + 5, BY - 11);
+  ctx.fill();
+}
+
+function drawRequest(r) {
+  // flying = info blue (in-flight, neutral — not yet served)
+  // served = green (got token, went through)
+  // waiting = red (no token, blocked)
+  const color = r.state === 'waiting' ? '#e07070'
+              : r.state === 'served'  ? '#6dca82'
+              :                         '#6aaccc'; // flying = blue
+
+  ctx.beginPath();
+  ctx.arc(r.x, r.y, 7, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+
+  if (r.state === 'waiting' && r.waitMs > 80) {
+    ctx.fillStyle    = '#e07070';
+    ctx.font         = '8px monospace';
+    ctx.textAlign    = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${Math.round(r.waitMs)}ms`, r.x + 10, r.y);
+  }
+}
+
+function drawCounters() {
+  const waiting = requests.filter(r => r.state === 'waiting').length;
+  ctx.font         = 'bold 11px monospace';
+  ctx.textBaseline = 'alphabetic';
+
+  if (totalServed > 0) {
+    ctx.fillStyle = '#6dca82';
+    ctx.textAlign = 'left';
+    ctx.fillText(`✓ ${totalServed} served`, 8, H - 12);
+  }
+  if (waiting > 0) {
+    ctx.fillStyle = '#e07070';
+    ctx.textAlign = 'right';
+    ctx.fillText(`⏳ ${waiting} waiting`, W - 8, H - 12);
+  }
+}
+
+function bucketTick(ts) {
+  if (!lastTime) lastTime = ts;
+  const dt = Math.min((ts - lastTime) / 1000, 0.1);
+  lastTime = ts;
+
+  const cfg = MODES[mode];
+
+  // Refill
+  tokenFrac += cfg.qps * dt;
+  const newTok = Math.floor(tokenFrac);
+  tokenFrac -= newTok;
+  tokens = Math.min(tokens + newTok, cfg.burst);
+
+  // Move requests
+  requests.forEach(r => {
+    if (r.state === 'flying') {
+      const tx = BX + BW / 2, ty = BY + BH / 2;
+      const dx = tx - r.x, dy = ty - r.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const speed = 80; // slowed from 180 so you can see consumption
+      if (dist < 8) {
+        if (tokens >= 1) {
+          tokens -= 1;
+          totalServed++;
+          r.state = 'served';
+          r.x = BX - 10;
+          r.y = BY + BH / 2 + (Math.random() - 0.5) * 80;
+        } else {
+          r.state = 'waiting';
+          r.x = BX + BW + 18 + Math.random() * 50;
+          r.y = BY + 10 + Math.random() * (BH - 20);
+        }
+      } else {
+        r.x += (dx / dist) * speed * dt;
+        r.y += (dy / dist) * speed * dt;
+      }
+    } else if (r.state === 'waiting') {
+      r.waitMs += dt * 1000;
+      if (tokens >= 1) {
+        tokens -= 1;
+        totalServed++;
+        r.state = 'served';
+        r.x = BX - 10;
+        r.y = BY + BH / 2 + (Math.random() - 0.5) * 80;
+      }
+    } else if (r.state === 'served') {
+      r.x -= 100 * dt;
+    }
+  });
+
+  requests = requests.filter(r => !(r.state === 'served' && r.x < -30));
+
+  ctx.clearRect(0, 0, W, H);
+  drawBucket();
+  requests.forEach(drawRequest);
+  drawCounters();
+  updateBucketStats();
+
+  animId = requestAnimationFrame(bucketTick);
+}
+
+animId = requestAnimationFrame(bucketTick);
+
+// ════════════════════════════════════════
+// NAV scroll spy
+// ════════════════════════════════════════
+
+const navLinks = document.querySelectorAll('nav a');
+const sections = document.querySelectorAll('section.section, .hero');
+
+function onScroll() {
+  const scrollY = window.scrollY + 120;
+  let active = null;
+  document.querySelectorAll('section.section').forEach(s => {
+    if (s.offsetTop <= scrollY) active = s.id;
+  });
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + active);
+  });
+}
+
+window.addEventListener('scroll', onScroll, { passive: true });
+
+// smooth scroll
+navLinks.forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) target.scrollIntoView({ behavior: 'smooth' });
+  });
+});
+</script>
+</body>
+</html>
