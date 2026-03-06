@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DataModeService } from '../../core/services/data-mode.service';
 import { K8sExportService, ExportMode } from '../../core/services/k8s-export.service';
@@ -17,6 +17,7 @@ import { MemMonitorComponent } from '../../shared/components/mem-monitor/mem-mon
 export class HomeComponent implements OnInit {
   dataModeService = inject(DataModeService);
   exportService = inject(K8sExportService);
+  showExport = signal(false);
   ngOnInit() {
     this.dataModeService.checkAvailability();
     this.exportService.checkState();
@@ -38,14 +39,29 @@ export class HomeComponent implements OnInit {
     this.exportService.mode.set(mode);
   }
 
+  setModeFromSelect(event: Event) {
+    this.exportService.mode.set((event.target as HTMLSelectElement).value as ExportMode);
+  }
+
   setWorkers(event: Event) {
     const v = parseInt((event.target as HTMLInputElement).value, 10);
     if (v >= 1 && v <= 16) this.exportService.workers.set(v);
+  }
+
+  incrementWorkers() {
+    const v = this.exportService.workers();
+    if (v < 16) this.exportService.workers.set(v + 1);
+  }
+
+  decrementWorkers() {
+    const v = this.exportService.workers();
+    if (v > 1) this.exportService.workers.set(v - 1);
   }
 
   async onExportDone() {
     await this.dataModeService.checkAvailability();
     this.dataModeService.setSnapshotMode(true);
     this.exportService.done.set(false);
+    this.showExport.set(false);
   }
 }

@@ -61,15 +61,27 @@ async function countDoneNamespaces() {
 }
 
 // POST /api/k8s-export/start
-router.post('/k8s-export/start', (req, res) => {
+router.post('/k8s-export/start', async (req, res) => {
   if (exportState.running) {
     return res.status(409).json({ error: 'Export already running' });
   }
 
   const resume = req.body?.resume === true;
-  // mode: 'bash' | 'node' | 'workers' | 'go'  (default: 'bash')
+
+  // Fresh start: clear previous completion markers so the first progress poll
+  // doesn't show stale 100% data from the prior export
+  if (!resume) {
+    await fsp.unlink(path.join(snapshotDir, '.export-complete')).catch(() => {});
+    const dirs = await fsp.readdir(snapshotDir, { withFileTypes: true }).catch(() => []);
+    await Promise.all(
+      dirs.filter(d => d.isDirectory()).map(d =>
+        fsp.unlink(path.join(snapshotDir, d.name, '.done')).catch(() => {})
+      )
+    );
+  }
+  // mode: 'bash' | 'node' | 'workers' | 'procs' | 'go'  (default: 'bash')
   const mode = req.body?.mode ?? 'bash';
-  // workers: number of parallel worker threads (workers mode only)
+  // workers: parallelism count — threads for 'workers' mode, processes for 'procs' mode
   const workers = Number.isInteger(req.body?.workers) ? req.body.workers : null;
 
   exportState = {
@@ -85,6 +97,7 @@ router.post('/k8s-export/start', (req, res) => {
     fileCount: 0,
     error: null,
     output: '',
+    freshStart: !resume,  // suppress stale filesystem counts on first polls
   };
 
   let spawnCmd, args;
@@ -95,6 +108,10 @@ router.post('/k8s-export/start', (req, res) => {
     spawnCmd = process.execPath;
     args = [path.join(__dirname, '../..', 'scripts', 'k8s-export-node-workers.js')];
     if (workers) args.push('--workers', String(workers));
+  } else if (mode === 'procs') {
+    spawnCmd = process.execPath;
+    args = [path.join(__dirname, '../..', 'scripts', 'k8s-export-node-procs.js')];
+    if (workers) args.push('--procs', String(workers));
   } else if (mode === 'node') {
     spawnCmd = process.execPath;
     args = [path.join(__dirname, '../..', 'scripts', 'k8s-export-node.js')];
@@ -125,6 +142,7 @@ router.post('/k8s-export/start', (req, res) => {
     const discoveredMatch = text.match(/Discovered (\d+) namespaces/);
     if (discoveredMatch) {
       exportState.totalNamespaces = parseInt(discoveredMatch[1], 10);
+      exportState.freshStart = false;  // script is running — filesystem is being rewritten
     }
 
     // Parse "=== Namespace: xxx === (complete, skipping)" — already done
@@ -193,7 +211,7 @@ router.post('/k8s-export/start', (req, res) => {
 
 // GET /api/k8s-export/progress
 router.get('/k8s-export/progress', async (req, res) => {
-  const [liveCount, doneNs, hasCompleteMarker] = await Promise.all([
+  let [liveCount, doneNs, hasCompleteMarker] = await Promise.all([
     countFiles(snapshotDir),
     countDoneNamespaces(),
     fsp.access(path.join(snapshotDir, '.export-complete')).then(() => true).catch(() => false),
@@ -233,6 +251,13 @@ router.get('/k8s-export/progress', async (req, res) => {
       exportState.minEtaSeconds = rawEta;
     }
     etaSeconds = exportState.minEtaSeconds;
+  }
+
+  // Suppress stale filesystem counts until the new export's first stdout arrives
+  if (exportState.freshStart) {
+    liveCount = 0;
+    doneNs = 0;
+    totalNamespaces = 0;
   }
 
   const activeNsList = [...exportState.activeNamespaces];

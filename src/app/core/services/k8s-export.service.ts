@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE } from '../constants/api';
 
-export type ExportMode = 'bash' | 'node' | 'workers' | 'go';
+export type ExportMode = 'bash' | 'node' | 'workers' | 'procs' | 'go';
 
 interface ExportProgress {
   running: boolean;
@@ -89,7 +89,7 @@ export class K8sExportService {
 
     try {
       const body: Record<string, unknown> = { resume, mode: this.mode() };
-      if (this.mode() === 'workers') body['workers'] = this.workers();
+      if (this.mode() === 'workers' || this.mode() === 'procs') body['workers'] = this.workers();
       await firstValueFrom(
         this.http.post(`${API_BASE}/k8s-export/start`, body)
       );

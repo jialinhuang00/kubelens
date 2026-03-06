@@ -66,6 +66,26 @@
       <div class="export-stats">
         <span>{{ exportService.fileCount() }} files exported</span>
       </div>
+      <div class="export-mode-row">
+        <select class="mode-select" [value]="exportService.mode()" (change)="setModeFromSelect($event)">
+          <option value="bash">bash</option>
+          <optgroup label="Node.js">
+            <option value="node">node — single thread</option>
+            <option value="workers">workers — threads</option>
+            <option value="procs">procs — processes</option>
+          </optgroup>
+          <option value="go">go</option>
+        </select>
+        @if (exportService.mode() === 'workers' || exportService.mode() === 'procs') {
+          <div class="number-stepper">
+            <span class="stepper-val">{{ exportService.workers() }}</span>
+            <div class="stepper-btns">
+              <button class="stepper-btn" (click)="decrementWorkers()">&#8212;</button>
+              <button class="stepper-btn" (click)="incrementWorkers()">+</button>
+            </div>
+          </div>
+        }
+      </div>
       <button class="export-btn" (click)="resumeExport()">Resume</button>
     </div>
   } @else if (exportService.done()) {
@@ -84,27 +104,32 @@
       <p class="hint hint-error">kubectl not available and no snapshot found</p>
     } @else if (!dataModeService.realtimeAvailable()) {
       <p class="hint">kubectl not available — using snapshot mode</p>
-    } @else {
+    } @else if (!dataModeService.snapshotAvailable() || showExport()) {
+      <!-- First-time export (no snapshot yet) OR user explicitly opened the panel -->
       <div class="export-panel">
-        @if (dataModeService.snapshotAvailable()) {
-          <p class="hint">Re-export to refresh your cluster snapshot.</p>
-        } @else {
+        @if (!dataModeService.snapshotAvailable()) {
           <p class="hint">No snapshot found. Export your cluster data to get started.</p>
         }
-        <div class="export-mode-btns">
-          <button class="mode-chip" [class.active]="exportService.mode() === 'bash'"    (click)="setMode('bash')">bash</button>
-          <button class="mode-chip" [class.active]="exportService.mode() === 'node'"    (click)="setMode('node')">node</button>
-          <button class="mode-chip" [class.active]="exportService.mode() === 'workers'" (click)="setMode('workers')">workers</button>
-          <button class="mode-chip" [class.active]="exportService.mode() === 'go'"      (click)="setMode('go')">go</button>
+        <div class="export-mode-row">
+          <select class="mode-select" [value]="exportService.mode()" (change)="setModeFromSelect($event)">
+            <option value="bash">bash</option>
+            <optgroup label="Node.js">
+              <option value="node">node — single thread</option>
+              <option value="workers">workers — threads</option>
+              <option value="procs">procs — processes</option>
+            </optgroup>
+            <option value="go">go</option>
+          </select>
+          @if (exportService.mode() === 'workers' || exportService.mode() === 'procs') {
+            <div class="number-stepper">
+              <span class="stepper-val">{{ exportService.workers() }}</span>
+              <div class="stepper-btns">
+                <button class="stepper-btn" (click)="decrementWorkers()">&#8212;</button>
+                <button class="stepper-btn" (click)="incrementWorkers()">+</button>
+              </div>
+            </div>
+          }
         </div>
-        @if (exportService.mode() === 'workers') {
-          <div class="export-workers-row">
-            <label class="workers-label">workers</label>
-            <input class="workers-input" type="number" min="1" max="16"
-              [value]="exportService.workers()"
-              (change)="setWorkers($event)" />
-          </div>
-        }
         <button class="export-btn" (click)="startExport()">
           {{ dataModeService.snapshotAvailable() ? 'Re-export Snapshot' : 'Export Snapshot' }}
         </button>
@@ -125,4 +150,10 @@
       <span class="card-desc">GPU-accelerated resource topology visualization</span>
     </a>
   </div>
+
+  @if (dataModeService.snapshotAvailable() && !exportService.isRunning() && !exportService.paused() && !exportService.done()) {
+    <button class="snapshot-update-link" (click)="showExport.set(!showExport())">
+      update snapshot?
+    </button>
+  }
 </div>
