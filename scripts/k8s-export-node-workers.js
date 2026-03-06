@@ -116,12 +116,6 @@ function makeFetchers(clients) {
 
 const REQUEST_TIMEOUT_MS = 30_000;
 
-// In-flight request counter — proxy for active connection count (HTTP/1.1: 1 req = 1 conn)
-let inFlight = 0;
-let peakInFlight = 0;
-function trackIn()  { inFlight++; if (inFlight > peakInFlight) peakInFlight = inFlight; console.log(`[pool] in-flight: ${inFlight}  peak: ${peakInFlight}`); }
-function trackOut() { inFlight--; }
-
 // Build per-request options with AbortController — actually cancels the TCP connection on timeout
 function makeRequestOpts() {
   const controller = new AbortController();
@@ -143,7 +137,6 @@ async function fetchOne(fetchers, ns, resourceType) {
   const fn = fetchers[resourceType];
   if (!fn) return [];
   const { controller, timer, opts } = makeRequestOpts();
-  trackIn();
   try {
     const res = await fn(ns, opts);
     const items = res.items ?? [];
@@ -159,14 +152,12 @@ async function fetchOne(fetchers, ns, resourceType) {
     }
     throw e;
   } finally {
-    trackOut();
     clearTimeout(timer);
   }
 }
 
 async function fetchCRD(customObjs, ns, { group, version, plural, kind }) {
   const { controller, timer, opts } = makeRequestOpts();
-  trackIn();
   try {
     const res = await customObjs.listNamespacedCustomObject({ group, version, namespace: ns, plural }, opts);
     return (res.items ?? []).map(item => ({ ...item, kind, apiVersion: `${group}/${version}` }));
@@ -179,7 +170,6 @@ async function fetchCRD(customObjs, ns, { group, version, plural, kind }) {
     }
     throw e;
   } finally {
-    trackOut();
     clearTimeout(timer);
   }
 }
