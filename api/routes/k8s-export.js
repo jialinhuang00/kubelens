@@ -79,9 +79,9 @@ router.post('/k8s-export/start', async (req, res) => {
       )
     );
   }
-  // mode: 'bash' | 'node' | 'workers' | 'procs' | 'go'  (default: 'bash')
+  // mode: 'bash' | 'node' | 'workers' | 'procs' | 'go' | 'parallel'  (default: 'bash')
   const mode = req.body?.mode ?? 'bash';
-  // workers: parallelism count — threads for 'workers' mode, processes for 'procs' mode
+  // workers: parallelism count — threads for 'workers', processes for 'procs', jobs for 'parallel'
   const workers = Number.isInteger(req.body?.workers) ? req.body.workers : null;
 
   exportState = {
@@ -104,6 +104,10 @@ router.post('/k8s-export/start', async (req, res) => {
   if (mode === 'go') {
     spawnCmd = path.join(__dirname, '../..', 'cmd', 'k8s-export', 'k8s-export');
     args = [];
+  } else if (mode === 'parallel') {
+    spawnCmd = 'bash';
+    args = [path.join(__dirname, '../..', 'scripts', 'k8s-export.sh')];
+    if (workers) args.push('--jobs', String(workers));
   } else if (mode === 'workers') {
     spawnCmd = process.execPath;
     args = [path.join(__dirname, '../..', 'scripts', 'k8s-export-node-workers.js')];
@@ -153,9 +157,9 @@ router.post('/k8s-export/start', async (req, res) => {
       skippedSet.add(m[1]);
     }
 
-    // Parse "=== Namespace: xxx ===" — active export (not skipped)
-    const nsMatches = text.matchAll(/=== Namespace: (\S+?) ===/g);
-    for (const m of nsMatches) {
+    // Parse "xxx start" (node/workers/procs/go/bash format)
+    const nsStartMatches = text.matchAll(/^(\S+) start$/gm);
+    for (const m of nsStartMatches) {
       if (!skippedSet.has(m[1])) {
         exportState.activeNamespaces.add(m[1]);
       }
@@ -167,16 +171,16 @@ router.post('/k8s-export/start', async (req, res) => {
       exportState.activeNamespaces.delete(m[1]);
     }
 
-    // Parse "→ fetching xxx" — resource/batch started downloading
-    const fetchMatches = text.matchAll(/→ fetching (\S+)/gm);
+    // Parse "→ [ns] fetching xxx" or "→ fetching xxx"
+    const fetchMatches = text.matchAll(/→ (?:\[\S+\]\s+)?fetching (\S+)/gm);
     for (const m of fetchMatches) {
       for (const r of m[1].split(',')) {
         exportState.activeResources.add(r);
       }
     }
 
-    // Parse "← xxx done" / "← xxx failed" — remove from active
-    const doneResMatches = text.matchAll(/← (\S+) (?:done|failed)/gm);
+    // Parse "← [ns] xxx done/failed" or "← xxx done/failed"
+    const doneResMatches = text.matchAll(/← (?:\[\S+\]\s+)?(\S+) (?:done|failed)/gm);
     for (const m of doneResMatches) {
       for (const r of m[1].split(',')) {
         exportState.activeResources.delete(r);
@@ -233,8 +237,8 @@ router.get('/k8s-export/progress', async (req, res) => {
     if (hasCompleteMarker) {
       // .export-complete exists → export finished successfully
       paused = false;
-    } else if (liveCount > 0) {
-      // Files exist but no completion marker → partial/interrupted
+    } else if (liveCount > 0 && !exportState.error) {
+      // Files exist but no completion marker → partial/interrupted (user-paused)
       paused = true;
     }
   }

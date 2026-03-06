@@ -18,6 +18,19 @@ export class HomeComponent implements OnInit {
   dataModeService = inject(DataModeService);
   exportService = inject(K8sExportService);
   showExport = signal(false);
+  showModeDropdown = signal(false);
+
+  modeLabel(): string {
+    const labels: Record<string, string> = {
+      bash: 'bash',
+      node: 'node — single thread',
+      workers: 'workers — thread pool',
+      procs: 'procs — subprocesses',
+      go: 'go — ~6x faster',
+      parallel: 'parallel — GNU parallel',
+    };
+    return labels[this.exportService.mode()] ?? this.exportService.mode();
+  }
   ngOnInit() {
     this.dataModeService.checkAvailability();
     this.exportService.checkState();
@@ -37,10 +50,6 @@ export class HomeComponent implements OnInit {
 
   setMode(mode: ExportMode) {
     this.exportService.mode.set(mode);
-  }
-
-  setModeFromSelect(event: Event) {
-    this.exportService.mode.set((event.target as HTMLSelectElement).value as ExportMode);
   }
 
   setWorkers(event: Event) {

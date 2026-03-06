@@ -59,6 +59,7 @@
       </div>
     </div>
   } @else if (exportService.paused()) {
+    <div class="export-backdrop"></div>
     <div class="export-panel export-paused">
       <div class="export-header">
         <span class="export-label">Paused</span>
@@ -67,16 +68,24 @@
         <span>{{ exportService.fileCount() }} files exported</span>
       </div>
       <div class="export-mode-row">
-        <select class="mode-select" [value]="exportService.mode()" (change)="setModeFromSelect($event)">
-          <option value="bash">bash</option>
-          <optgroup label="Node.js">
-            <option value="node">node — single thread</option>
-            <option value="workers">workers — threads</option>
-            <option value="procs">procs — processes</option>
-          </optgroup>
-          <option value="go">go</option>
-        </select>
-        @if (exportService.mode() === 'workers' || exportService.mode() === 'procs') {
+        <div class="mode-dropdown" [class.open]="showModeDropdown()">
+          <button class="mode-select-trigger" (click)="showModeDropdown.set(!showModeDropdown())">
+            <span>{{ modeLabel() }}</span>
+            <svg class="trigger-chevron" viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg"><path d="M0 0l5 6 5-6z"/></svg>
+          </button>
+          @if (showModeDropdown()) {
+            <div class="dropdown-backdrop" (click)="showModeDropdown.set(false)"></div>
+            <div class="dropdown-panel">
+              <button class="mode-opt" [class.selected]="exportService.mode() === 'node'" (click)="setMode('node'); showModeDropdown.set(false)">node <span class="opt-hint">— single thread</span></button>
+              <button class="mode-opt" [class.selected]="exportService.mode() === 'workers'" (click)="setMode('workers'); showModeDropdown.set(false)">workers <span class="opt-hint">— thread pool</span></button>
+              <button class="mode-opt" [class.selected]="exportService.mode() === 'procs'" (click)="setMode('procs'); showModeDropdown.set(false)">procs <span class="opt-hint">— subprocesses</span></button>
+              <button class="mode-opt" [class.selected]="exportService.mode() === 'go'" (click)="setMode('go'); showModeDropdown.set(false)">go <span class="opt-hint">— ~6x faster</span></button>
+              <button class="mode-opt" [class.selected]="exportService.mode() === 'bash'" (click)="setMode('bash'); showModeDropdown.set(false)">bash</button>
+              <button class="mode-opt" [class.selected]="exportService.mode() === 'parallel'" (click)="setMode('parallel'); showModeDropdown.set(false)">parallel <span class="opt-hint">— GNU parallel</span></button>
+            </div>
+          }
+        </div>
+        @if (exportService.mode() === 'workers' || exportService.mode() === 'procs' || exportService.mode() === 'parallel') {
           <div class="number-stepper">
             <span class="stepper-val">{{ exportService.workers() }}</span>
             <div class="stepper-btns">
@@ -89,11 +98,13 @@
       <button class="export-btn" (click)="resumeExport()">Resume</button>
     </div>
   } @else if (exportService.done()) {
+    <div class="export-backdrop"></div>
     <div class="export-panel export-done">
       <p class="export-success">Export complete — {{ exportService.fileCount() }} files@if (exportService.elapsed()) { in {{ exportService.elapsed() }}}</p>
       <button class="export-btn" (click)="onExportDone()">Continue</button>
     </div>
   } @else if (exportService.error()) {
+    <div class="export-backdrop"></div>
     <div class="export-panel">
       <p class="hint hint-error">Export failed: {{ exportService.error() }}</p>
       <button class="export-btn" (click)="startExport()">Retry</button>
@@ -106,21 +117,32 @@
       <p class="hint">kubectl not available — using snapshot mode</p>
     } @else if (!dataModeService.snapshotAvailable() || showExport()) {
       <!-- First-time export (no snapshot yet) OR user explicitly opened the panel -->
+      <div class="export-backdrop" (click)="showExport.set(false)"></div>
       <div class="export-panel">
         @if (!dataModeService.snapshotAvailable()) {
           <p class="hint">No snapshot found. Export your cluster data to get started.</p>
         }
         <div class="export-mode-row">
-          <select class="mode-select" [value]="exportService.mode()" (change)="setModeFromSelect($event)">
-            <option value="bash">bash</option>
-            <optgroup label="Node.js">
-              <option value="node">node — single thread</option>
-              <option value="workers">workers — threads</option>
-              <option value="procs">procs — processes</option>
-            </optgroup>
-            <option value="go">go</option>
-          </select>
-          @if (exportService.mode() === 'workers' || exportService.mode() === 'procs') {
+          <div class="mode-dropdown" [class.open]="showModeDropdown()">
+            <button class="mode-select-trigger" (click)="showModeDropdown.set(!showModeDropdown())">
+              <span>{{ modeLabel() }}</span>
+              <svg class="trigger-chevron" viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg"><path d="M0 0l5 6 5-6z"/></svg>
+            </button>
+            @if (showModeDropdown()) {
+              <div class="dropdown-backdrop" (click)="showModeDropdown.set(false)"></div>
+              <div class="dropdown-panel">
+                <div class="mode-group-label">Node.js</div>
+                <button class="mode-opt" [class.selected]="exportService.mode() === 'node'" (click)="setMode('node'); showModeDropdown.set(false)">node <span class="opt-hint">— single thread</span></button>
+                <button class="mode-opt" [class.selected]="exportService.mode() === 'workers'" (click)="setMode('workers'); showModeDropdown.set(false)">workers <span class="opt-hint">— thread pool</span></button>
+                <button class="mode-opt" [class.selected]="exportService.mode() === 'procs'" (click)="setMode('procs'); showModeDropdown.set(false)">procs <span class="opt-hint">— subprocesses</span></button>
+                <button class="mode-opt" [class.selected]="exportService.mode() === 'go'" (click)="setMode('go'); showModeDropdown.set(false)">go <span class="opt-hint">— ~6x faster</span></button>
+                <div class="mode-group-label">Shell</div>
+                <button class="mode-opt" [class.selected]="exportService.mode() === 'bash'" (click)="setMode('bash'); showModeDropdown.set(false)">bash</button>
+                <button class="mode-opt" [class.selected]="exportService.mode() === 'parallel'" (click)="setMode('parallel'); showModeDropdown.set(false)">parallel <span class="opt-hint">— GNU parallel</span></button>
+              </div>
+            }
+          </div>
+          @if (exportService.mode() === 'workers' || exportService.mode() === 'procs' || exportService.mode() === 'parallel') {
             <div class="number-stepper">
               <span class="stepper-val">{{ exportService.workers() }}</span>
               <div class="stepper-btns">
