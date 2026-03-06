@@ -16,6 +16,13 @@ const { Worker, isMainThread, parentPort, workerData } = require('worker_threads
 const os = require('os');
 const path = require('path');
 
+const Y = '\x1b[33m'; // yellow  — → fetching
+const G = '\x1b[32m'; // green   — ← done, ✓ completed, banner
+const R = '\x1b[31m'; // red     — errors
+const _ = '\x1b[0m';  // reset
+const NS_W = 20;
+const nsTag = ns => ('[' + ns + ']').padEnd(NS_W);
+
 // ============================================================================
 // SHARED CODE — used by both main thread and worker threads
 // ============================================================================
@@ -109,6 +116,12 @@ function makeFetchers(clients) {
 
 const REQUEST_TIMEOUT_MS = 30_000;
 
+// In-flight request counter — proxy for active connection count (HTTP/1.1: 1 req = 1 conn)
+let inFlight = 0;
+let peakInFlight = 0;
+function trackIn()  { inFlight++; if (inFlight > peakInFlight) peakInFlight = inFlight; console.log(`[pool] in-flight: ${inFlight}  peak: ${peakInFlight}`); }
+function trackOut() { inFlight--; }
+
 // Build per-request options with AbortController — actually cancels the TCP connection on timeout
 function makeRequestOpts() {
   const controller = new AbortController();
@@ -130,6 +143,7 @@ async function fetchOne(fetchers, ns, resourceType) {
   const fn = fetchers[resourceType];
   if (!fn) return [];
   const { controller, timer, opts } = makeRequestOpts();
+  trackIn();
   try {
     const res = await fn(ns, opts);
     const items = res.items ?? [];
@@ -145,12 +159,14 @@ async function fetchOne(fetchers, ns, resourceType) {
     }
     throw e;
   } finally {
+    trackOut();
     clearTimeout(timer);
   }
 }
 
 async function fetchCRD(customObjs, ns, { group, version, plural, kind }) {
   const { controller, timer, opts } = makeRequestOpts();
+  trackIn();
   try {
     const res = await customObjs.listNamespacedCustomObject({ group, version, namespace: ns, plural }, opts);
     return (res.items ?? []).map(item => ({ ...item, kind, apiVersion: `${group}/${version}` }));
@@ -163,6 +179,7 @@ async function fetchCRD(customObjs, ns, { group, version, plural, kind }) {
     }
     throw e;
   } finally {
+    trackOut();
     clearTimeout(timer);
   }
 }
@@ -269,7 +286,7 @@ function formatPodsImages(pods) {
 
 async function exportOneNamespace(clients, ns, baseDir, doResume) {
   const start = Date.now();
-  console.log(`=== Namespace: ${ns} ===`);
+  console.log(`${ns} start`);
 
   const nsDir = path.join(baseDir, ns);
   await fs.mkdir(nsDir, { recursive: true });
@@ -278,25 +295,25 @@ async function exportOneNamespace(clients, ns, baseDir, doResume) {
 
   const batchPromises = NS_BATCHES.map(async batch => {
     const label = batch.join(',');
-    console.log(`  → fetching ${label}`);
+    console.log(`${Y}  → ${nsTag(ns)} fetching ${label}${_}`);
     const results = await Promise.all(batch.map(rt => fetchOne(fetchers, ns, rt)));
     await writeBatchResults(nsDir, results.flat(), doResume);
-    console.log(`  ← ${label} done`);
+    console.log(`${G}  ← ${nsTag(ns)} ${label} done${_}`);
   });
 
   const crdPromises = CRD_BATCHES.map(async batch => {
     const label = batch.map(b => b.plural).join(',');
-    console.log(`  → fetching ${label}`);
+    console.log(`${Y}  → ${nsTag(ns)} fetching ${label}${_}`);
     const results = await Promise.all(batch.map(crd => fetchCRD(clients.customObjs, ns, crd)));
     await writeBatchResults(nsDir, results.flat(), doResume);
-    console.log(`  ← ${label} done`);
+    console.log(`${G}  ← ${nsTag(ns)} ${label} done${_}`);
   });
 
   const podsPromise = (async () => {
-    console.log('  → fetching pods');
+    console.log(`${Y}  → ${nsTag(ns)} fetching pods${_}`);
     const pods = await fetchOne(fetchers, ns, 'pods');
     await writeBatchResults(nsDir, pods, doResume);
-    console.log('  ← pods done');
+    console.log(`${G}  ← ${nsTag(ns)} pods done${_}`);
 
     const snapPath = path.join(nsDir, 'pods-snapshot.txt');
     const imgPath = path.join(nsDir, 'pods-images.txt');
@@ -307,7 +324,7 @@ async function exportOneNamespace(clients, ns, baseDir, doResume) {
   await Promise.all([...batchPromises, ...crdPromises, podsPromise]);
 
   await touchFile(path.join(nsDir, '.done'));
-  console.log(`✓ Namespace ${ns} completed in ${Math.round((Date.now() - start) / 1000)}s\n`);
+  console.log(`${G}✓ Namespace ${ns} completed in ${Math.round((Date.now() - start) / 1000)}s${_}\n`);
 }
 
 // ============================================================================
@@ -334,7 +351,12 @@ if (!isMainThread) {
 
     // Export assigned namespaces sequentially — parallelism comes from multiple workers
     for (const ns of namespaces) {
-      await exportOneNamespace(clients, ns, baseDir, doResume);
+      try {
+        await exportOneNamespace(clients, ns, baseDir, doResume);
+      } catch (e) {
+        const code = e?.response?.statusCode ?? e?.statusCode ?? 'unknown';
+        console.error(`[worker] ERROR in namespace ${ns} (HTTP ${code}): ${e.message}`);
+      }
     }
     parentPort.postMessage({ done: true, count: namespaces.length });
   })().catch(e => {
@@ -398,7 +420,7 @@ async function main() {
     const remaining = [];
     for (const ns of namespaces) {
       if (await fileExists(path.join(baseDir, ns, '.done'))) {
-        console.log(`=== Namespace: ${ns} === (complete, skipping)`);
+        console.log(`${ns} skipping (complete)`);
       } else {
         remaining.push(ns);
       }
