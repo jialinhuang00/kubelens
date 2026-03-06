@@ -304,7 +304,9 @@ export class KubectlService {
         `kubectl get ${resourceType} -n ${namespace} -o jsonpath={.items[*].metadata.name}`
       );
       if (response.success) {
-        return response.stdout.replace(/"/g, '').trim().split(' ').filter(n => n);
+        const out = response.stdout.replace(/"/g, '').trim();
+        if (!out || out.startsWith('No resources found')) return [];
+        return out.split(' ').filter(n => n);
       }
       return [];
     } catch (error) {
@@ -318,7 +320,9 @@ export class KubectlService {
       const response = await this.executeCommand('kubectl get namespaces -o jsonpath={.items[*].metadata.name}');
 
       if (response.success) {
-        return response.stdout.replace(/"/g, '').trim().split(' ').filter(ns => ns);
+        const out = response.stdout.replace(/"/g, '').trim();
+        if (!out || out.startsWith('No resources found')) return [];
+        return out.split(' ').filter(ns => ns);
       }
 
       // Fallback namespaces if command fails

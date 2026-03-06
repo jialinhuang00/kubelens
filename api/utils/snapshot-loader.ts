@@ -45,7 +45,7 @@ export interface K8sList {
 }
 
 /** Root directory for snapshot YAML files. Override with K8S_SNAPSHOT_PATH env var. */
-export const BACKUP_PATH: string = process.env.K8S_SNAPSHOT_PATH || path.join(__dirname, '..', 'k8s-snapshot');
+export const BACKUP_PATH: string = process.env.K8S_SNAPSHOT_PATH || path.join(__dirname, '..', '..', 'k8s-snapshot');
 
 /** Fallback namespace when none is specified. */
 export const DEFAULT_NAMESPACE = 'demo';
