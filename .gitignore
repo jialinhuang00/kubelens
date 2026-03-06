@@ -79,9 +79,10 @@ Icon?
 # Kubernetes and cluster files (if sensitive)
 kubeconfig*
 *.kubeconfig
-/k8s-snapshot
+k8s-snapshot*/
 
 # Git specific
 .git/
 .gitattributes
-k8s-snapshot**
+observation.md
+plan.md
