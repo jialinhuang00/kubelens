@@ -439,8 +439,13 @@
   text-align: left;
   transition: background 0.1s ease;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: rgba(128, 128, 128, 0.1);
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
   }
 
   &.selected {
@@ -463,44 +468,43 @@
 }
 
 .stepper-val {
-  min-width: 36px;
-  padding: 6px 8px;
+  padding: 6px 10px;
   font-size: 12px;
   font-family: 'IBM Plex Mono', monospace;
   color: var(--t-text-primary);
   text-align: center;
   border-right: 1px solid var(--t-border);
+  white-space: nowrap;
 }
 
-.stepper-btns {
-  display: flex;
-  flex-direction: column;
+.stepper-unit {
+  color: var(--t-text-secondary);
+  font-size: 11px;
 }
 
 .stepper-btn {
   width: 28px;
-  height: 50%;
+  height: 32px;
   padding: 0;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1;
   color: var(--t-text-secondary);
   background: transparent;
   border: none;
-  border-bottom: 1px solid var(--t-border);
   cursor: pointer;
   transition: all 0.1s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 
-  &:last-child {
-    border-bottom: none;
-  }
-
   &:hover {
     color: var(--t-accent);
     background: rgba(128, 128, 128, 0.08);
   }
+}
+
+.stepper-btn-last {
+  border-left: 1px solid var(--t-border);
 }
 
 .snapshot-update-link {

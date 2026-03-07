@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE } from '../constants/api';
 
-export type ExportMode = 'bash' | 'node' | 'workers' | 'procs' | 'go' | 'parallel';
+export type ExportMode = 'bash' | 'bash-batch' | 'bash-parallel' | 'node' | 'workers' | 'procs' | 'go';
 
 interface ExportProgress {
   running: boolean;
@@ -51,9 +51,13 @@ export class SnapshotService {
   done = signal(false);
   mode = signal<ExportMode>('workers');
   workers = signal(4);
+  parallelAvailable = signal(false);
 
   async checkState(): Promise<void> {
     if (this.pollTimer) return;
+
+    this.http.get<{ parallel: boolean }>(`${API_BASE}/export/ping`)
+      .subscribe(r => this.parallelAvailable.set(r.parallel));
 
     try {
       const data = await firstValueFrom(
@@ -89,7 +93,7 @@ export class SnapshotService {
 
     try {
       const body: Record<string, unknown> = { resume, mode: this.mode() };
-      if (this.mode() === 'workers' || this.mode() === 'procs' || this.mode() === 'parallel') body['workers'] = this.workers();
+      if (['bash-batch', 'bash-parallel', 'node', 'workers', 'procs'].includes(this.mode())) body['workers'] = this.workers();
       await firstValueFrom(
         this.http.post(`${API_BASE}/snapshot`, { ...body, command: 'start' })
       );

@@ -52,6 +52,16 @@ router.get('/realtime/ping', async (req, res) => {
   }
 });
 
+// GET /api/export/ping
+router.get('/export/ping', async (req, res) => {
+  try {
+    await execFileAsync('which', ['parallel']);
+    res.json({ parallel: true });
+  } catch {
+    res.json({ parallel: false });
+  }
+});
+
 // GET /api/snapshot/ping
 router.get('/snapshot/ping', async (req, res) => {
   const backupDir = path.join(__dirname, '../..', 'k8s-snapshot');

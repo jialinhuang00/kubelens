@@ -81,17 +81,16 @@
               <button class="mode-opt" [class.selected]="exportService.mode() === 'procs'" (click)="setMode('procs'); showModeDropdown.set(false)">procs <span class="opt-hint">— subprocesses</span></button>
               <button class="mode-opt" [class.selected]="exportService.mode() === 'go'" (click)="setMode('go'); showModeDropdown.set(false)">go <span class="opt-hint">— ~6x faster</span></button>
               <button class="mode-opt" [class.selected]="exportService.mode() === 'bash'" (click)="setMode('bash'); showModeDropdown.set(false)">bash</button>
-              <button class="mode-opt" [class.selected]="exportService.mode() === 'parallel'" (click)="setMode('parallel'); showModeDropdown.set(false)">parallel <span class="opt-hint">— GNU parallel</span></button>
+              <button class="mode-opt" [class.selected]="exportService.mode() === 'bash-batch'" (click)="setMode('bash-batch'); showModeDropdown.set(false)">bash-batch</button>
+              <button class="mode-opt" [class.selected]="exportService.mode() === 'bash-parallel'" [disabled]="!exportService.parallelAvailable()" [title]="exportService.parallelAvailable() ? '' : 'GNU parallel not installed'" (click)="setMode('bash-parallel'); showModeDropdown.set(false)">bash-parallel <span class="opt-hint">{{ exportService.parallelAvailable() ? '' : '— not installed' }}</span></button>
             </div>
           }
         </div>
-        @if (exportService.mode() === 'workers' || exportService.mode() === 'procs' || exportService.mode() === 'parallel') {
+        @if (['bash-batch', 'bash-parallel', 'node', 'workers', 'procs'].includes(exportService.mode())) {
           <div class="number-stepper">
-            <span class="stepper-val">{{ exportService.workers() }}</span>
-            <div class="stepper-btns">
-              <button class="stepper-btn" (click)="decrementWorkers()">&#8212;</button>
-              <button class="stepper-btn" (click)="incrementWorkers()">+</button>
-            </div>
+            <button class="stepper-btn" (click)="decrementWorkers()">&#8212;</button>
+            <span class="stepper-val">{{ exportService.workers() }} <span class="stepper-unit">{{ workerLabel() }}</span></span>
+            <button class="stepper-btn" (click)="incrementWorkers()">+</button>
           </div>
         }
       </div>
@@ -131,24 +130,21 @@
             @if (showModeDropdown()) {
               <div class="dropdown-backdrop" (click)="showModeDropdown.set(false)"></div>
               <div class="dropdown-panel">
-                <div class="mode-group-label">Node.js</div>
                 <button class="mode-opt" [class.selected]="exportService.mode() === 'node'" (click)="setMode('node'); showModeDropdown.set(false)">node <span class="opt-hint">— single thread</span></button>
                 <button class="mode-opt" [class.selected]="exportService.mode() === 'workers'" (click)="setMode('workers'); showModeDropdown.set(false)">workers <span class="opt-hint">— thread pool</span></button>
                 <button class="mode-opt" [class.selected]="exportService.mode() === 'procs'" (click)="setMode('procs'); showModeDropdown.set(false)">procs <span class="opt-hint">— subprocesses</span></button>
                 <button class="mode-opt" [class.selected]="exportService.mode() === 'go'" (click)="setMode('go'); showModeDropdown.set(false)">go <span class="opt-hint">— ~6x faster</span></button>
-                <div class="mode-group-label">Shell</div>
                 <button class="mode-opt" [class.selected]="exportService.mode() === 'bash'" (click)="setMode('bash'); showModeDropdown.set(false)">bash</button>
-                <button class="mode-opt" [class.selected]="exportService.mode() === 'parallel'" (click)="setMode('parallel'); showModeDropdown.set(false)">parallel <span class="opt-hint">— GNU parallel</span></button>
+                <button class="mode-opt" [class.selected]="exportService.mode() === 'bash-batch'" (click)="setMode('bash-batch'); showModeDropdown.set(false)">bash-batch</button>
+                <button class="mode-opt" [class.selected]="exportService.mode() === 'bash-parallel'" [disabled]="!exportService.parallelAvailable()" [title]="exportService.parallelAvailable() ? '' : 'GNU parallel not installed'" (click)="setMode('bash-parallel'); showModeDropdown.set(false)">bash-parallel <span class="opt-hint">{{ exportService.parallelAvailable() ? '' : '— not installed' }}</span></button>
               </div>
             }
           </div>
-          @if (exportService.mode() === 'workers' || exportService.mode() === 'procs' || exportService.mode() === 'parallel') {
+          @if (['bash-batch', 'bash-parallel', 'node', 'workers', 'procs'].includes(exportService.mode())) {
             <div class="number-stepper">
-              <span class="stepper-val">{{ exportService.workers() }}</span>
-              <div class="stepper-btns">
-                <button class="stepper-btn" (click)="decrementWorkers()">&#8212;</button>
-                <button class="stepper-btn" (click)="incrementWorkers()">+</button>
-              </div>
+              <span class="stepper-val">{{ exportService.workers() }} <span class="stepper-unit">{{ workerLabel() }}</span></span>
+              <button class="stepper-btn" (click)="decrementWorkers()">&#8212;</button>
+              <button class="stepper-btn stepper-btn-last" (click)="incrementWorkers()">+</button>
             </div>
           }
         </div>

@@ -20,9 +20,22 @@ export class HomeComponent implements OnInit {
   showExport = signal(false);
   showModeDropdown = signal(false);
 
+  workerLabel(): string {
+    const labels: Record<string, string> = {
+      'bash-batch': 'jobs',
+      'bash-parallel': 'jobs',
+      node: 'promises',
+      workers: 'workers',
+      procs: 'procs',
+    };
+    return labels[this.exportService.mode()] ?? '';
+  }
+
   modeLabel(): string {
     const labels: Record<string, string> = {
       bash: 'bash',
+      'bash-batch': 'bash-batch',
+      'bash-parallel': 'bash-parallel',
       node: 'node — single thread',
       workers: 'workers — thread pool',
       procs: 'procs — subprocesses',
