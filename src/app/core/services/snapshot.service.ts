@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE } from '../constants/api';
 
-export type ExportMode = 'bash' | 'bash-batch' | 'bash-parallel' | 'node' | 'workers' | 'procs' | 'go';
+export type ExportMode = 'bash' | 'bash-parallel' | 'node' | 'workers' | 'procs' | 'go';
 
 interface ExportProgress {
   running: boolean;
@@ -93,7 +93,7 @@ export class SnapshotService {
 
     try {
       const body: Record<string, unknown> = { resume, mode: this.mode() };
-      if (['bash-batch', 'bash-parallel', 'node', 'workers', 'procs'].includes(this.mode())) body['workers'] = this.workers();
+      if (['bash', 'bash-parallel', 'node', 'workers', 'procs', 'go'].includes(this.mode())) body['workers'] = this.workers();
       await firstValueFrom(
         this.http.post(`${API_BASE}/snapshot`, { ...body, command: 'start' })
       );

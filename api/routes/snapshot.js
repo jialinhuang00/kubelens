@@ -122,6 +122,7 @@ router.post('/snapshot', async (req, res) => {
   if (mode === 'go') {
     spawnCmd = path.join(__dirname, '../..', 'cmd', 'k8s-export', 'k8s-export');
     args = [];
+    if (workers) args.push('-jobs', String(workers));
   } else if (mode === 'parallel') {
     spawnCmd = 'bash';
     args = [path.join(__dirname, '../..', 'scripts', 'snapshot-bash.sh')];
@@ -142,31 +143,17 @@ router.post('/snapshot', async (req, res) => {
     spawnCmd = 'bash';
     args = [path.join(__dirname, '../..', 'scripts', 'snapshot-bash.sh')];
     if (workers) args.push('--jobs', String(workers));
-  } else if (mode === 'bash-batch') {
+  } else {
+    // bash — sequential (jobs=1) or batch (jobs>1), auto-detects GNU parallel
     spawnCmd = 'bash';
     args = [path.join(__dirname, '../..', 'scripts', 'snapshot-bash.sh')];
     if (workers) args.push('--jobs', String(workers));
-  } else {
-    // bash sequential — --jobs 1
-    spawnCmd = 'bash';
-    args = [path.join(__dirname, '../..', 'scripts', 'snapshot-bash.sh'), '--jobs', '1'];
   }
   if (resume) args.push('--resume');
 
-  // For bash-batch: strip GNU parallel from PATH so the script falls back to batch mode
-  const spawnEnv = { ...process.env };
-  if (mode === 'bash-batch' && spawnEnv.PATH) {
-    try {
-      const { execFileSync } = require('child_process');
-      const parallelPath = execFileSync('which', ['parallel']).toString().trim();
-      const parallelDir = path.dirname(parallelPath);
-      spawnEnv.PATH = spawnEnv.PATH.split(':').filter(d => d !== parallelDir).join(':');
-    } catch { /* parallel not installed — PATH unchanged */ }
-  }
-
   const child = spawn(spawnCmd, args, {
     cwd: path.join(__dirname, '../..'),
-    env: spawnEnv,
+    env: { ...process.env },
     detached: true,  // new process group — enables group kill on pause
   });
 
