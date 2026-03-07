@@ -16,10 +16,11 @@ export class GraphDataService {
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
 
-  readonly nodes = computed(() => this._data()?.nodes ?? []);
-  readonly edges = computed(() => this._data()?.edges ?? []);
-  readonly stats = computed(() => this._data()?.stats ?? null);
-  readonly pods = computed(() => this._data()?.pods ?? {});
+  readonly nodes      = computed(() => this._data()?.nodes      ?? []);
+  readonly edges      = computed(() => this._data()?.edges      ?? []);
+  readonly stats      = computed(() => this._data()?.stats      ?? null);
+  readonly pods       = computed(() => this._data()?.pods       ?? {});
+  readonly namespaces = computed(() => this._data()?.namespaces ?? []);
 
   fetchGraph(): void {
     // Cancel previous in-flight request (server detects client disconnect)

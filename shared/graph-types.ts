@@ -76,6 +76,7 @@ export enum SourceField {
   ScaleTargetRef     = 'spec.scaleTargetRef',
   RoleRef            = 'roleRef',
   Subjects           = 'subjects',
+  OwnerReference     = 'metadata.ownerReferences',
 }
 
 /** A node in the K8s resource topology graph. */
