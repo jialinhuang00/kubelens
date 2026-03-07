@@ -532,6 +532,15 @@ export class GraphLayoutService {
     return this.temporaryNodeIds.has(nodeId);
   }
 
+  /** Filter visible edges by EdgeType. Pass null to show all. */
+  setEdgeTypeFilter(activeTypes: Set<EdgeType> | null): void {
+    if (!this.graph) return;
+    const filtered = activeTypes
+      ? this.cosmosLinks.filter(l => activeTypes.has(l.data.type))
+      : this.cosmosLinks;
+    this.graph.setData(this.cosmosNodes, filtered);
+  }
+
   destroy(): void {
     if (this.labelRafId !== null) {
       cancelAnimationFrame(this.labelRafId);

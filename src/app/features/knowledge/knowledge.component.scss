@@ -1,0 +1,210 @@
+:host {
+  display: block;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.knowledge-container {
+  display: flex;
+  height: 100vh;
+  background: var(--t-bg, #0e0b08);
+  color: var(--t-text, #e8dcc8);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+// ── Sidebar ────────────────────────────────────────────────────────────────
+
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  height: 100vh;
+  background: var(--t-surface, #1c1610);
+  border-right: 1px solid rgba(232, 184, 102, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 12px 14px 8px;
+  border-bottom: 1px solid rgba(232, 184, 102, 0.1);
+  flex-shrink: 0;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 0 20px;
+}
+
+.section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(232, 220, 200, 0.4);
+  padding: 6px 14px 8px;
+}
+
+.field-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.field-item {
+  all: unset;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 14px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: background 0.1s, border-color 0.1s;
+  width: 100%;
+  box-sizing: border-box;
+
+  &:hover {
+    background: rgba(232, 184, 102, 0.05);
+  }
+
+  &.active {
+    background: rgba(232, 184, 102, 0.08);
+    border-left-color: var(--edge-color, #e8b866);
+  }
+}
+
+.field-short {
+  font-size: 11px;
+  color: var(--t-text, #e8dcc8);
+  line-height: 1.3;
+}
+
+.field-yaml {
+  font-size: 9px;
+  color: var(--t-accent, #e8b866);
+  opacity: 0.55;
+  word-break: break-all;
+}
+
+// ── Main area ──────────────────────────────────────────────────────────────
+
+.main-area {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  gap: 16px;
+}
+
+.overlay-msg {
+  font-size: 13px;
+  color: rgba(232, 220, 200, 0.45);
+
+  &.error { color: #e07070; }
+}
+
+.empty-state {
+  font-size: 13px;
+  color: rgba(232, 220, 200, 0.3);
+  text-align: center;
+}
+
+// ── Cards container ────────────────────────────────────────────────────────
+
+.cards-container {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 100px;
+  padding: 40px 48px;
+}
+
+.connector-svg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+// ── YAML card ──────────────────────────────────────────────────────────────
+
+.yaml-card {
+  width: 340px;
+  flex-shrink: 0;
+  background: var(--t-surface, #1c1610);
+  border: 1px solid rgba(232, 184, 102, 0.15);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(232, 184, 102, 0.06);
+  border-bottom: 1px solid rgba(232, 184, 102, 0.1);
+}
+
+.card-kind {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--t-accent, #e8b866);
+}
+
+.card-name {
+  font-size: 12px;
+  color: rgba(232, 220, 200, 0.7);
+  word-break: break-all;
+}
+
+.yaml-lines {
+  padding: 8px 0;
+}
+
+.yaml-line {
+  font-size: 11px;
+  color: rgba(232, 220, 200, 0.5);
+  padding: 2px 12px;
+  line-height: 1.7;
+  white-space: pre;
+
+  &.highlight {
+    color: var(--t-text, #e8dcc8);
+    background: rgba(232, 184, 102, 0.1);
+    border-left: 2px solid var(--t-accent, #e8b866);
+    padding-left: 10px;
+  }
+}
+
+// ── Edge label row ─────────────────────────────────────────────────────────
+
+.edge-label-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.edge-pill {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  padding: 2px 9px;
+  opacity: 0.8;
+}
+
+.edge-field {
+  font-size: 10px;
+  color: rgba(232, 220, 200, 0.4);
+  word-break: break-all;
+}

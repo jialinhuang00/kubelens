@@ -1,0 +1,113 @@
+<div class="knowledge-container">
+
+  <!-- ============ LEFT SIDEBAR: Field Glossary ============ -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <app-back-link label="K8s Knowledge" />
+    </div>
+
+    <app-mode-toggle (modeChanged)="onModeChanged()" />
+
+    <div class="sidebar-content">
+      <div class="section-label">Field Glossary</div>
+      <div class="field-list">
+        @for (entry of fieldGlossary | keyvalue; track entry.key) {
+          <button
+            class="field-item"
+            [class.active]="selectedField() === entry.key"
+            [style.--edge-color]="getEdgeColor(entry.value.edgeType)"
+            (click)="selectField($any(entry.key))">
+            <span class="field-short">{{ entry.value.short }}</span>
+            <code class="field-yaml">{{ entry.value.yaml }}</code>
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MAIN AREA ============ -->
+  <div class="main-area">
+
+    @if (loading()) {
+      <div class="overlay-msg">Loading graph…</div>
+    }
+    @if (error(); as err) {
+      <div class="overlay-msg error">{{ err }}</div>
+    }
+
+    @if (!selectedField() && !loading()) {
+      <div class="empty-state">Select a field to see an example</div>
+    }
+
+    @if (selectedField() && !example() && !loading()) {
+      <div class="empty-state">No example found for this field in your cluster</div>
+    }
+
+    @if (example(); as ex) {
+      <div class="cards-container" #cardsContainer>
+
+        <!-- SVG connector overlay -->
+        <svg class="connector-svg"
+             [attr.width]="connectorW()"
+             [attr.height]="connectorH()">
+          @if (connectorPath()) {
+            <path
+              [attr.d]="connectorPath()"
+              fill="none"
+              [attr.stroke]="getEdgeColor(ex.edge.type)"
+              stroke-width="2"
+              stroke-dasharray="6 3"
+              opacity="0.75" />
+          }
+        </svg>
+
+        <!-- Source YAML card -->
+        <div class="yaml-card">
+          <div class="card-header">
+            <span class="card-kind">{{ ex.sourceNode.kind }}</span>
+            <span class="card-name">{{ ex.sourceNode.name }}</span>
+          </div>
+          <div class="yaml-lines">
+            @for (line of ex.sourceLines; track $index) {
+              @if (line.highlight) {
+                <div class="yaml-line highlight" #sourceHighlight>{{ line.text }}</div>
+              } @else {
+                <div class="yaml-line">{{ line.text }}</div>
+              }
+            }
+          </div>
+        </div>
+
+        <!-- Target YAML card -->
+        <div class="yaml-card">
+          <div class="card-header">
+            <span class="card-kind">{{ ex.targetNode.kind }}</span>
+            <span class="card-name">{{ ex.targetNode.name }}</span>
+          </div>
+          <div class="yaml-lines">
+            @for (line of ex.targetLines; track $index) {
+              @if (line.highlight) {
+                <div class="yaml-line highlight" #targetHighlight>{{ line.text }}</div>
+              } @else {
+                <div class="yaml-line">{{ line.text }}</div>
+              }
+            }
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Edge label -->
+      <div class="edge-label-row">
+        <span class="edge-pill" [style.border-color]="getEdgeColor(ex.edge.type)" [style.color]="getEdgeColor(ex.edge.type)">
+          {{ ex.edge.type }}
+        </span>
+        @if (ex.edge.sourceField; as sf) {
+          <span class="edge-field">via {{ fieldGlossary[sf].yaml }}</span>
+        }
+      </div>
+    }
+
+  </div>
+
+</div>

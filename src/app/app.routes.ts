@@ -22,4 +22,11 @@ export const routes: Routes = [
         (m) => m.UniverseComponent
       ),
   },
+  {
+    path: 'knowledge',
+    loadComponent: () =>
+      import('./features/knowledge/knowledge.component').then(
+        (m) => m.KnowledgeComponent
+      ),
+  },
 ];
