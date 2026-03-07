@@ -4,11 +4,55 @@
   <div class="sidebar">
     <div class="sidebar-header">
       <app-back-link label="K8s Knowledge" />
+      <app-theme-switcher />
     </div>
 
     <app-mode-toggle (modeChanged)="onModeChanged()" />
 
+    @if (graphData.namespaces().length > 0) {
+      <app-namespace-chips
+        [namespaces]="graphData.namespaces()"
+        [selected]="selectedNamespace()"
+        [disabled]="loading()"
+        (select)="onNamespaceSelect($event)" />
+    }
+
     <div class="sidebar-content">
+      <div class="section-label">By Resource</div>
+      <div class="kind-list">
+        @for (kind of multiKinds; track kind) {
+          <button class="kind-item" [class.active]="selectedKind() === kind" (click)="selectKind(kind)">
+            {{ kind }}
+          </button>
+        }
+      </div>
+
+      @if (selectedKind()) {
+        <div class="direction-toggle">
+          <button class="direction-btn" [class.active]="!reverseMode()" (click)="setReverseMode(false)">
+            Outgoing
+          </button>
+          <button class="direction-btn" [class.active]="reverseMode()" (click)="setReverseMode(true)">
+            Incoming
+          </button>
+        </div>
+      }
+
+      @if (kindNodes().length > 1) {
+        <div class="node-list">
+          @for (node of kindNodes(); track node.id) {
+            <button class="node-item"
+                    [class.active]="selectedNodeId() === node.id"
+                    (click)="selectNode(node.id)">
+              @if (!selectedNamespace()) {
+                <span class="node-item-ns">{{ node.namespace }}</span>
+              }
+              <span class="node-item-name">{{ node.name }}</span>
+            </button>
+          }
+        </div>
+      }
+
       <div class="section-label">Field Glossary</div>
       <div class="field-list">
         @for (entry of fieldGlossary | keyvalue; track entry.key) {
@@ -22,11 +66,31 @@
           </button>
         }
       </div>
+
+      <div class="section-label">CRD Pattern</div>
+      <div class="field-list">
+        @for (field of crdFields; track field) {
+          <button
+            class="field-item crd-item"
+            [class.active]="selectedCrdField() === field"
+            (click)="selectCrdField(field)">
+            <span class="field-short">{{ crdGlossary[field].short }}</span>
+            <code class="field-yaml">{{ crdGlossary[field].edgeLabel }}</code>
+          </button>
+        }
+      </div>
     </div>
   </div>
 
   <!-- ============ MAIN AREA ============ -->
-  <div class="main-area">
+  <div class="main-area"
+       #mainArea
+       [class.dragging]="isDragging()"
+       (mousedown)="onDragStart($event)"
+       (mousemove)="onDragMove($event)"
+       (mouseup)="onDragEnd()"
+       (mouseleave)="onDragEnd()"
+       (wheel)="onWheel($event)" style="touch-action:none">
 
     @if (loading()) {
       <div class="overlay-msg">Loading graph…</div>
@@ -35,12 +99,270 @@
       <div class="overlay-msg error">{{ err }}</div>
     }
 
-    @if (!selectedField() && !loading()) {
+    @if (!selectedField() && !selectedKind() && !selectedCrdField() && !loading()) {
       <div class="empty-state">Select a field to see an example</div>
     }
 
-    @if (selectedField() && !example() && !loading()) {
-      <div class="empty-state">No example found for this field in your cluster</div>
+
+    <div class="drag-canvas"
+         [style.transform]="'translate(' + dragOffset().x + 'px, ' + dragOffset().y + 'px) scale(' + scale() + ')'"
+         [style.display]="(!selectedField() && !selectedKind() && !selectedCrdField()) ? 'none' : 'flex'">
+
+
+    @if (allRadialLayouts().length > 0) {
+      <!-- Multi-node: all nodes of selected kind, each with its own radial layout -->
+      <div class="all-radials">
+        @for (rl of allRadialLayouts(); track rl.srcNode.id) {
+          <div class="radial-layout" [style.width.px]="rl.canvasW" [style.height.px]="rl.canvasH">
+            <svg class="radial-svg" [attr.width]="rl.canvasW" [attr.height]="rl.canvasH">
+              @for (path of rl.paths; track $index) {
+                <path [attr.d]="path.d" fill="none"
+                      [attr.stroke]="getEdgeColor(path.edgeType)"
+                      stroke-width="2" stroke-dasharray="6 3" opacity="0.75" />
+              }
+            </svg>
+            <!-- Source card -->
+            <div class="radial-card yaml-card"
+                 [style.left.px]="rl.srcX" [style.top.px]="rl.srcY" [style.width.px]="rl.srcW">
+              <div class="card-header">
+                <span class="card-kind">{{ rl.srcNode.kind }}</span>
+                <span class="card-name">{{ rl.srcNode.name }}</span>
+              </div>
+              <div class="yaml-lines">
+                @for (line of rl.srcLines; track $index) {
+                  @if (line.highlight) {
+                    <div class="yaml-line highlight">{{ line.text }}</div>
+                  } @else {
+                    <div class="yaml-line">{{ line.text }}</div>
+                  }
+                }
+              </div>
+            </div>
+            <!-- Target cards -->
+            @for (card of rl.cards; track card?.targetNode?.id) {
+              @if (card) {
+                <div class="radial-card yaml-card"
+                     [style.left.px]="card.x" [style.top.px]="card.y" [style.width.px]="300">
+                  <div class="card-header">
+                    <span class="card-kind">{{ card.targetNode.kind }}</span>
+                    <span class="card-name">{{ card.targetNode.name }}</span>
+                  </div>
+                  <div class="yaml-lines">
+                    @for (line of card.targetLines; track $index) {
+                      @if (line.highlight) {
+                        <div class="yaml-line highlight">{{ line.text }}</div>
+                      } @else {
+                        <div class="yaml-line">{{ line.text }}</div>
+                      }
+                    }
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        }
+      </div>
+    } @else if (multiExamples(); as bv) {
+      @if (bv.sources.length === 0) {
+        <div class="overlay-msg">No {{ selectedKind() }} found in namespace {{ selectedNamespace() }}</div>
+      } @else {
+        <div class="bipartite-layout" [style.height.px]="bv.svgH" [style.width.px]="bv.svgW">
+          <svg class="bipartite-svg" [attr.width]="bv.svgW" [attr.height]="bv.svgH">
+            @for (path of bv.paths; track $index) {
+              <path [attr.d]="path.d" fill="none"
+                    [attr.stroke]="getEdgeColor(path.edgeType)"
+                    stroke-width="2" stroke-dasharray="6 3" opacity="0.75" />
+            }
+          </svg>
+          @for (card of bv.sources; track card.node.id) {
+            <div class="bipartite-card yaml-card" [style.left.px]="card.x" [style.top.px]="card.y" [style.width.px]="bv.cardW">
+              <div class="card-header">
+                <span class="card-kind">{{ card.node.kind }}</span>
+                <span class="card-name">{{ card.node.name }}</span>
+              </div>
+              <div class="yaml-lines">
+                @for (line of card.lines; track $index) {
+                  @if (line.highlight) {
+                    <div class="yaml-line highlight">{{ line.text }}</div>
+                  } @else {
+                    <div class="yaml-line">{{ line.text }}</div>
+                  }
+                }
+              </div>
+            </div>
+          }
+          @for (card of bv.targets; track card.node.id) {
+            <div class="bipartite-card yaml-card" [style.left.px]="card.x" [style.top.px]="card.y" [style.width.px]="bv.cardW">
+              <div class="card-header">
+                <span class="card-kind">{{ card.node.kind }}</span>
+                <span class="card-name">{{ card.node.name }}</span>
+              </div>
+              <div class="yaml-lines">
+                @for (line of card.lines; track $index) {
+                  @if (line.highlight) {
+                    <div class="yaml-line highlight">{{ line.text }}</div>
+                  } @else {
+                    <div class="yaml-line">{{ line.text }}</div>
+                  }
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    } @else if (multiExample(); as mx) {
+      @if (mx.emptyMsg) {
+        <div class="overlay-msg">{{ mx.emptyMsg }}</div>
+      } @else if (mx.podRows) {
+        <!-- Pod mode: pod → owner (normal) or owner → pod (reverse) -->
+        <div class="pod-rows" #podRowsContainer>
+          <!-- Overlay SVG: precise bezier from left-card highlight → right-card highlight -->
+          <svg class="pod-rows-svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible">
+            @for (p of podRowPaths(); track $index) {
+              <path [attr.d]="p.d" fill="none"
+                    [attr.stroke]="getEdgeColor(p.edgeType)"
+                    stroke-width="2" stroke-dasharray="6 3" opacity="0.75" />
+            }
+          </svg>
+
+          @for (row of mx.podRows; track row.podNode.id) {
+            <div class="pod-row-pair">
+
+              @if (!reverseMode()) {
+                <!-- Normal: Pod (left) → ownerNode (right) -->
+                <div class="yaml-card">
+                  <div class="card-header">
+                    <span class="card-kind">Pod</span>
+                    <span class="card-name">{{ row.podNode.name }}</span>
+                  </div>
+                  <div class="yaml-lines">
+                    @for (line of row.sourceLines; track $index) {
+                      @if (line.highlight && isFirstHighlight(row.sourceLines, $index)) {
+                        <div class="yaml-line highlight" #podLeftHL>{{ line.text }}</div>
+                      } @else if (line.highlight) {
+                        <div class="yaml-line highlight">{{ line.text }}</div>
+                      } @else {
+                        <div class="yaml-line">{{ line.text }}</div>
+                      }
+                    }
+                  </div>
+                </div>
+                <div class="pod-row-arrow"></div>
+                <div class="yaml-card">
+                  <div class="card-header">
+                    <span class="card-kind">{{ row.ownerNode.kind }}</span>
+                    <span class="card-name">{{ row.ownerNode.name }}</span>
+                  </div>
+                  <div class="yaml-lines">
+                    @for (line of row.targetLines; track $index) {
+                      @if (line.highlight && isFirstHighlight(row.targetLines, $index)) {
+                        <div class="yaml-line highlight" #podRightHL>{{ line.text }}</div>
+                      } @else if (line.highlight) {
+                        <div class="yaml-line highlight">{{ line.text }}</div>
+                      } @else {
+                        <div class="yaml-line">{{ line.text }}</div>
+                      }
+                    }
+                  </div>
+                </div>
+
+              } @else {
+                <!-- Reverse: ownerNode (left) → Pod (right) -->
+                <div class="yaml-card">
+                  <div class="card-header">
+                    <span class="card-kind">{{ row.ownerNode.kind }}</span>
+                    <span class="card-name">{{ row.ownerNode.name }}</span>
+                  </div>
+                  <div class="yaml-lines">
+                    @for (line of row.targetLines; track $index) {
+                      @if (line.highlight && isFirstHighlight(row.targetLines, $index)) {
+                        <div class="yaml-line highlight" #podLeftHL>{{ line.text }}</div>
+                      } @else if (line.highlight) {
+                        <div class="yaml-line highlight">{{ line.text }}</div>
+                      } @else {
+                        <div class="yaml-line">{{ line.text }}</div>
+                      }
+                    }
+                  </div>
+                </div>
+                <div class="pod-row-arrow"></div>
+                <div class="yaml-card">
+                  <div class="card-header">
+                    <span class="card-kind">Pod</span>
+                    <span class="card-name">{{ row.podNode.name }}</span>
+                  </div>
+                  <div class="yaml-lines">
+                    @for (line of row.sourceLines; track $index) {
+                      @if (line.highlight && isFirstHighlight(row.sourceLines, $index)) {
+                        <div class="yaml-line highlight" #podRightHL>{{ line.text }}</div>
+                      } @else if (line.highlight) {
+                        <div class="yaml-line highlight">{{ line.text }}</div>
+                      } @else {
+                        <div class="yaml-line">{{ line.text }}</div>
+                      }
+                    }
+                  </div>
+                </div>
+              }
+
+            </div>
+          }
+        </div>
+      } @else if (radialLayout(); as rl) {
+        <!-- Radial hub: source in centre, targets fanned top/right/bottom/left -->
+        <div class="radial-layout" #radialContainer
+             [style.width.px]="rl.canvasW" [style.height.px]="rl.canvasH">
+          <svg class="radial-svg" [attr.width]="rl.canvasW" [attr.height]="rl.canvasH">
+            @for (path of radialPaths(); track $index) {
+              <path [attr.d]="path.d" fill="none"
+                    [attr.stroke]="getEdgeColor(path.edgeType)"
+                    stroke-width="2" stroke-dasharray="6 3" opacity="0.75" />
+            }
+          </svg>
+
+          <!-- Source card -->
+          <div class="radial-card yaml-card"
+               [style.left.px]="rl.srcX" [style.top.px]="rl.srcY" [style.width.px]="rl.srcW">
+            <div class="card-header">
+              <span class="card-kind">{{ rl.srcNode.kind }}</span>
+              <span class="card-name">{{ rl.srcNode.name }}</span>
+            </div>
+            <div class="yaml-lines">
+              @for (line of rl.srcLines; track $index) {
+                @if (line.highlight) {
+                  <div class="yaml-line highlight" #radialSrcHL>{{ line.text }}</div>
+                } @else {
+                  <div class="yaml-line">{{ line.text }}</div>
+                }
+              }
+            </div>
+          </div>
+
+          <!-- Target cards at computed positions — #radialTgtHL marks the FIRST highlight only -->
+          @for (card of rl.cards; track card.targetNode.id) {
+            @if (card) {
+              <div class="radial-card yaml-card"
+                   [style.left.px]="card.x" [style.top.px]="card.y" [style.width.px]="300">
+                <div class="card-header">
+                  <span class="card-kind">{{ card.targetNode.kind }}</span>
+                  <span class="card-name">{{ card.targetNode.name }}</span>
+                </div>
+                <div class="yaml-lines">
+                  @for (line of card.targetLines; track $index) {
+                    @if (line.highlight && isFirstHighlight(card.targetLines, $index)) {
+                      <div class="yaml-line highlight" #radialTgtHL>{{ line.text }}</div>
+                    } @else if (line.highlight) {
+                      <div class="yaml-line highlight">{{ line.text }}</div>
+                    } @else {
+                      <div class="yaml-line">{{ line.text }}</div>
+                    }
+                  }
+                </div>
+              </div>
+            }
+          }
+        </div>
+      } <!-- /@else radial hub -->
     }
 
     @if (example(); as ex) {
@@ -58,6 +380,20 @@
               stroke-width="2"
               stroke-dasharray="6 3"
               opacity="0.75" />
+            @if (connectorMid(); as mid) {
+              <text
+                [attr.x]="mid.x"
+                [attr.y]="mid.y - 8"
+                text-anchor="middle"
+                font-size="10"
+                font-family="'JetBrains Mono', 'Fira Code', monospace"
+                font-weight="600"
+                [attr.fill]="getEdgeColor(ex.edge.type)"
+                paint-order="stroke"
+                style="stroke: var(--t-bg-body)"
+                stroke-width="5"
+                stroke-linejoin="round">{{ ex.edge.type }}</text>
+            }
           }
         </svg>
 
@@ -108,6 +444,102 @@
       </div>
     }
 
+    @if (selectedCrdField(); as cf) {
+      <div class="cards-container" #cardsContainer>
+
+        <!-- SVG connector overlay -->
+        <svg class="connector-svg"
+             [attr.width]="connectorW()"
+             [attr.height]="connectorH()">
+          @if (connectorPath()) {
+            <path
+              [attr.d]="connectorPath()"
+              fill="none"
+              stroke="var(--t-kind-namespace)"
+              stroke-width="2"
+              stroke-dasharray="6 3"
+              opacity="0.75" />
+            @if (connectorMid(); as mid) {
+              <text
+                [attr.x]="mid.x"
+                [attr.y]="mid.y - 8"
+                text-anchor="middle"
+                font-size="10"
+                font-family="'JetBrains Mono', 'Fira Code', monospace"
+                font-weight="600"
+                fill="var(--t-kind-namespace)"
+                paint-order="stroke"
+                style="stroke: var(--t-bg-body)"
+                stroke-width="5"
+                stroke-linejoin="round">{{ crdGlossary[cf].edgeLabel }}</text>
+            }
+          }
+        </svg>
+
+        <!-- Source YAML card -->
+        <div class="yaml-card">
+          <div class="card-header">
+            <span class="card-kind crd-kind">{{ crdGlossary[cf].sourceKind }}</span>
+          </div>
+          <div class="yaml-lines">
+            @for (line of crdGlossary[cf].sourceLines; track $index) {
+              @if (line.highlight) {
+                <div class="yaml-line highlight crd-highlight" #sourceHighlight>{{ line.text }}</div>
+              } @else {
+                <div class="yaml-line">{{ line.text }}</div>
+              }
+            }
+          </div>
+        </div>
+
+        <!-- Target YAML card -->
+        <div class="yaml-card">
+          <div class="card-header">
+            <span class="card-kind crd-kind">{{ crdGlossary[cf].targetKind }}</span>
+          </div>
+          <div class="yaml-lines">
+            @for (line of crdGlossary[cf].targetLines; track $index) {
+              @if (line.highlight) {
+                <div class="yaml-line highlight crd-highlight" #targetHighlight>{{ line.text }}</div>
+              } @else {
+                <div class="yaml-line">{{ line.text }}</div>
+              }
+            }
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CRD edge label -->
+      <div class="edge-label-row">
+        <span class="edge-pill" style="border-color: var(--t-kind-namespace); color: var(--t-kind-namespace)">
+          {{ crdGlossary[cf].edgeLabel }}
+        </span>
+        <span class="edge-field">CRD Pattern</span>
+      </div>
+    }
+
+    </div><!-- /drag-canvas -->
+
+    @if (selectedField(); as sf) {
+      <div class="notes-panel" (mousedown)="$event.stopPropagation()">
+        <div class="notes-text">{{ fieldGlossary[sf].notes }}</div>
+        <div class="usage-lines">
+          @for (line of fieldGlossary[sf].usage; track $index) {
+            <div class="usage-line">{{ line }}</div>
+          }
+        </div>
+      </div>
+    } @else if (selectedCrdField(); as cf) {
+      <div class="notes-panel" (mousedown)="$event.stopPropagation()">
+        <div class="notes-text">{{ crdGlossary[cf].notes }}</div>
+        <div class="usage-lines">
+          @for (line of crdGlossary[cf].usage; track $index) {
+            <div class="usage-line">{{ line }}</div>
+          }
+        </div>
+      </div>
+    }
   </div>
 
 </div>

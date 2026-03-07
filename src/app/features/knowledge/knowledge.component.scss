@@ -7,19 +7,19 @@
 .knowledge-container {
   display: flex;
   height: 100vh;
-  background: var(--t-bg, #0e0b08);
-  color: var(--t-text, #e8dcc8);
+  background: var(--t-bg-body);
+  color: var(--t-text-primary);
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
 // ── Sidebar ────────────────────────────────────────────────────────────────
 
 .sidebar {
-  width: 260px;
+  width: 320px;
   flex-shrink: 0;
   height: 100vh;
-  background: var(--t-surface, #1c1610);
-  border-right: 1px solid rgba(232, 184, 102, 0.15);
+  background: var(--t-bg-surface);
+  border-right: 1px solid var(--t-border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -27,8 +27,11 @@
 
 .sidebar-header {
   padding: 12px 14px 8px;
-  border-bottom: 1px solid rgba(232, 184, 102, 0.1);
+  border-bottom: 1px solid var(--t-border);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .sidebar-content {
@@ -42,8 +45,44 @@
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(232, 220, 200, 0.4);
+  color: var(--t-text-dim);
   padding: 6px 14px 8px;
+}
+
+.direction-toggle {
+  display: flex;
+  margin: 6px 14px 4px;
+  border: 1px solid var(--t-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.direction-btn {
+  all: unset;
+  flex: 1;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 5px 0;
+  cursor: pointer;
+  color: var(--t-text-dim);
+  transition: background 0.1s, color 0.1s;
+
+  &:hover {
+    background: color-mix(in srgb, var(--t-accent) 6%, transparent);
+    color: var(--t-text-primary);
+  }
+
+  &.active {
+    background: color-mix(in srgb, var(--t-accent) 12%, transparent);
+    color: var(--t-accent);
+  }
+
+  & + & {
+    border-left: 1px solid var(--t-border);
+  }
 }
 
 .field-list {
@@ -65,24 +104,24 @@
   box-sizing: border-box;
 
   &:hover {
-    background: rgba(232, 184, 102, 0.05);
+    background: color-mix(in srgb, var(--t-accent) 5%, transparent);
   }
 
   &.active {
-    background: rgba(232, 184, 102, 0.08);
-    border-left-color: var(--edge-color, #e8b866);
+    background: color-mix(in srgb, var(--t-accent) 8%, transparent);
+    border-left-color: var(--edge-color, var(--t-accent));
   }
 }
 
 .field-short {
   font-size: 11px;
-  color: var(--t-text, #e8dcc8);
+  color: var(--t-text-primary);
   line-height: 1.3;
 }
 
 .field-yaml {
   font-size: 9px;
-  color: var(--t-accent, #e8b866);
+  color: var(--t-accent);
   opacity: 0.55;
   word-break: break-all;
 }
@@ -92,25 +131,80 @@
 .main-area {
   flex: 1;
   position: relative;
-  display: flex;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+
+  &.dragging { cursor: grabbing; }
+}
+
+.drag-canvas {
+  position: absolute;
+  inset: 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
   gap: 16px;
+  transform-origin: 0 0;
+  will-change: transform;
 }
 
 .overlay-msg {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   font-size: 13px;
-  color: rgba(232, 220, 200, 0.45);
+  color: var(--t-text-dim);
+  pointer-events: none;
+  z-index: 5;
 
-  &.error { color: #e07070; }
+  &.error { color: var(--t-error); }
 }
 
 .empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 13px;
-  color: rgba(232, 220, 200, 0.3);
-  text-align: center;
+  color: var(--t-text-dim);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+// ── Kind selector ─────────────────────────────────────────────────────────
+
+.kind-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 12px;
+}
+
+.kind-item {
+  all: unset;
+  font-size: 11px;
+  padding: 5px 14px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  color: var(--t-text-primary);
+  opacity: 0.6;
+  transition: background 0.1s, opacity 0.1s, border-color 0.1s;
+  width: 100%;
+  box-sizing: border-box;
+
+  &:hover {
+    background: color-mix(in srgb, var(--t-accent) 5%, transparent);
+    opacity: 1;
+  }
+
+  &.active {
+    opacity: 1;
+    background: color-mix(in srgb, var(--t-accent) 8%, transparent);
+    border-left-color: var(--t-accent);
+  }
 }
 
 // ── Cards container ────────────────────────────────────────────────────────
@@ -136,8 +230,8 @@
 .yaml-card {
   width: 340px;
   flex-shrink: 0;
-  background: var(--t-surface, #1c1610);
-  border: 1px solid rgba(232, 184, 102, 0.15);
+  background: var(--t-bg-surface);
+  border: 1px solid var(--t-border);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -147,8 +241,8 @@
   align-items: baseline;
   gap: 8px;
   padding: 8px 12px;
-  background: rgba(232, 184, 102, 0.06);
-  border-bottom: 1px solid rgba(232, 184, 102, 0.1);
+  background: color-mix(in srgb, var(--t-accent) 6%, transparent);
+  border-bottom: 1px solid var(--t-border);
 }
 
 .card-kind {
@@ -156,12 +250,12 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--t-accent, #e8b866);
+  color: var(--t-accent);
 }
 
 .card-name {
   font-size: 12px;
-  color: rgba(232, 220, 200, 0.7);
+  color: var(--t-text-secondary);
   word-break: break-all;
 }
 
@@ -171,17 +265,115 @@
 
 .yaml-line {
   font-size: 11px;
-  color: rgba(232, 220, 200, 0.5);
+  color: var(--t-text-dim);
   padding: 2px 12px;
   line-height: 1.7;
   white-space: pre;
 
   &.highlight {
-    color: var(--t-text, #e8dcc8);
-    background: rgba(232, 184, 102, 0.1);
-    border-left: 2px solid var(--t-accent, #e8b866);
+    color: var(--t-text-primary);
+    background: color-mix(in srgb, var(--t-accent) 10%, transparent);
+    border-left: 2px solid var(--t-accent);
     padding-left: 10px;
   }
+}
+
+// ── Hub layout (1:N) ──────────────────────────────────────────────────────
+
+.hub-layout {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 100px;
+  padding: 40px 48px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.hub-source {
+  flex-shrink: 0;
+  width: 340px;
+}
+
+.hub-targets {
+  flex-shrink: 0;
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+// ── All-radials row (multiple nodes of same kind) ──────────────────────────
+
+.all-radials {
+  display: flex;
+  flex-direction: row;
+  gap: 60px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+// ── Radial hub layout ──────────────────────────────────────────────────────
+
+.radial-layout {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.radial-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.radial-card {
+  position: absolute;
+  z-index: 1;
+}
+
+// ── Bipartite layout (all resources in namespace) ──────────────────────────
+
+.bipartite-layout {
+  position: relative;
+}
+
+.bipartite-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.bipartite-card {
+  position: absolute;
+}
+
+// ── Pod rows (Pod By Resource — multiple pod→owner pairs) ──────────────────
+
+.pod-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 8px 0;
+  position: relative;
+}
+
+.pod-row-pair {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.pod-row-arrow {
+  flex-shrink: 0;
+  width: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 // ── Edge label row ─────────────────────────────────────────────────────────
@@ -205,6 +397,109 @@
 
 .edge-field {
   font-size: 10px;
-  color: rgba(232, 220, 200, 0.4);
+  color: var(--t-text-dim);
   word-break: break-all;
+}
+
+// ── Node list (kind instance picker) ──────────────────────────────────────
+
+.node-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-bottom: 1px solid var(--t-border);
+  margin-bottom: 4px;
+}
+
+.node-item {
+  all: unset;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 14px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: background 0.1s, border-color 0.1s;
+  width: 100%;
+  box-sizing: border-box;
+
+  &:hover {
+    background: color-mix(in srgb, var(--t-accent) 5%, transparent);
+  }
+
+  &.active {
+    background: color-mix(in srgb, var(--t-accent) 8%, transparent);
+    border-left-color: var(--t-accent);
+  }
+}
+
+.node-item-ns {
+  font-size: 9px;
+  color: var(--t-text-dim);
+  opacity: 0.7;
+}
+
+.node-item-name {
+  font-size: 11px;
+  color: var(--t-text-primary);
+  word-break: break-all;
+}
+
+// ── CRD overrides ─────────────────────────────────────────────────────────
+
+.crd-item {
+  &.active { border-left-color: var(--t-kind-namespace); }
+  &:hover  { background: color-mix(in srgb, var(--t-kind-namespace) 5%, transparent); }
+}
+
+.crd-kind {
+  color: var(--t-kind-namespace);
+}
+
+.yaml-line.crd-highlight {
+  border-left-color: var(--t-kind-namespace);
+  background: color-mix(in srgb, var(--t-kind-namespace) 10%, transparent);
+}
+
+// ── Notes panel ────────────────────────────────────────────────────────────
+
+.notes-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--t-bg-body) 94%, transparent);
+  border-top: 1px solid var(--t-border-glow);
+  padding: 12px 20px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  backdrop-filter: blur(4px);
+  cursor: default;
+}
+
+.notes-text {
+  font-size: 11px;
+  color: var(--t-text-secondary);
+  line-height: 1.6;
+  max-width: 800px;
+}
+
+.usage-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.usage-line {
+  font-size: 10px;
+  color: var(--t-accent);
+  opacity: 0.7;
+  white-space: pre;
+
+  &::before {
+    content: '▸ ';
+    opacity: 0.5;
+  }
 }
