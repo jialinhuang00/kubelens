@@ -177,9 +177,17 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     const kind = this.selectedKind();
     if (kind) {
       const nodes = this.graphData.nodes();
-      return new Set(
+      const kindIds = new Set(
         nodes.filter(n => n.kind === kind && (!ns || n.namespace === ns)).map(n => n.id)
       );
+      // Also include nodes connected to/from kind nodes so their labels show
+      const edges = this.graphData.edges();
+      const result = new Set(kindIds);
+      for (const e of edges) {
+        if (kindIds.has(e.source)) result.add(e.target);
+        if (kindIds.has(e.target)) result.add(e.source);
+      }
+      return result;
     }
     // Search filter
     const searchIds = this.searchMatchIds();
@@ -414,6 +422,9 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     // Collapse any previously expanded pods
     this.collapsePods();
 
+    // Selecting a specific node overrides kind filter
+    this.selectedKind.set(null);
+
     this.selectedNode.set(node);
     this.selectedEdges.set(this.graphData.getConnectedEdges(node.id));
     this.connectedNodes.set(this.graphData.getConnectedNodes(node.id));
@@ -617,13 +628,10 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.selectedKind.set(kind);
     this.selectedNode.set(null);
-    const ids = this.graphData.nodes()
-      .filter((n) => n.kind === kind)
-      .map((n) => n.id);
-    const idSet = new Set(ids);
-    // For kind filter, show all edges between nodes of this kind
-    const kindEdges = this.graphData.edges().filter(e => idSet.has(e.source) || idSet.has(e.target));
-    this.graphLayout.setActiveNodes(idSet, kindEdges);
+    // activeNodeIds() now includes kind nodes + their connected nodes
+    const activeIds = this.activeNodeIds()!;
+    const kindEdges = this.graphData.edges().filter(e => activeIds.has(e.source) || activeIds.has(e.target));
+    this.graphLayout.setActiveNodes(activeIds, kindEdges);
   }
 
   getKindColor(kind: NodeKind): string {
