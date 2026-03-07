@@ -22,19 +22,19 @@ export class HomeComponent implements OnInit {
 
   workerLabel(): string {
     const labels: Record<string, string> = {
-      'bash-batch': 'jobs',
+      bash: 'jobs',
       'bash-parallel': 'jobs',
       node: 'promises',
       workers: 'workers',
       procs: 'procs',
+      go: 'namespaces',
     };
     return labels[this.exportService.mode()] ?? '';
   }
 
   modeLabel(): string {
     const labels: Record<string, string> = {
-      bash: 'bash',
-      'bash-batch': 'bash-batch',
+      bash: this.exportService.workers() === 1 ? 'bash — sequential' : 'bash — batch',
       'bash-parallel': 'bash-parallel',
       node: 'node — single thread',
       workers: 'workers — thread pool',

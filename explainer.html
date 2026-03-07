@@ -32,1353 +32,777 @@
 
   /* ── NAV ── */
   nav {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: rgba(14, 11, 8, 0.95);
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(14,11,8,0.95);
     backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--border);
     padding: 0 1.5rem;
-    display: flex;
-    gap: 0;
-    overflow-x: auto;
+    display: flex; gap: 0; overflow-x: auto;
   }
-
   nav a {
-    color: var(--text-dim);
-    text-decoration: none;
-    padding: 1rem 1.25rem;
-    font-size: 0.85rem;
-    white-space: nowrap;
-    border-bottom: 2px solid transparent;
-    transition: color 0.2s, border-color 0.2s;
-    font-family: monospace;
+    color: var(--text-dim); text-decoration: none;
+    padding: 1rem 1.25rem; font-size: 0.85rem;
+    white-space: nowrap; border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s; font-family: monospace;
   }
-
-  nav a:hover, nav a.active {
-    color: var(--gold);
-    border-bottom-color: var(--gold);
-  }
+  nav a:hover, nav a.active { color: var(--gold); border-bottom-color: var(--gold); }
 
   /* ── LAYOUT ── */
   .section {
-    max-width: 960px;
-    margin: 0 auto;
+    max-width: 960px; margin: 0 auto;
     padding: 4rem 1.5rem;
     border-bottom: 1px solid var(--border);
   }
-
   h1 {
-    font-size: 1.1rem;
-    color: var(--gold);
-    font-family: monospace;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    margin-bottom: 0.4rem;
+    font-size: 1.1rem; color: var(--gold); font-family: monospace;
+    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.4rem;
   }
+  h2 { font-size: 1.75rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 600; }
+  .lead { color: var(--text-dim); max-width: 640px; margin-bottom: 2.5rem; font-size: 0.95rem; }
 
-  h2 {
-    font-size: 1.75rem;
-    color: var(--text);
-    margin-bottom: 0.75rem;
-    font-weight: 600;
-  }
+  /* ── RACE CHART ── */
+  .race-chart { display: flex; flex-direction: column; }
 
-  .lead {
-    color: var(--text-dim);
-    max-width: 600px;
-    margin-bottom: 2.5rem;
-    font-size: 0.95rem;
-  }
+  /* Accordion */
+  .race-accordion { border-top: 1px solid var(--border); }
+  .race-accordion:first-child { border-top: none; }
 
-  /* ── SECTION 1 — RACE ── */
-  .race-chart {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
+  .race-group-header {
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; padding: 0.85rem 0 0.5rem;
+    font-family: monospace; font-size: 0.72rem;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    user-select: none; transition: opacity 0.15s;
   }
+  .race-group-header:hover { opacity: 0.8; }
+  .race-chevron {
+    font-size: 0.6rem; color: var(--text-dim);
+    transition: transform 0.25s; display: inline-block;
+  }
+  .race-accordion.open .race-chevron { transform: rotate(90deg); }
+
+  /* Collapsible body */
+  .race-accordion-body {
+    display: grid; grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s ease;
+  }
+  .race-accordion.open .race-accordion-body { grid-template-rows: 1fr; }
+  .race-accordion-inner { overflow: hidden; padding-bottom: 0; }
+  .race-accordion.open .race-accordion-inner { padding-bottom: 0.75rem; }
+
+  /* Detail panel — sits ABOVE bars inside each accordion */
+  .race-item-detail {
+    margin-bottom: 1rem;
+    background: var(--surface2); border: 1px solid var(--gold-dim);
+    border-radius: 8px; padding: 1.25rem 1.5rem; display: none;
+  }
+  .race-item-detail.visible { display: block; }
 
   .race-row {
     display: grid;
-    grid-template-columns: 220px 1fr 56px;
-    align-items: center;
-    gap: 1rem;
-    cursor: pointer;
+    grid-template-columns: 210px 1fr 52px;
+    align-items: center; gap: 0.75rem;
+    cursor: pointer; padding: 1px 0;
   }
-
   .race-label {
-    font-family: monospace;
-    font-size: 0.82rem;
-    color: var(--text-dim);
-    text-align: right;
-    transition: color 0.2s;
+    font-family: monospace; font-size: 0.78rem;
+    color: var(--text-dim); text-align: right; transition: color 0.2s;
   }
-
-  .race-row:hover .race-label,
-  .race-row.active .race-label {
-    color: var(--gold);
-  }
+  .race-row:hover .race-label, .race-row.active .race-label { color: var(--gold); }
 
   .race-track {
-    background: var(--surface);
-    border-radius: 4px;
-    height: 32px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    position: relative;
+    background: var(--surface); border-radius: 3px;
+    height: 14px; overflow: hidden;
+    border: 1px solid var(--border); position: relative;
   }
-
   .race-bar {
-    height: 100%;
-    width: 0;
-    border-radius: 3px;
-    transition: width 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    position: relative;
-    display: flex;
-    align-items: center;
-    padding-left: 10px;
+    height: 100%; width: 0; border-radius: 2px;
+    transition: width 1s cubic-bezier(0.25,0.46,0.45,0.94);
   }
-
-  .race-bar-inner-label {
-    font-family: monospace;
-    font-size: 0.75rem;
-    color: rgba(0,0,0,0.7);
-    font-weight: 700;
-    white-space: nowrap;
-    opacity: 0;
-    transition: opacity 0.3s 0.8s;
+  @keyframes best-flash {
+    0%   { box-shadow: 0 0 0 0 rgba(109,202,130,0); }
+    30%  { box-shadow: 0 0 6px 3px rgba(109,202,130,0.7); }
+    60%  { box-shadow: 0 0 4px 2px rgba(109,202,130,0.4); }
+    100% { box-shadow: 0 0 0 0 rgba(109,202,130,0); }
   }
-
-  .race-bar.animated .race-bar-inner-label {
-    opacity: 1;
-  }
-
+  .race-bar.best { animation: best-flash 1.4s ease-out 1.1s 1 both; }
   .race-time {
-    font-family: monospace;
-    font-size: 0.9rem;
-    font-weight: 700;
-    text-align: right;
-    white-space: nowrap;
+    font-family: monospace; font-size: 0.82rem;
+    font-weight: 700; text-align: right; white-space: nowrap;
   }
 
-  .bar-bash-seq    { background: linear-gradient(90deg, #7a5c2a, #a07840); }
-  .bar-bash-batch  { background: linear-gradient(90deg, #8a6830, #b08848); }
-  .bar-gnu-par     { background: linear-gradient(90deg, #5a8a50, #6dca82); }
-  .bar-go-bug      { background: linear-gradient(90deg, #8a4040, #e07070); }
-  .bar-go-fixed    { background: linear-gradient(90deg, #b08820, #e8b866); }
-  .bar-nodejs      { background: linear-gradient(90deg, #1a4a5a, #6aaccc); }
-  .bar-node-workers { background: linear-gradient(90deg, #1a3a5a, #4a8aaa); }
-  .bar-node-procs   { background: linear-gradient(90deg, #1a2a50, #506aaa); }
+  .bar-go      { background: linear-gradient(90deg, #b08820, #e8b866); }
+  .bar-go-bug  { background: linear-gradient(90deg, #8a4040, #e07070); }
+  .bar-go-dim  { background: #4a3010; }
+  .bar-ns-s    { background: linear-gradient(90deg, #1a4a5a, #6aaccc); }
+  .bar-ns-s-d  { background: #0e2a38; }
+  .bar-ns-w    { background: linear-gradient(90deg, #1a3a5a, #4a8aaa); }
+  .bar-ns-w-d  { background: #0e1e38; }
+  .bar-ns-p    { background: linear-gradient(90deg, #1a2a50, #506aaa); }
+  .bar-ns-p-d  { background: #0e1630; }
+  .bar-bash-s  { background: linear-gradient(90deg, #7a5c2a, #a07840); }
+  .bar-bash-b  { background: linear-gradient(90deg, #8a6830, #b08848); }
+  .bar-bash-bd { background: #3a2810; }
+  .bar-bash-g  { background: linear-gradient(90deg, #2a5a30, #6dca82); }
+  .bar-bash-gd { background: #0e2a10; }
 
-  /* ── RACE DETAIL PANEL ── */
-  .race-detail {
-    margin-top: 1.5rem;
-    background: var(--surface2);
-    border: 1px solid var(--gold-dim);
-    border-radius: 8px;
-    padding: 1.25rem 1.5rem;
-    display: none;
-  }
-
-  .race-detail.visible { display: block; }
-
+  /* ── RACE DETAIL shared styles ── */
   .detail-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 1rem;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0.75rem;
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;
   }
-
-  .detail-name {
-    font-family: monospace;
-    font-size: 1rem;
-    color: var(--gold);
-    font-weight: 700;
-  }
-
-  .detail-time {
-    font-family: monospace;
-    font-size: 1.4rem;
-    font-weight: 700;
-  }
-
-  /* math row: 24 ns × 9 calls/ns = 216 total */
+  .detail-name { font-family: monospace; font-size: 1rem; color: var(--gold); font-weight: 700; }
+  .detail-time { font-family: monospace; font-size: 1.4rem; font-weight: 700; }
   .detail-math {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-bottom: 1.25rem;
-    font-family: monospace;
-    font-size: 0.88rem;
+    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+    margin-bottom: 1.25rem; font-family: monospace; font-size: 0.88rem;
   }
-
   .dm-num {
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: var(--text);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 0.1rem 0.5rem;
-    line-height: 1;
+    font-size: 1.3rem; font-weight: 700; color: var(--text);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 4px; padding: 0.1rem 0.5rem; line-height: 1;
   }
-
   .dm-num.accent { border-color: var(--gold-dim); color: var(--gold); }
   .dm-num.warn   { border-color: var(--warning);  color: var(--warning); }
   .dm-num.ok     { border-color: var(--success);  color: var(--success); }
-
   .dm-unit { color: var(--text-dim); font-size: 0.78rem; }
   .dm-op   { color: var(--text-dim); font-size: 1rem; padding: 0 0.1rem; }
-  .dm-sep  { color: var(--border); font-size: 1rem; }
-
-  /* two-column layout: flow | aside */
+  .dm-sep  { color: var(--border); }
   .detail-cols {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    align-items: start;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start;
   }
-
-  @media (max-width: 700px) {
-    .detail-cols { grid-template-columns: 1fr; }
-  }
-
+  @media (max-width: 700px) { .detail-cols { grid-template-columns: 1fr; } }
   .detail-flow {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 0.75rem 1rem;
-    font-family: monospace;
-    font-size: 0.77rem;
-    line-height: 1.95;
-    overflow-x: auto;
-    white-space: pre;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 0.75rem 1rem; font-family: monospace; font-size: 0.77rem;
+    line-height: 1.95; overflow-x: auto; white-space: pre;
   }
-
-  .flow-note {
-    color: #5a7a5a;
-    padding-left: 0.5rem;
-  }
-
-  .detail-aside {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
+  .flow-note { color: #5a7a5a; padding-left: 0.5rem; }
+  .detail-aside { display: flex; flex-direction: column; gap: 0.75rem; }
   .detail-bottleneck {
-    background: var(--bg);
-    border: 1px solid;
-    border-radius: 6px;
-    padding: 0.75rem 1rem;
-    font-family: monospace;
-    font-size: 0.82rem;
-    line-height: 1.6;
+    background: var(--bg); border: 1px solid; border-radius: 6px;
+    padding: 0.75rem 1rem; font-family: monospace; font-size: 0.82rem; line-height: 1.6;
   }
-
   .bn-label {
-    display: block;
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-dim);
-    margin-bottom: 0.4rem;
+    display: block; font-size: 0.68rem; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 0.4rem;
   }
-
   .detail-keypoints {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 0.75rem 1rem;
-    font-family: monospace;
-    font-size: 0.8rem;
-    line-height: 1.9;
-    color: var(--text-dim);
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 0.75rem 1rem; font-family: monospace; font-size: 0.8rem;
+    line-height: 1.9; color: var(--text-dim);
   }
-
   .kp-row { display: flex; gap: 0.4rem; }
   .kp-bullet { color: var(--gold-dim); flex-shrink: 0; }
 
-  /* ── SECTION 2 — PROCESS TREE ── */
-  .tree-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 2rem;
-  }
-
-  @media (max-width: 900px) {
-    .tree-grid { grid-template-columns: 1fr; }
-    .race-row { grid-template-columns: 140px 1fr 48px; }
-    .race-label { font-size: 0.72rem; }
-  }
-
+  /* ── PROCESS TREE ── */
+  .tree-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+  @media (max-width: 900px) { .tree-grid { grid-template-columns: 1fr; } }
   .tree-panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.5rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.25rem;
   }
-
   .tree-panel h3 {
-    font-family: monospace;
-    font-size: 0.85rem;
-    color: var(--gold);
-    margin-bottom: 1.25rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--border);
+    font-family: monospace; font-size: 0.85rem; color: var(--gold);
+    margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border);
   }
-
-  .tree-svg-wrap {
-    overflow-x: auto;
-  }
-
+  .tree-svg-wrap { overflow-x: auto; }
   svg.tree { width: 100%; }
 
-  .node-box {
-    fill: var(--surface2);
-    stroke: var(--border);
-    stroke-width: 1.5;
-    rx: 6;
-  }
+  .node-box { fill: var(--surface2); stroke: var(--border); stroke-width: 1.5; }
+  .node-box.root, .node-box.proc { fill: #2a1808; stroke: var(--warning); }
+  .node-box.goroutine { fill: #0a1e0a; stroke: var(--success); stroke-dasharray: 6 3; }
+  .node-box.pool { fill: #1e1a0a; stroke: var(--gold-dim); }
+  .node-box.promise { fill: #0a1420; stroke: var(--info); stroke-dasharray: 6 3; }
 
-  /* OS Process — orange, solid border */
-  .node-box.root,
-  .node-box.proc {
-    fill: #2a1808;
-    stroke: var(--warning);
-    stroke-width: 1.5;
-  }
-
-  /* Goroutine — green, DASHED border (logical unit, not OS-visible) */
-  .node-box.goroutine {
-    fill: #0a1e0a;
-    stroke: var(--success);
-    stroke-width: 1.5;
-    stroke-dasharray: 6 3;
-  }
-
-  /* Connection pool — gold, solid */
-  .node-box.pool {
-    fill: #1e1a0a;
-    stroke: var(--gold-dim);
-    stroke-width: 1.5;
-  }
-
-  /* Promise — info/blue, dashed (concurrent async, single-threaded callbacks) */
-  .node-box.promise {
-    fill: #0a1420;
-    stroke: var(--info);
-    stroke-width: 1.5;
-    stroke-dasharray: 6 3;
-  }
-
-  /* Tree legend */
-  .tree-legend {
-    display: flex;
-    gap: 1.5rem;
-    margin-top: 1rem;
-    flex-wrap: wrap;
-    font-family: monospace;
-    font-size: 0.78rem;
-    color: var(--text-dim);
-  }
-
-  .tl-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .tl-box {
-    width: 18px;
-    height: 12px;
-    border-radius: 2px;
-    flex-shrink: 0;
-  }
-
-  .tl-box.proc     { background: #2a1808; border: 1.5px solid var(--warning); }
-  .tl-box.goroutine {
-    background: #0a1e0a;
-    border: 1.5px dashed var(--success);
-  }
-  .tl-box.pool     { background: #1e1a0a; border: 1.5px solid var(--gold-dim); }
-  .tl-box.promise  { background: #0a1420; border: 1.5px dashed var(--info); }
-
-  .node-text {
-    fill: var(--text);
-    font-family: monospace;
-    font-size: 11px;
-    dominant-baseline: middle;
-    text-anchor: middle;
-  }
-
-  .node-text.dim { fill: var(--text-dim); }
+  .node-text { fill: var(--text); font-family: monospace; font-size: 11px; dominant-baseline: middle; text-anchor: middle; }
+  .node-text.dim  { fill: var(--text-dim); }
   .node-text.gold { fill: var(--gold); font-weight: 700; }
-
-  .tree-edge {
-    stroke: var(--border);
-    stroke-width: 1.5;
-    fill: none;
-    stroke-dasharray: 4 3;
-  }
-
-  .badge {
-    font-family: monospace;
-    font-size: 9px;
-    padding: 2px 6px;
-    border-radius: 10px;
-  }
-
+  .node-text.ok   { fill: var(--success); }
+  .node-text.warn { fill: var(--warning); }
+  .node-text.info { fill: var(--info); }
+  .tree-edge { stroke: var(--border); stroke-width: 1.5; fill: none; stroke-dasharray: 4 3; }
   .badge-warn { fill: #3a2010; stroke: var(--warning); stroke-width: 1; }
   .badge-ok   { fill: #0a2a0a; stroke: var(--success);  stroke-width: 1; }
   .badge-text-warn { fill: var(--warning); font-family: monospace; font-size: 9px; dominant-baseline: middle; text-anchor: middle; }
   .badge-text-ok   { fill: var(--success);  font-family: monospace; font-size: 9px; dominant-baseline: middle; text-anchor: middle; }
 
-  /* ── SECTION 3 — PRIMITIVES ── */
-  .prim-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.5rem;
-    margin-bottom: 2rem;
+  .tree-legend {
+    display: flex; gap: 1.25rem; margin-top: 1.25rem; flex-wrap: wrap;
+    font-family: monospace; font-size: 0.78rem; color: var(--text-dim);
   }
+  .tl-item { display: flex; align-items: center; gap: 0.5rem; }
+  .tl-box { width: 18px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+  .tl-box.proc      { background: #2a1808; border: 1.5px solid var(--warning); }
+  .tl-box.goroutine { background: #0a1e0a; border: 1.5px dashed var(--success); }
+  .tl-box.pool      { background: #1e1a0a; border: 1.5px solid var(--gold-dim); }
+  .tl-box.promise   { background: #0a1420; border: 1.5px dashed var(--info); }
 
-  @media (max-width: 640px) {
-    .prim-grid { grid-template-columns: 1fr; }
+  /* ── TCP TABLE ── */
+  .tcp-table-wrap { overflow-x: auto; margin-top: 1.5rem; }
+  table.tcp-table {
+    width: 100%; border-collapse: collapse;
+    font-family: monospace; font-size: 0.82rem;
   }
+  table.tcp-table th {
+    text-align: left; padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-dim); font-weight: normal;
+  }
+  table.tcp-table th.num { text-align: right; }
+  table.tcp-table td { padding: 0.4rem 0.75rem; border-bottom: 1px solid var(--border); }
+  table.tcp-table td.num { text-align: right; }
+  table.tcp-table tr:hover td { background: var(--surface); }
+  table.tcp-table tr.best td { background: rgba(232,184,102,0.03); }
+  .tcp-note {
+    margin-top: 1.5rem; font-family: monospace; font-size: 0.82rem;
+    color: var(--text-dim); line-height: 1.85;
+    display: flex; flex-direction: column; gap: 0.75rem;
+  }
+  .tcp-note strong { color: var(--warning); }
 
+  /* ── PRIMITIVES ── */
+  .prim-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+  @media (max-width: 640px) { .prim-grid { grid-template-columns: 1fr; } }
   .prim-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.25rem;
   }
-
   .prim-card h3 {
-    font-family: monospace;
-    font-size: 1rem;
-    color: var(--gold);
-    text-align: center;
+    font-family: monospace; font-size: 0.9rem; color: var(--gold);
+    text-align: center; margin-bottom: 1rem;
   }
-
-  .prim-stats {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-
   .prim-stat {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.8rem;
-    padding: 0.3rem 0;
-    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; font-size: 0.8rem;
+    padding: 0.25rem 0; border-bottom: 1px solid var(--border);
     font-family: monospace;
   }
-
+  .prim-stat:last-child { border-bottom: none; }
   .prim-stat span:first-child { color: var(--text-dim); }
-  .prim-stat span:last-child  { color: var(--text); }
 
-  .prim-visual {
-    display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
-    justify-content: center;
+  /* ── TOKEN BUCKET ── */
+  .bucket-why {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 2rem;
+    font-family: monospace; font-size: 0.85rem; line-height: 1.85; color: var(--text-dim);
+    display: flex; flex-direction: column; gap: 0.75rem;
   }
+  .bucket-why strong { color: var(--text); }
+  .bucket-why code   { color: var(--info); }
+  .bucket-why .hl    { color: var(--gold); }
 
-  .mem-block {
-    width: 28px;
-    height: 28px;
-    border-radius: 4px;
-    border: 1px solid;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 8px;
-    font-family: monospace;
-    font-weight: 700;
-    cursor: default;
-    transition: transform 0.15s;
-  }
-
-  .mem-block:hover { transform: scale(1.1); }
-
-  .mem-isolated { background: #2a1a0a; border-color: var(--warning); color: var(--warning); }
-  .mem-shared   { background: #0a1a2a; border-color: var(--info);    color: var(--info); }
-  .mem-tiny     { background: #0a2a0a; border-color: var(--success); color: var(--success); }
-
-  .spawn-section {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.5rem;
-  }
-
-  .spawn-section h3 {
-    font-family: monospace;
-    color: var(--gold);
-    margin-bottom: 1rem;
-    font-size: 0.9rem;
-  }
-
-  .spawn-controls {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-bottom: 1.25rem;
-  }
-
-  .spawn-btn {
-    background: var(--surface2);
-    border: 1px solid var(--gold-dim);
-    color: var(--gold);
-    padding: 0.5rem 1.25rem;
-    border-radius: 6px;
-    font-family: monospace;
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: background 0.2s, border-color 0.2s;
-  }
-
-  .spawn-btn:hover {
-    background: #2a2010;
-    border-color: var(--gold);
-  }
-
-  /* dot grid memory chart — each dot = 1 MB */
-  .dot-grid-chart {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-    margin-top: 1.25rem;
-  }
-
-  .dot-row-label {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    font-family: monospace;
-    font-size: 0.8rem;
-    margin-bottom: 0.35rem;
-  }
-
-  .smc-label { color: var(--text-dim); }
-
-  .dot-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px;
-    min-height: 10px;
-  }
-
-  .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 1px;
-    background: var(--border);
-    transition: background 0.04s;
-  }
-
-  .smc-value {
-    font-family: monospace;
-    font-size: 0.82rem;
-    font-weight: 700;
-    white-space: nowrap;
-  }
-
-  .smc-value.warn { color: var(--warning); }
-  .smc-value.ok   { color: var(--success); }
-
-  .smc-note {
-    grid-column: 2 / 4;
-    font-family: monospace;
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    padding-left: 2px;
-    margin-top: -0.5rem;
-  }
-
-  .prim-stat-highlight {
-    background: rgba(109, 202, 130, 0.06);
-    border-radius: 4px;
-    padding: 0.3rem 0.2rem;
-    margin: 0 -0.2rem;
-  }
-
-  @keyframes pop-in {
-    0%   { transform: scale(0); opacity: 0; }
-    70%  { transform: scale(1.3); }
-    100% { transform: scale(1); opacity: 1; }
-  }
-
-  /* ── EVENT LOOP vs GOROUTINE ── */
-  .elo-wrap {
-    margin-top: 2.5rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.5rem;
-  }
-
-  .elo-wrap h3 {
-    font-family: monospace;
-    font-size: 0.9rem;
-    color: var(--gold);
-    margin-bottom: 1.5rem;
-  }
-
-  .elo-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
-    align-items: start;
-  }
-
-  @media (max-width: 640px) {
-    .elo-grid { grid-template-columns: 1fr; }
-  }
-
-  .elo-heading {
-    font-family: monospace;
-    font-size: 0.82rem;
-    color: var(--text-dim);
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .elo-heading strong { color: var(--text); }
-
-  .elo-lane {
-    display: grid;
-    grid-template-columns: 90px 1fr;
-    gap: 0.5rem;
-    align-items: center;
-    margin-bottom: 0.5rem;
-    font-family: monospace;
-    font-size: 0.75rem;
-  }
-
-  .elo-lane-label {
-    color: var(--text-dim);
-    text-align: right;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .elo-track {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    height: 20px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .elo-bar {
-    position: absolute;
-    top: 0;
-    height: 100%;
-    border-radius: 2px;
-    width: 0;
-    transition: width 1.2s ease-out;
-  }
-
-  .elo-bar-single   { background: linear-gradient(90deg, #1a4a5a, #6aaccc); }
-  .elo-bar-parallel { background: linear-gradient(90deg, #0a3a20, #6dca82); }
-
-  .elo-total {
-    font-family: monospace;
-    font-size: 0.78rem;
-    margin-top: 1rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 4px;
-    text-align: center;
-  }
-
-  .elo-total.slow { background: #1a0e08; color: var(--warning); border: 1px solid #3a2010; }
-  .elo-total.fast { background: #0a1e0a; color: var(--success); border: 1px solid #1a3a1a; }
-
-  .elo-note {
-    font-family: monospace;
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    margin-top: 0.75rem;
-    line-height: 1.7;
-  }
-
-  .elo-io-row {
-    display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
-    margin-bottom: 0.75rem;
-  }
-
-  .elo-io-chip {
-    font-family: monospace;
-    font-size: 0.7rem;
-    padding: 2px 6px;
-    border-radius: 10px;
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-
-  .elo-io-chip.visible { opacity: 1; }
-  .elo-io-chip.io-flying { background: #0a2030; border: 1px solid var(--info); color: var(--info); }
-
-  /* ── SECTION 4 — TOKEN BUCKET ── */
-  .bucket-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
-    align-items: start;
-  }
-
-  @media (max-width: 640px) {
-    .bucket-layout { grid-template-columns: 1fr; }
-  }
-
-  .bucket-controls {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
+  .bucket-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; }
+  @media (max-width: 640px) { .bucket-layout { grid-template-columns: 1fr; } }
+  .bucket-controls { display: flex; flex-direction: column; gap: 1rem; }
   .bucket-toggle {
-    display: flex;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
+    display: flex; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden;
   }
-
   .bucket-toggle button {
-    flex: 1;
-    padding: 0.7rem 0.5rem;
-    background: none;
-    border: none;
-    color: var(--text-dim);
-    font-family: monospace;
-    font-size: 0.78rem;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-    line-height: 1.3;
+    flex: 1; padding: 0.7rem 0.5rem; background: none; border: none;
+    color: var(--text-dim); font-family: monospace; font-size: 0.78rem;
+    cursor: pointer; transition: background 0.2s, color 0.2s; line-height: 1.3;
   }
-
-  .bucket-toggle button.active {
-    background: var(--surface2);
-    color: var(--gold);
-  }
-
+  .bucket-toggle button.active { background: var(--surface2); color: var(--gold); }
   .bucket-stats {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    font-family: monospace;
-    font-size: 0.82rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1rem;
+    display: flex; flex-direction: column; gap: 0.5rem;
+    font-family: monospace; font-size: 0.82rem;
   }
-
   .bucket-stats .stat-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.2rem 0;
-    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between;
+    padding: 0.2rem 0; border-bottom: 1px solid var(--border);
   }
-
   .bucket-stats .stat-row:last-child { border-bottom: none; }
   .stat-label { color: var(--text-dim); }
   .stat-val   { color: var(--text); }
   .stat-val.gold { color: var(--gold); font-weight: 700; }
   .stat-val.warn { color: var(--warning); }
-
-  .bucket-canvas-wrap {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.25rem;
-  }
-
-  #bucketCanvas {
-    display: block;
-    width: 100%;
-    border-radius: 6px;
-  }
-
-  .bucket-legend {
-    display: flex;
-    gap: 1.5rem;
-    margin-top: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.75rem;
-    font-family: monospace;
-    color: var(--text-dim);
-  }
-
-  .legend-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-  }
-
   .btn-primary {
-    background: var(--surface2);
-    border: 1px solid var(--gold-dim);
-    color: var(--gold);
-    padding: 0.6rem 1.5rem;
-    border-radius: 6px;
-    font-family: monospace;
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: all 0.2s;
+    background: var(--surface2); border: 1px solid var(--gold-dim);
+    color: var(--gold); padding: 0.6rem 1.5rem; border-radius: 6px;
+    font-family: monospace; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
   }
-
-  .btn-primary:hover {
-    background: #2a2010;
-    border-color: var(--gold);
+  .btn-primary:hover { background: #2a2010; border-color: var(--gold); }
+  .bucket-canvas-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.25rem;
   }
+  #bucketCanvas { display: block; width: 100%; border-radius: 6px; }
+  .bucket-legend { display: flex; gap: 1.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
+  .legend-item {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.75rem; font-family: monospace; color: var(--text-dim);
+  }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
 
   /* ── HERO ── */
-  .hero {
-    text-align: center;
-    padding: 4rem 1.5rem 3rem;
-    max-width: 700px;
-    margin: 0 auto;
-  }
-
-  .hero h1 {
-    font-size: 0.9rem;
-    color: var(--gold-dim);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    margin-bottom: 1rem;
-  }
-
-  .hero h2 {
-    font-size: 2.2rem;
-    line-height: 1.25;
-    margin-bottom: 1rem;
-  }
-
-  .hero p {
-    color: var(--text-dim);
-    font-size: 1rem;
-  }
-
+  .hero { text-align: center; padding: 4rem 1.5rem 3rem; max-width: 700px; margin: 0 auto; }
+  .hero h1 { font-size: 0.9rem; color: var(--gold-dim); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1rem; }
+  .hero h2 { font-size: 2.2rem; line-height: 1.25; margin-bottom: 1rem; }
+  .hero p  { color: var(--text-dim); font-size: 1rem; }
   .speedup-badge {
     display: inline-block;
     background: linear-gradient(135deg, #2a1e00, #3a2c08);
-    border: 1px solid var(--gold);
-    border-radius: 8px;
-    padding: 0.6rem 1.5rem;
-    font-family: monospace;
-    font-size: 1.5rem;
-    color: var(--gold);
-    font-weight: 700;
-    margin: 1.5rem auto;
-    letter-spacing: 0.05em;
+    border: 1px solid var(--gold); border-radius: 8px;
+    padding: 0.6rem 1.5rem; font-family: monospace; font-size: 1.5rem;
+    color: var(--gold); font-weight: 700; margin: 1.5rem auto; letter-spacing: 0.05em;
   }
 
-  /* ── MISC ── */
-  .chip {
-    display: inline-block;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 1px 7px;
-    font-family: monospace;
-    font-size: 0.75rem;
-    color: var(--text-dim);
+  @media (max-width: 900px) {
+    .race-row { grid-template-columns: 140px 1fr 44px; }
+    .race-label { font-size: 0.72rem; }
   }
-
-  .chip.gold { border-color: var(--gold-dim); color: var(--gold); }
 </style>
 </head>
 <body>
 
 <nav id="topnav">
-  <a href="#race"    class="active">§1 Export Race</a>
+  <a href="#race"   class="active">§1 Export Race</a>
   <a href="#tree">§2 Process Tree</a>
-  <a href="#prims">§3 Process / Thread / Goroutine</a>
-  <a href="#bucket">§4 Token Bucket</a>
+  <a href="#tcp">§3 TCP Connections</a>
+  <a href="#prims">§4 Concurrency Primitives</a>
+  <a href="#bucket">§5 Token Bucket</a>
 </nav>
 
-<!-- HERO -->
 <div class="hero">
   <h1>Node.js vs Go · K8s Export</h1>
   <h2>145 seconds became 6.</h2>
-  <p>Four interactive sections. One cluster export story.</p>
+  <p>Five interactive sections. One cluster export story.</p>
   <div class="speedup-badge">24× faster</div>
 </div>
 
 <!-- ════════════════════════════════════════
-     SECTION 1 — THE EXPORT RACE
+     §1 — THE EXPORT RACE
 ════════════════════════════════════════ -->
 <section class="section" id="race">
   <h1>§ 01</h1>
   <h2>The Export Race</h2>
-  <p class="lead">Click any bar to learn what changed — and why the bug cost 17× of the potential.</p>
-
+  <p class="lead">24 namespaces, 276 files. Go values averaged across 6 runs. Bar width is √time — compresses the 6s–319s range to be readable. Click any bar for details.</p>
   <div class="race-chart" id="raceChart"></div>
-  <div class="race-detail" id="raceDetail"></div>
 </section>
 
 <!-- ════════════════════════════════════════
-     SECTION 2 — PROCESS TREE
+     §2 — PROCESS TREE
 ════════════════════════════════════════ -->
 <section class="section" id="tree">
   <h1>§ 02</h1>
   <h2>Process Tree Comparison</h2>
-  <p class="lead">This is an <strong>architectural</strong> comparison, not a language one. Node.js also has <code style="background:var(--surface2);padding:1px 5px;border-radius:3px;font-size:0.85em">@kubernetes/client-node</code> for direct API access — the left side shows the <em>subprocess approach</em> (bash + kubectl), which is what our export script uses.</p>
+  <p class="lead">Three architectures for the same 528 API calls. The difference is what lives inside the process boundary — and how many TLS handshakes result.</p>
 
   <div class="tree-grid">
+
+    <!-- bash + kubectl -->
     <div class="tree-panel">
       <h3>bash + kubectl (subprocess)</h3>
       <div class="tree-svg-wrap">
-        <svg class="tree" viewBox="0 0 360 435" xmlns="http://www.w3.org/2000/svg">
-          <!-- Root -->
-          <rect x="100" y="10" width="160" height="36" rx="6" class="node-box root"/>
-          <text x="180" y="28" class="node-text gold">Node.js web server</text>
+        <svg class="tree" viewBox="0 0 320 530" xmlns="http://www.w3.org/2000/svg">
+          <rect x="80" y="8" width="160" height="32" rx="5" class="node-box root"/>
+          <text x="160" y="24" class="node-text gold">server.js (PID 1)</text>
 
-          <!-- Bash -->
-          <line x1="180" y1="46" x2="180" y2="68" class="tree-edge"/>
-          <rect x="100" y="68" width="160" height="36" rx="6" class="node-box proc"/>
-          <text x="180" y="86" class="node-text">bash (spawned)</text>
+          <line x1="160" y1="40" x2="160" y2="62" class="tree-edge"/>
+          <text x="172" y="55" class="node-text dim" font-size="9" text-anchor="start">spawn()</text>
 
-          <!-- Connectors to children -->
-          <line x1="180" y1="104" x2="180" y2="120" class="tree-edge"/>
-          <line x1="180" y1="120" x2="60"  y2="120" class="tree-edge"/>
-          <line x1="180" y1="120" x2="180" y2="120" class="tree-edge"/>
-          <line x1="180" y1="120" x2="300" y2="120" class="tree-edge"/>
-          <line x1="60"  y1="120" x2="60"  y2="140" class="tree-edge"/>
-          <line x1="180" y1="120" x2="180" y2="140" class="tree-edge"/>
-          <line x1="300" y1="120" x2="300" y2="140" class="tree-edge"/>
+          <rect x="80" y="62" width="160" height="32" rx="5" class="node-box proc"/>
+          <text x="160" y="78" class="node-text">bash (PID 2)</text>
 
-          <!-- kubectl -->
-          <rect x="10" y="140" width="100" height="36" rx="6" class="node-box proc"/>
-          <text x="60" y="155" class="node-text">kubectl</text>
-          <text x="60" y="168" class="node-text dim">×9 per ns</text>
+          <!-- branch -->
+          <line x1="160" y1="94" x2="160" y2="114" class="tree-edge"/>
+          <line x1="55" y1="114" x2="265" y2="114" class="tree-edge"/>
+          <line x1="55" y1="114" x2="55" y2="134" class="tree-edge"/>
+          <line x1="160" y1="114" x2="160" y2="134" class="tree-edge"/>
+          <line x1="265" y1="114" x2="265" y2="134" class="tree-edge"/>
 
-          <!-- split-resources -->
-          <rect x="130" y="140" width="100" height="36" rx="6" class="node-box proc"/>
-          <text x="180" y="155" class="node-text">split-res.js</text>
-          <text x="180" y="168" class="node-text dim">×7 per ns</text>
+          <rect x="8" y="134" width="94" height="32" rx="5" class="node-box proc"/>
+          <text x="55" y="148" class="node-text">kubectl</text>
+          <text x="55" y="161" class="node-text dim">ns1 (×9)</text>
 
-          <!-- ns batch label -->
-          <rect x="238" y="140" width="100" height="36" rx="6" class="node-box proc"/>
-          <text x="288" y="155" class="node-text">×3 namespaces</text>
-          <text x="288" y="168" class="node-text dim">~48 procs total</text>
+          <rect x="113" y="134" width="94" height="32" rx="5" class="node-box proc"/>
+          <text x="160" y="148" class="node-text">kubectl</text>
+          <text x="160" y="161" class="node-text dim">ns2 (×9)</text>
 
-          <!-- TLS badge on kubectl -->
-          <rect x="4" y="188" width="112" height="22" rx="10" class="badge badge-warn"/>
-          <text x="60" y="199" class="badge-text-warn">new TLS ~100ms</text>
+          <rect x="218" y="134" width="94" height="32" rx="5" class="node-box proc"/>
+          <text x="265" y="148" class="node-text">kubectl</text>
+          <text x="265" y="161" class="node-text dim">ns3 (×9)</text>
 
-          <!-- Dotted = repeat -->
-          <text x="180" y="240" class="node-text dim" text-anchor="middle">↕ repeated per namespace</text>
+          <!-- TLS badges -->
+          <rect x="2" y="178" width="106" height="18" rx="8" class="badge-warn"/>
+          <text x="55" y="187" class="badge-text-warn">new TLS ~100ms</text>
+          <rect x="107" y="178" width="106" height="18" rx="8" class="badge-warn"/>
+          <text x="160" y="187" class="badge-text-warn">new TLS ~100ms</text>
+          <rect x="212" y="178" width="106" height="18" rx="8" class="badge-warn"/>
+          <text x="265" y="187" class="badge-text-warn">new TLS ~100ms</text>
 
-          <!-- Cost summary box -->
-          <rect x="40" y="298" width="280" height="80" rx="8" fill="#161616" stroke="#2e2e2e" stroke-width="1"/>
-          <text x="180" y="318" class="node-text gold">Cost summary</text>
-          <text x="180" y="338" class="node-text dim">~48 processes spawned</text>
-          <text x="180" y="354" class="node-text dim">~48 TLS handshakes (~4.8s)</text>
-          <text x="180" y="370" class="node-text dim">fork/exec overhead per call</text>
+          <text x="160" y="218" class="node-text dim">× 24 namespaces, 9 kubectl each</text>
+          <text x="160" y="234" class="node-text warn">= 216 spawns, 216 TLS handshakes</text>
 
-          <!-- waterfall -->
-          <text x="180" y="404" class="node-text dim">sequential export: 145s</text>
-          <rect x="40" y="414" width="240" height="8" rx="4" fill="#7a5c2a"/>
-          <rect x="40" y="414" width="20"  height="8" rx="4" fill="#a07840"/>
+          <!-- cost -->
+          <rect x="20" y="254" width="280" height="96" rx="6" fill="#161616" stroke="#2e2e2e" stroke-width="1"/>
+          <text x="160" y="274" class="node-text gold">Cost summary</text>
+          <text x="160" y="292" class="node-text dim">216 process spawns (fork+exec)</text>
+          <text x="160" y="308" class="node-text warn">216 TLS handshakes (~21s alone)</text>
+          <text x="160" y="324" class="node-text dim">API server idle while procs spin up</text>
+          <text x="160" y="340" class="node-text warn">Best: 58s (GNU parallel –jobs 8)</text>
+
+          <rect x="20" y="358" width="280" height="6" rx="3" fill="#3a2810"/>
+          <rect x="20" y="358" width="190" height="6" rx="3" fill="#b08848"/>
+          <text x="160" y="380" class="node-text dim">58s</text>
         </svg>
       </div>
     </div>
 
+    <!-- Go binary -->
     <div class="tree-panel">
-      <h3>Go binary</h3>
+      <h3>Go binary (two-layer goroutines)</h3>
       <div class="tree-svg-wrap">
-        <svg class="tree" viewBox="0 0 360 435" xmlns="http://www.w3.org/2000/svg">
-          <!-- Root -->
-          <rect x="100" y="10" width="160" height="36" rx="6" class="node-box root"/>
-          <text x="180" y="28" class="node-text gold">Go process (1 PID)</text>
+        <svg class="tree" viewBox="0 0 320 530" xmlns="http://www.w3.org/2000/svg">
+          <rect x="80" y="8" width="160" height="32" rx="5" class="node-box root"/>
+          <text x="160" y="24" class="node-text gold">Go process (1 PID)</text>
 
-          <!-- Connection pool -->
-          <line x1="180" y1="46" x2="180" y2="68" class="tree-edge"/>
-          <rect x="90" y="68" width="180" height="36" rx="6" class="node-box pool"/>
-          <text x="180" y="83" class="node-text gold">client-go connection pool</text>
-          <text x="180" y="96" class="node-text dim">HTTP/2, keep-alive</text>
+          <line x1="160" y1="40" x2="160" y2="62" class="tree-edge"/>
+          <rect x="55" y="62" width="210" height="32" rx="5" class="node-box pool"/>
+          <text x="160" y="75" class="node-text gold">HTTP/2 pool (ALPN)</text>
+          <text x="160" y="87" class="node-text dim">1 TCP · all streams multiplex</text>
 
-          <!-- Goroutines -->
-          <line x1="180" y1="104" x2="180" y2="120" class="tree-edge"/>
-          <line x1="180" y1="120" x2="80"  y2="120" class="tree-edge"/>
-          <line x1="180" y1="120" x2="180" y2="120" class="tree-edge"/>
-          <line x1="180" y1="120" x2="280" y2="120" class="tree-edge"/>
-          <line x1="80"  y1="120" x2="80"  y2="140" class="tree-edge"/>
-          <line x1="180" y1="120" x2="180" y2="140" class="tree-edge"/>
-          <line x1="280" y1="120" x2="280" y2="140" class="tree-edge"/>
+          <!-- sem -->
+          <line x1="160" y1="94" x2="160" y2="116" class="tree-edge"/>
+          <rect x="55" y="116" width="210" height="26" rx="4" fill="#1a1a0e" stroke="#4a4020" stroke-width="1"/>
+          <text x="160" y="129" class="node-text" style="fill:#b8b060">sem = make(chan, jobs=7)  ← outer</text>
 
-          <rect x="30"  y="140" width="100" height="36" rx="6" class="node-box goroutine"/>
-          <text x="80" y="155" class="node-text">goroutine</text>
-          <text x="80" y="168" class="node-text dim">ns1 → reused</text>
+          <line x1="160" y1="142" x2="160" y2="162" class="tree-edge"/>
+          <line x1="55" y1="162" x2="265" y2="162" class="tree-edge"/>
+          <line x1="55" y1="162" x2="55" y2="180" class="tree-edge"/>
+          <line x1="160" y1="162" x2="160" y2="180" class="tree-edge"/>
+          <line x1="265" y1="162" x2="265" y2="180" class="tree-edge"/>
 
-          <rect x="130" y="140" width="100" height="36" rx="6" class="node-box goroutine"/>
-          <text x="180" y="155" class="node-text">goroutine</text>
-          <text x="180" y="168" class="node-text dim">ns2 → reused</text>
+          <!-- namespace goroutines -->
+          <rect x="8" y="180" width="94" height="28" rx="5" class="node-box goroutine"/>
+          <text x="55" y="194" class="node-text">goroutine ns1</text>
+          <rect x="113" y="180" width="94" height="28" rx="5" class="node-box goroutine"/>
+          <text x="160" y="194" class="node-text">goroutine ns2</text>
+          <rect x="218" y="180" width="94" height="28" rx="5" class="node-box goroutine"/>
+          <text x="265" y="194" class="node-text">goroutine ns3</text>
 
-          <rect x="230" y="140" width="100" height="36" rx="6" class="node-box goroutine"/>
-          <text x="280" y="155" class="node-text">goroutine</text>
-          <text x="280" y="168" class="node-text dim">ns3 → reused</text>
+          <!-- inner goroutines -->
+          <line x1="55" y1="208" x2="55" y2="226" class="tree-edge"/>
+          <rect x="8" y="226" width="94" height="28" rx="5" class="node-box goroutine"/>
+          <text x="55" y="236" class="node-text" font-size="9">7 goroutines</text>
+          <text x="55" y="248" class="node-text dim" font-size="9">6 batch + 1 pods</text>
 
-          <!-- OK badges -->
-          <rect x="24" y="188" width="112" height="22" rx="10" class="badge badge-ok"/>
-          <text x="80" y="199" class="badge-text-ok">conn reused ✓</text>
-          <rect x="124" y="188" width="112" height="22" rx="10" class="badge badge-ok"/>
-          <text x="180" y="199" class="badge-text-ok">conn reused ✓</text>
-          <rect x="224" y="188" width="112" height="22" rx="10" class="badge badge-ok"/>
-          <text x="280" y="199" class="badge-text-ok">conn reused ✓</text>
+          <line x1="160" y1="208" x2="160" y2="226" class="tree-edge"/>
+          <rect x="113" y="226" width="94" height="28" rx="5" class="node-box goroutine"/>
+          <text x="160" y="236" class="node-text" font-size="9">7 goroutines</text>
+          <text x="160" y="248" class="node-text dim" font-size="9">6 batch + 1 pods</text>
 
-          <!-- Rate limiter -->
-          <line x1="180" y1="216" x2="180" y2="238" class="tree-edge"/>
-          <rect x="80" y="238" width="200" height="44" rx="6" fill="#161616" stroke="#2e2e2e" stroke-width="1"/>
-          <text x="180" y="256" class="node-text gold">Rate limiter (token bucket)</text>
-          <text x="180" y="272" class="node-text">Burst=10 → Burst=200</text>
+          <line x1="265" y1="208" x2="265" y2="226" class="tree-edge"/>
+          <rect x="218" y="226" width="94" height="28" rx="5" class="node-box goroutine"/>
+          <text x="265" y="236" class="node-text" font-size="9">7 goroutines</text>
+          <text x="265" y="248" class="node-text dim" font-size="9">6 batch + 1 pods</text>
 
-          <!-- Cost summary -->
-          <rect x="40" y="298" width="280" height="80" rx="8" fill="#161616" stroke="#2e2e2e" stroke-width="1"/>
-          <text x="180" y="318" class="node-text gold">Cost summary</text>
-          <text x="180" y="338" class="node-text dim">1 process, N goroutines (~2KB ea)</text>
-          <text x="180" y="354" class="node-text dim">TLS handshake: once, then reused</text>
-          <text x="180" y="370" class="node-text dim">fixed export: 6s</text>
+          <rect x="2" y="266" width="106" height="18" rx="8" class="badge-ok"/>
+          <text x="55" y="275" class="badge-text-ok">stream reused ✓</text>
+          <rect x="107" y="266" width="106" height="18" rx="8" class="badge-ok"/>
+          <text x="160" y="275" class="badge-text-ok">stream reused ✓</text>
+          <rect x="212" y="266" width="106" height="18" rx="8" class="badge-ok"/>
+          <text x="265" y="275" class="badge-text-ok">stream reused ✓</text>
 
-          <text x="180" y="404" class="node-text dim">fixed export: 6s</text>
-          <rect x="40" y="414" width="240" height="8" rx="4" fill="none" stroke="#3a2a18" stroke-width="1"/>
-          <rect x="40" y="414" width="20"  height="8" rx="4" fill="#e8b866"/>
+          <!-- cost -->
+          <rect x="20" y="294" width="280" height="96" rx="6" fill="#161616" stroke="#2e2e2e" stroke-width="1"/>
+          <text x="160" y="314" class="node-text gold">Cost summary</text>
+          <text x="160" y="332" class="node-text ok">1 TLS handshake total (TIME_WAIT=3)</text>
+          <text x="160" y="348" class="node-text dim">2–8 KB goroutine stack (vs 1MB thread)</text>
+          <text x="160" y="364" class="node-text ok">7 inner goroutines per namespace</text>
+          <text x="160" y="380" class="node-text ok">= 7 ns × 7 inner = 49 concurrent calls</text>
+
+          <rect x="20" y="398" width="280" height="6" rx="3" fill="#3a2810"/>
+          <rect x="20" y="398" width="18" height="6" rx="3" fill="#e8b866"/>
+          <text x="160" y="420" class="node-text ok">6–7s (namespaces=7)</text>
         </svg>
       </div>
     </div>
 
+    <!-- Node.js client-node -->
     <div class="tree-panel">
       <h3>Node.js @kubernetes/client-node</h3>
       <div class="tree-svg-wrap">
-        <svg class="tree" viewBox="0 0 360 435" xmlns="http://www.w3.org/2000/svg">
-          <!-- Root -->
-          <rect x="100" y="10" width="160" height="36" rx="6" class="node-box root"/>
-          <text x="180" y="28" class="node-text gold">Node.js web server</text>
+        <svg class="tree" viewBox="0 0 320 530" xmlns="http://www.w3.org/2000/svg">
+          <rect x="80" y="8" width="160" height="32" rx="5" class="node-box root"/>
+          <text x="160" y="24" class="node-text gold">Node.js (1 PID)</text>
 
-          <!-- Connection pool -->
-          <line x1="180" y1="46" x2="180" y2="68" class="tree-edge"/>
-          <rect x="75" y="68" width="210" height="36" rx="6" class="node-box pool"/>
-          <text x="180" y="83" class="node-text gold">@k8s/client-node pool</text>
-          <text x="180" y="96" class="node-text dim">HTTP/1.1 (no HTTP/2)</text>
+          <line x1="160" y1="40" x2="160" y2="62" class="tree-edge"/>
+          <rect x="50" y="62" width="220" height="32" rx="5" class="node-box pool"/>
+          <text x="160" y="75" class="node-text gold">HTTP/1.1 keep-alive pool</text>
+          <text x="160" y="87" class="node-text warn">no HTTP/2 (https module only)</text>
 
-          <!-- Promises -->
-          <line x1="180" y1="104" x2="180" y2="120" class="tree-edge"/>
-          <line x1="180" y1="120" x2="80"  y2="120" class="tree-edge"/>
-          <line x1="180" y1="120" x2="180" y2="120" class="tree-edge"/>
-          <line x1="180" y1="120" x2="280" y2="120" class="tree-edge"/>
-          <line x1="80"  y1="120" x2="80"  y2="140" class="tree-edge"/>
-          <line x1="180" y1="120" x2="180" y2="140" class="tree-edge"/>
-          <line x1="280" y1="120" x2="280" y2="140" class="tree-edge"/>
+          <!-- sem -->
+          <line x1="160" y1="94" x2="160" y2="116" class="tree-edge"/>
+          <rect x="50" y="116" width="220" height="26" rx="4" fill="#0a1420" stroke="#2a3a50" stroke-width="1"/>
+          <text x="160" y="129" class="node-text info">semaphore (jobs=7)  ← work-stealing</text>
 
-          <rect x="30"  y="140" width="100" height="36" rx="6" class="node-box promise"/>
-          <text x="80" y="155" class="node-text">Promise</text>
-          <text x="80" y="168" class="node-text dim">ns1 reused</text>
+          <line x1="160" y1="142" x2="160" y2="162" class="tree-edge"/>
+          <line x1="55" y1="162" x2="265" y2="162" class="tree-edge"/>
+          <line x1="55" y1="162" x2="55" y2="180" class="tree-edge"/>
+          <line x1="160" y1="162" x2="160" y2="180" class="tree-edge"/>
+          <line x1="265" y1="162" x2="265" y2="180" class="tree-edge"/>
 
-          <rect x="130" y="140" width="100" height="36" rx="6" class="node-box promise"/>
-          <text x="180" y="155" class="node-text">Promise</text>
-          <text x="180" y="168" class="node-text dim">ns2 reused</text>
+          <rect x="8" y="180" width="94" height="28" rx="5" class="node-box promise"/>
+          <text x="55" y="194" class="node-text">Promise ns1</text>
+          <rect x="113" y="180" width="94" height="28" rx="5" class="node-box promise"/>
+          <text x="160" y="194" class="node-text">Promise ns2</text>
+          <rect x="218" y="180" width="94" height="28" rx="5" class="node-box promise"/>
+          <text x="265" y="194" class="node-text">Promise ns3</text>
 
-          <rect x="230" y="140" width="100" height="36" rx="6" class="node-box promise"/>
-          <text x="280" y="155" class="node-text">Promise</text>
-          <text x="280" y="168" class="node-text dim">ns3 reused</text>
+          <!-- inner: Promise.all (concurrent within ns) -->
+          <line x1="55" y1="208" x2="55" y2="226" class="tree-edge"/>
+          <rect x="8" y="226" width="94" height="28" rx="5" class="node-box promise"/>
+          <text x="55" y="236" class="node-text" font-size="9">Promise.all</text>
+          <text x="55" y="248" class="node-text dim" font-size="9">22 concurrent calls</text>
 
-          <!-- OK badges: I/O concurrent -->
-          <rect x="24" y="188" width="112" height="22" rx="10" class="badge badge-ok"/>
-          <text x="80" y="199" class="badge-text-ok">I/O concurrent ✓</text>
-          <rect x="124" y="188" width="112" height="22" rx="10" class="badge badge-ok"/>
-          <text x="180" y="199" class="badge-text-ok">I/O concurrent ✓</text>
-          <rect x="224" y="188" width="112" height="22" rx="10" class="badge badge-ok"/>
-          <text x="280" y="199" class="badge-text-ok">I/O concurrent ✓</text>
+          <line x1="160" y1="208" x2="160" y2="226" class="tree-edge"/>
+          <rect x="113" y="226" width="94" height="28" rx="5" class="node-box promise"/>
+          <text x="160" y="236" class="node-text" font-size="9">Promise.all</text>
+          <text x="160" y="248" class="node-text dim" font-size="9">22 concurrent calls</text>
 
-          <!-- Event loop single-thread callout -->
-          <line x1="180" y1="216" x2="180" y2="238" class="tree-edge"/>
-          <rect x="60" y="238" width="240" height="44" rx="6" fill="#161616" stroke="#2e2e2e" stroke-width="1"/>
-          <text x="180" y="256" class="node-text" style="fill:#6aaccc">Event loop (1 thread)</text>
-          <text x="180" y="272" class="node-text dim">callbacks queue sequentially</text>
+          <line x1="265" y1="208" x2="265" y2="226" class="tree-edge"/>
+          <rect x="218" y="226" width="94" height="28" rx="5" class="node-box promise"/>
+          <text x="265" y="236" class="node-text" font-size="9">Promise.all</text>
+          <text x="265" y="248" class="node-text dim" font-size="9">22 concurrent calls</text>
 
-          <!-- Cost summary -->
-          <rect x="40" y="298" width="280" height="80" rx="8" fill="#161616" stroke="#2e2e2e" stroke-width="1"/>
-          <text x="180" y="318" class="node-text gold">Cost summary</text>
-          <text x="180" y="338" class="node-text dim">1 process, ~95 TCP handshakes</text>
-          <text x="180" y="354" class="node-text dim">I/O concurrent, CPU sequential</text>
-          <text x="180" y="370" class="node-text dim">real result: 16s</text>
+          <rect x="2" y="266" width="106" height="18" rx="8" class="badge-ok"/>
+          <text x="55" y="275" class="badge-text-ok">I/O concurrent ✓</text>
+          <rect x="107" y="266" width="106" height="18" rx="8" class="badge-ok"/>
+          <text x="160" y="275" class="badge-text-ok">I/O concurrent ✓</text>
+          <rect x="212" y="266" width="106" height="18" rx="8" class="badge-ok"/>
+          <text x="265" y="275" class="badge-text-ok">I/O concurrent ✓</text>
 
-          <text x="180" y="404" class="node-text dim">real result: 16s</text>
-          <rect x="40" y="414" width="240" height="8" rx="4" fill="none" stroke="#1a3a4a" stroke-width="1"/>
-          <rect x="40" y="414" width="28"  height="8" rx="4" fill="#6aaccc"/>
+          <!-- cost -->
+          <rect x="20" y="294" width="280" height="96" rx="6" fill="#161616" stroke="#2e2e2e" stroke-width="1"/>
+          <text x="160" y="314" class="node-text gold">Cost summary</text>
+          <text x="160" y="332" class="node-text dim">~72 TCP handshakes (TIME_WAIT measured)</text>
+          <text x="160" y="348" class="node-text warn">HTTP/1.1 — no multiplexing</text>
+          <text x="160" y="364" class="node-text info">work-stealing semaphore</text>
+          <text x="160" y="380" class="node-text dim">7 ns × 22 calls = 154 peak in-flight</text>
+
+          <rect x="20" y="398" width="280" height="6" rx="3" fill="#1a3a4a"/>
+          <rect x="20" y="398" width="42" height="6" rx="3" fill="#6aaccc"/>
+          <text x="160" y="420" class="node-text info">8s (jobs=7)</text>
         </svg>
       </div>
     </div>
   </div>
 
   <div class="tree-legend">
-    <div class="tl-item"><div class="tl-box proc"></div> OS Process — has PID, own memory, TLS per spawn</div>
-    <div class="tl-item"><div class="tl-box goroutine"></div> Goroutine — logical unit, no PID, no new TLS</div>
+    <div class="tl-item"><div class="tl-box proc"></div> OS Process — PID, isolated memory, TLS per spawn</div>
+    <div class="tl-item"><div class="tl-box goroutine"></div> Goroutine — no PID, ~2KB stack, no new TLS</div>
     <div class="tl-item"><div class="tl-box promise"></div> Promise — async I/O concurrent, CPU sequential</div>
     <div class="tl-item"><div class="tl-box pool"></div> Connection pool — shared within process</div>
-  </div>
-
-  <!-- TCP Handshake Analysis -->
-  <div class="elo-wrap" style="margin-top:2rem;">
-    <h3>TCP Handshake Count — Measured via netstat TIME_WAIT</h3>
-    <div style="font-family:monospace;font-size:0.8rem;color:var(--text-dim);margin-bottom:1.25rem;line-height:1.7;">
-      Each TCP connection that closes leaves a <code style="color:var(--gold)">TIME_WAIT</code> state for ~60s.
-      Counting accumulated TIME_WAITs after an export reveals the true number of unique connections opened.
-    </div>
-    <div style="font-family:monospace;font-size:0.78rem;color:var(--text-dim);margin-bottom:1rem;">
-      Monitor command:
-      <code style="display:block;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:0.5rem 0.75rem;margin-top:0.4rem;color:var(--text);">netstat -an | grep -E 'EKS_IP_1|EKS_IP_2' | awk '{print $6}' | sort | uniq -c</code>
-    </div>
-    <div style="overflow-x:auto;">
-      <table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:0.8rem;">
-        <thead>
-          <tr style="border-bottom:1px solid var(--border);color:var(--text-dim);">
-            <th style="text-align:left;padding:0.4rem 0.75rem;">Mode</th>
-            <th style="text-align:right;padding:0.4rem 0.75rem;">TCP handshakes</th>
-            <th style="text-align:left;padding:0.4rem 0.75rem;">Why</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:0.4rem 0.75rem;color:var(--gold)">Go (fixed)</td>
-            <td style="text-align:right;padding:0.4rem 0.75rem;color:var(--success)">1</td>
-            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">HTTP/2 multiplex — 1 TCP for all 528 requests. Peak 1 ESTABLISHED.</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">Node.js workers=4</td>
-            <td style="text-align:right;padding:0.4rem 0.75rem;color:var(--success)">32</td>
-            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">4 pools, each serves fixed ns set — connections persist per pool. Fewer total than single-thread.</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">Node.js procs=4</td>
-            <td style="text-align:right;padding:0.4rem 0.75rem;color:var(--warning)">43</td>
-            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">Same N=4 as workers. Each OS process has a completely separate TCP stack — 11 more unique connections than worker threads.</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:0.4rem 0.75rem;color:var(--info)">Node.js single-thread</td>
-            <td style="text-align:right;padding:0.4rem 0.75rem;color:var(--warning)">84</td>
-            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">Peak 66 SYN_SENT (3 ns × 22 req). Work-stealing semaphore causes more connection cycling than workers.</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">Bash sequential / batch</td>
-            <td style="text-align:right;padding:0.4rem 0.75rem;color:var(--text-dim)">0 observed</td>
-            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">Run takes 60–108s. TIME_WAIT (60s) expires mid-run. Peak ~21 ESTABLISHED per batch.</td>
-          </tr>
-          <tr>
-            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">GNU parallel –jobs 8</td>
-            <td style="text-align:right;padding:0.4rem 0.75rem;color:var(--text-dim)">0 observed</td>
-            <td style="padding:0.4rem 0.75rem;color:var(--text-dim)">Peak 19 ESTABLISHED, 6 SYN_SENT. 216 new TLS across 43s run — connections cycle too fast to accumulate in polling.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <div style="font-family:monospace;font-size:0.78rem;color:var(--text-dim);margin-top:1rem;line-height:1.7;">
-      <strong style="color:var(--warning)">Surprising: workers=4 has fewer connections (32) than single-thread (84).</strong>
-      Each worker handles a fixed set of namespaces and keeps its pool alive across all of them.
-      Single-thread work-stealing rotates namespaces faster — connections from closing namespaces overlap with new ones opening, causing more TCP cycling.
-      Workers win on connection efficiency, but single-thread wins on speed via work-stealing (no idle slots).
-      <br><br>
-      <strong style="color:var(--warning)">Bash has 0 accumulated TIME_WAIT — not because of reuse, but because of expiry.</strong>
-      Bash sequential takes ~108s total. Each namespace takes ~4.5s. TIME_WAIT lasts 60s.
-      By the time namespace 14 finishes, namespace 1's TIME_WAIT has already expired. No accumulation.
-      <br><br>
-      <strong style="color:var(--warning)">Why Node.js can't use HTTP/2:</strong>
-      <code style="color:var(--info)">@kubernetes/client-node</code> uses Node.js <code style="color:var(--info)">https</code> module (HTTP/1.1).
-      The <code style="color:var(--info)">http2</code> module is a completely separate API — no automatic upgrade.
-      ALPN negotiation (which Go's client-go uses) cannot happen through the <code style="color:var(--info)">https</code> module.
-      Result: connections torn down between ns batches, TIME_WAIT accumulates to 84.
-    </div>
-  </div>
-
-  <div class="elo-wrap">
-    <h3>Why single-thread Node.js (16s) beats workers=4 (23s) but loses to Go (11s)</h3>
-    <div class="elo-grid">
-      <div>
-        <div class="elo-heading"><strong>Node.js + worker_threads</strong> — N OS threads，每個 worker 獨立 event loop</div>
-        <div style="font-family:monospace;font-size:0.75rem;color:var(--info);margin-bottom:0.5rem;">workers=4：4 個 namespace 同時跑，各自 I/O concurrent</div>
-        <div class="elo-io-row">
-          <span class="elo-io-chip io-flying" data-elo="io">GET deploys</span>
-          <span class="elo-io-chip io-flying" data-elo="io">GET services</span>
-          <span class="elo-io-chip io-flying" data-elo="io">GET pods</span>
-          <span class="elo-io-chip io-flying" data-elo="io">GET configmaps</span>
-          <span class="elo-io-chip io-flying" data-elo="io">GET secrets</span>
-          <span class="elo-io-chip io-flying" data-elo="io">GET ingresses</span>
-          <span class="elo-io-chip io-flying" data-elo="io">GET hpa</span>
-          <span class="elo-io-chip io-flying" data-elo="io">GET roles</span>
-          <span class="elo-io-chip io-flying" data-elo="io">GET crds</span>
-        </div>
-        <div style="font-family:monospace;font-size:0.75rem;color:var(--warning);margin-bottom:0.5rem;">CPU phase: 每個 worker 有自己的 thread，不互搶</div>
-        <div class="elo-lane">
-          <span class="elo-lane-label">Worker 0</span>
-          <div class="elo-track">
-            <div class="elo-bar elo-bar-single" id="elo-t1"></div>
-          </div>
-        </div>
-        <div class="elo-lane">
-          <span class="elo-lane-label">Worker 1</span>
-          <div class="elo-track" style="border-color:transparent;background:transparent"></div>
-        </div>
-        <div class="elo-lane">
-          <span class="elo-lane-label">Worker 2</span>
-          <div class="elo-track" style="border-color:transparent;background:transparent"></div>
-        </div>
-        <div class="elo-total" style="color:var(--warning)">workers=4 → 23s · single-thread → 16s（24 namespaces）</div>
-        <div class="elo-note">
-          ~32 TCP handshakes per worker pool (4 pools × ~8 each)<br>
-          I/O concurrent ✓ — CPU per-worker parallel ✓<br>
-          <span style="color:var(--warning)">Static ns allocation: slow namespaces stall their worker. Single-thread semaphore avoids this.</span><br>
-          <span style="color:var(--warning)">注意：workers × 8 = 實際 TCP 連線數（8 API clients per worker，各自 1 pool）。22 in-flight requests ≠ 22 connections</span><br>
-          <span style="color:var(--info)">Timeout 需用 AbortController，Promise.race 不會真正關閉 TCP connection</span>
-        </div>
-      </div>
-
-      <div>
-        <div class="elo-heading"><strong>Go</strong> — M:N scheduler (multiple OS threads)</div>
-        <div style="font-family:monospace;font-size:0.75rem;color:var(--success);margin-bottom:0.5rem;">All goroutines run truly in parallel</div>
-        <div class="elo-lane">
-          <span class="elo-lane-label">G:deploys</span>
-          <div class="elo-track">
-            <div class="elo-bar elo-bar-parallel" id="gor-t1"></div>
-          </div>
-        </div>
-        <div class="elo-lane">
-          <span class="elo-lane-label">G:services</span>
-          <div class="elo-track">
-            <div class="elo-bar elo-bar-parallel" id="gor-t2"></div>
-          </div>
-        </div>
-        <div class="elo-lane">
-          <span class="elo-lane-label">G:pods</span>
-          <div class="elo-track">
-            <div class="elo-bar elo-bar-parallel" id="gor-t3"></div>
-          </div>
-        </div>
-        <div class="elo-total fast">HTTP/2 multiplex: 1 TCP for all requests → 11s</div>
-        <div class="elo-note">
-          HTTP/2 via ALPN: 1 TCP, all goroutines multiplex over it<br>
-          Node.js https module cannot upgrade to HTTP/2 (different API)<br>
-          I/O concurrent ✓ — CPU callbacks parallel ✓
-        </div>
-      </div>
-    </div>
   </div>
 </section>
 
 <!-- ════════════════════════════════════════
-     SECTION 3 — PRIMITIVES
+     §3 — TCP CONNECTIONS
+════════════════════════════════════════ -->
+<section class="section" id="tcp">
+  <h1>§ 03</h1>
+  <h2>TCP Connection Analysis</h2>
+  <p class="lead">netstat polled every 0.5s, filtering EKS endpoint IPs. TIME_WAIT holds for 60s after close — final accumulated count ≈ total unique TCP connections opened during the entire export run.</p>
+
+  <div style="font-family:monospace;font-size:0.8rem;color:var(--text-dim);margin-bottom:1rem;line-height:1.7;">
+    <strong style="color:var(--text)">ESTABLISHED</strong> — connections alive right now.
+    <strong style="color:var(--text)">SYN_SENT</strong> — mid-handshake (transient, &lt;200ms).
+    <strong style="color:var(--text)">TIME_WAIT</strong> — closed, waiting for 60s expiry. Accumulates across the run.
+    <br>Seeing high SYN_SENT during polling means a burst of new connections was opening simultaneously.
+  </div>
+
+  <div class="tcp-table-wrap">
+    <table class="tcp-table">
+      <thead>
+        <tr>
+          <th>Mode</th>
+          <th class="num">Peak ESTABLISHED</th>
+          <th class="num">Peak SYN_SENT</th>
+          <th class="num">TIME_WAIT (final)</th>
+          <th>Why</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="best">
+          <td style="color:var(--gold)">go-j7</td>
+          <td class="num" style="color:var(--success)">12</td>
+          <td class="num" style="color:var(--success)">76</td>
+          <td class="num" style="color:var(--success)">3</td>
+          <td style="color:var(--text-dim)">HTTP/2 multiplex — 1 TCP shared by all streams. 3 total: 2 EKS IPs + 1 reconnect.</td>
+        </tr>
+        <tr class="best">
+          <td style="color:var(--info)">node-single-j7</td>
+          <td class="num" style="color:var(--warning)">154</td>
+          <td class="num" style="color:var(--warning)">153</td>
+          <td class="num" style="color:var(--warning)">72</td>
+          <td style="color:var(--text-dim)">Semaphore releases 7 ns simultaneously → 154 connections at once → burst close → TIME_WAIT spikes.</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-dim)">node-single-j5</td>
+          <td class="num">110</td>
+          <td class="num">108</td>
+          <td class="num">38</td>
+          <td style="color:var(--text-dim)">Fewer ns in-flight → fewer simultaneous connections.</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-dim)">node-single-j3</td>
+          <td class="num">62</td>
+          <td class="num">61</td>
+          <td class="num">25</td>
+          <td style="color:var(--text-dim)">3 ns × 22 calls = 66 peak. TIME_WAIT lower — burst closes are smaller.</td>
+        </tr>
+        <tr class="best">
+          <td style="color:var(--text-dim)">node-workers-4</td>
+          <td class="num">61</td>
+          <td class="num">48</td>
+          <td class="num">23</td>
+          <td style="color:var(--text-dim)">4 separate pools, each serves a fixed namespace set. Fewer total opens than single-thread.</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-dim)">node-workers-3</td>
+          <td class="num">46</td>
+          <td class="num">44</td>
+          <td class="num">72</td>
+          <td style="color:var(--text-dim)">Fewer workers but pools held open longer — more TIME_WAIT accumulation despite lower peak.</td>
+        </tr>
+        <tr class="best">
+          <td style="color:var(--text-dim)">node-procs-4</td>
+          <td class="num">55</td>
+          <td class="num">44</td>
+          <td class="num">26</td>
+          <td style="color:var(--text-dim)">4 OS processes with completely isolated TCP stacks.</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-dim)">node-procs-5</td>
+          <td class="num">84</td>
+          <td class="num">81</td>
+          <td class="num">29</td>
+          <td style="color:var(--text-dim)">More processes, more pools, more connections.</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-dim)">bash-seq-j1</td>
+          <td class="num">14</td>
+          <td class="num">14</td>
+          <td class="num">22</td>
+          <td style="color:var(--text-dim)">Sequential — only ~9 kubectl alive at a time, but run is slow enough some TIME_WAIT survives.</td>
+        </tr>
+        <tr class="best">
+          <td style="color:var(--text-dim)">bash-batch-j8</td>
+          <td class="num">72</td>
+          <td class="num">64</td>
+          <td class="num">6</td>
+          <td style="color:var(--text-dim)">Connections scatter across 58s run — no simultaneous burst close, TIME_WAIT expires mid-run.</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-dim)">bash-batch-j9</td>
+          <td class="num">84</td>
+          <td class="num">60</td>
+          <td class="num">4</td>
+          <td style="color:var(--text-dim)">Same scatter pattern — connections cycle fast enough to expire.</td>
+        </tr>
+        <tr class="best">
+          <td style="color:var(--text-dim)">bash-gnu-j8</td>
+          <td class="num">54</td>
+          <td class="num">75</td>
+          <td class="num">5</td>
+          <td style="color:var(--text-dim)">Work-stealing vs batch: similar connection count, but lower ESTABLISHED (fewer idle slots).</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-dim)">bash-gnu-j9</td>
+          <td class="num">55</td>
+          <td class="num">75</td>
+          <td class="num">3</td>
+          <td style="color:var(--text-dim)">Near-zero accumulation — connections too scattered to pile up in the 60s window.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tcp-note">
+    <p><strong>bash TIME_WAIT = 3–6:</strong> 216 kubectl connections scatter across the full run. No burst of simultaneous closes. Individual connections enter TIME_WAIT and expire before the run ends — nothing piles up.</p>
+    <p><strong>Node.js TIME_WAIT = 25–72:</strong> the semaphore releases N namespaces at once. They all finish at roughly the same time, close ~N×22 connections simultaneously, and TIME_WAIT spikes. Higher jobs = larger spike. This is why workers=4 (23) beats node-single-j7 (72) on connection efficiency — even though single-thread is faster overall.</p>
+    <p><strong>Go TIME_WAIT = 3:</strong> HTTP/2 multiplexes all 528 requests over 1–3 TCP connections. Those 3 are 2 EKS IP endpoints + 1 occasional reconnect. TIME_WAIT only appears when those long-lived connections finally close.</p>
+    <p><strong>Why Node.js can't use HTTP/2:</strong> <code>@kubernetes/client-node</code> uses Node.js <code>https</code> (HTTP/1.1). The <code>http2</code> module is a completely separate API — there is no automatic upgrade, no ALPN negotiation. Go's client-go negotiates HTTP/2 automatically during TLS via ALPN. The result: Go opens 3 TCP connections for the entire export. Node.js opens 72.</p>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════
+     §4 — CONCURRENCY PRIMITIVES
 ════════════════════════════════════════ -->
 <section class="section" id="prims">
-  <h1>§ 03</h1>
+  <h1>§ 04</h1>
   <h2>Process / Thread / Goroutine</h2>
-  <p class="lead">Three concurrency primitives. One determines why Go can spawn 1000 workers without sweating.</p>
+  <p class="lead">Three primitives with very different costs. In this workload — 99% I/O wait — only one difference ultimately matters.</p>
 
   <div class="prim-grid">
-
     <div class="prim-card">
       <h3>OS Process</h3>
-      <div class="prim-visual" id="vis-process">
-        <!-- filled by JS -->
-      </div>
-      <div class="prim-stats">
-        <div class="prim-stat"><span>Memory</span><span>Own space</span></div>
-        <div class="prim-stat"><span>Stack</span><span>~1 MB</span></div>
-        <div class="prim-stat"><span>Create</span><span>fork()</span></div>
-        <div class="prim-stat"><span>OS visible</span><span>PID ✓</span></div>
-        <div class="prim-stat"><span>Stop</span><span>kill -9</span></div>
-        <div class="prim-stat"><span>Context switch</span><span style="color:var(--error)">~10,000 ns</span></div>
-      </div>
+      <div class="prim-stat"><span>Memory</span><span>Isolated address space</span></div>
+      <div class="prim-stat"><span>Stack</span><span>~1–8 MB</span></div>
+      <div class="prim-stat"><span>Create</span><span>fork() + exec()</span></div>
+      <div class="prim-stat"><span>OS visible</span><span>PID ✓</span></div>
+      <div class="prim-stat"><span>Kill</span><span>SIGKILL</span></div>
+      <div class="prim-stat"><span>Context switch</span><span style="color:var(--error)">~10,000 ns</span></div>
+      <div class="prim-stat"><span>New TLS per unit</span><span style="color:var(--error)">Yes — every spawn</span></div>
+      <div class="prim-stat"><span>In this project</span><span>bash kubectl, node procs</span></div>
     </div>
 
     <div class="prim-card">
       <h3>OS Thread</h3>
-      <div class="prim-visual" id="vis-thread">
-      </div>
-      <div class="prim-stats">
-        <div class="prim-stat"><span>Memory</span><span>Shared (heap)</span></div>
-        <div class="prim-stat"><span>Stack</span><span>~1 MB</span></div>
-        <div class="prim-stat"><span>Create</span><span>pthread_create()</span></div>
-        <div class="prim-stat"><span>OS visible</span><span>TID ✓</span></div>
-        <div class="prim-stat"><span>Stop</span><span>pthread_cancel()</span></div>
-        <div class="prim-stat"><span>Context switch</span><span style="color:var(--warning)">~1,000 ns</span></div>
-      </div>
+      <div class="prim-stat"><span>Memory</span><span>Shared heap</span></div>
+      <div class="prim-stat"><span>Stack</span><span>~1–8 MB fixed</span></div>
+      <div class="prim-stat"><span>Create</span><span>pthread_create()</span></div>
+      <div class="prim-stat"><span>OS visible</span><span>TID ✓</span></div>
+      <div class="prim-stat"><span>Kill</span><span>pthread_cancel()</span></div>
+      <div class="prim-stat"><span>Context switch</span><span style="color:var(--warning)">~1,000 ns</span></div>
+      <div class="prim-stat"><span>New TLS per unit</span><span>No — shared pool</span></div>
+      <div class="prim-stat"><span>In this project</span><span>node worker_threads</span></div>
     </div>
 
     <div class="prim-card">
       <h3>Goroutine</h3>
-      <div class="prim-visual" id="vis-goroutine">
-      </div>
-      <div class="prim-stats">
-        <div class="prim-stat"><span>Memory</span><span>Shared (heap)</span></div>
-        <div class="prim-stat"><span>Stack</span><span>~2 KB (grows)</span></div>
-        <div class="prim-stat"><span>Create</span><span>go func()</span></div>
-        <div class="prim-stat"><span>OS visible</span><span>No</span></div>
-        <div class="prim-stat"><span>Stop</span><span>channel / return</span></div>
-        <div class="prim-stat prim-stat-highlight"><span>Context switch</span><span style="color:var(--success)">~100 ns <small>(10× faster than thread)</small></span></div>
-      </div>
+      <div class="prim-stat"><span>Memory</span><span>Shared heap</span></div>
+      <div class="prim-stat"><span>Stack</span><span style="color:var(--success)">~2–8 KB (grows)</span></div>
+      <div class="prim-stat"><span>Create</span><span>go func()</span></div>
+      <div class="prim-stat"><span>OS visible</span><span>No</span></div>
+      <div class="prim-stat"><span>Kill</span><span>channel / context</span></div>
+      <div class="prim-stat"><span>Context switch</span><span style="color:var(--success)">~100 ns (10× thread)</span></div>
+      <div class="prim-stat"><span>New TLS per unit</span><span style="color:var(--success)">No — HTTP/2 shared</span></div>
+      <div class="prim-stat"><span>In this project</span><span>Go binary (ns + batch)</span></div>
     </div>
-
   </div>
 
-  <div class="spawn-section">
-    <h3>Spawn 1000 of each — total stack memory</h3>
-    <div class="spawn-controls">
-      <button class="spawn-btn" onclick="runSpawn()">Animate</button>
-      <button class="spawn-btn" onclick="resetSpawn()">Reset</button>
-      <span class="chip">Each dot = 1 MB</span>
-    </div>
-
-    <div class="dot-grid-chart">
-      <div>
-        <div class="dot-row-label">
-          <span class="smc-label">OS Thread × 1000</span>
-          <span class="smc-value warn" id="smv-thread">—</span>
-        </div>
-        <div class="dot-grid" id="dg-thread"></div>
-        <div class="smc-note" id="smn-thread"></div>
-      </div>
-
-      <div>
-        <div class="dot-row-label">
-          <span class="smc-label">Goroutine × 1000</span>
-          <span class="smc-value ok" id="smv-goroutine">—</span>
-        </div>
-        <div class="dot-grid" id="dg-goroutine"></div>
-        <div class="smc-note" id="smn-goroutine"></div>
-      </div>
-    </div>
+  <div style="margin-top:1.5rem;font-family:monospace;font-size:0.82rem;color:var(--text-dim);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.25rem;line-height:1.85;">
+    <strong style="color:var(--text)">Why primitives matter less than TLS here:</strong>
+    <br><br>
+    The export is 99% I/O wait. CPU barely registers. Adding more threads vs goroutines is a <em>constant</em> improvement. Switching from HTTP/1.1 (72 handshakes) to HTTP/2 (3 handshakes) is a <em>multiplicative</em> improvement.
+    <br><br>
+    Goroutines at 2KB each vs threads at 1MB each — 500× less memory. But for 200 goroutines that's 400KB vs 200MB. Significant at scale; not the reason Go wins here.
+    <br><br>
+    <strong style="color:var(--gold)">Go wins because client-go negotiates HTTP/2 via ALPN. Every other advantage is secondary.</strong>
   </div>
 </section>
 
 <!-- ════════════════════════════════════════
-     SECTION 4 — TOKEN BUCKET
+     §5 — TOKEN BUCKET
 ════════════════════════════════════════ -->
 <section class="section" id="bucket">
-  <h1>§ 04</h1>
+  <h1>§ 05</h1>
   <h2>Token Bucket Rate Limiter</h2>
-  <p class="lead">client-go defaults to QPS=5, Burst=10. That bottleneck turned an 11s export into 103s.</p>
+  <p class="lead">Default QPS=5, Burst=10 turned an 11s export into 103s. Why does client-go have this at all — and why don't other language clients?</p>
+
+  <div class="bucket-why">
+    <p><strong>Kubernetes is written in Go.</strong> client-go is not a third-party SDK — it is Kubernetes's own internal client. The same code runs inside kube-controller-manager, kube-scheduler, and every Kubernetes controller. It was published as a library so you can write your own controllers using the same primitives the control plane uses.</p>
+    <p><strong>The rate limiter exists for controllers, not for tools.</strong> A Kubernetes controller running 200 goroutines watching resources would flood the API server if every LIST/WATCH fired unrestricted. The token bucket enforces a global budget across all goroutines sharing one client. QPS=5, Burst=10 makes sense when one controller shares an API server with 50 other controllers. It makes no sense for a bulk export tool running alone.</p>
+    <p><strong>Other language clients don't have this.</strong> Python's <code>kubernetes</code>, Java's <code>kubernetes-client</code>, Node.js's <code>@kubernetes/client-node</code> — all generated from the OpenAPI spec. They implement the HTTP API surface only. They never had access to the controller internals. Rate limiting falls to the API server (<code>429 Too Many Requests</code>) or the user.</p>
+    <p><strong>The bug and the fix:</strong> <span class="hl">clientcmd.BuildConfigFromFlags</span> returns a config with controller defaults baked in. Two lines fix it:
+    <br><code style="color:var(--gold)">cfg.QPS = 100; cfg.Burst = 200</code>
+    <br>103s → 11s. Then further tuning (namespaces=7) → 6s.</p>
+  </div>
 
   <div class="bucket-layout">
     <div class="bucket-controls">
@@ -1387,12 +811,12 @@
         <button id="btn-fast" onclick="setMode('fast')">QPS=100 Burst=200<br><small>(fixed)</small></button>
       </div>
 
-      <div class="bucket-stats" id="bucketStats">
+      <div class="bucket-stats">
         <div class="stat-row"><span class="stat-label">QPS (refill/s)</span><span class="stat-val" id="bstat-qps">5</span></div>
         <div class="stat-row"><span class="stat-label">Burst (capacity)</span><span class="stat-val" id="bstat-burst">10</span></div>
         <div class="stat-row"><span class="stat-label">Tokens now</span><span class="stat-val gold" id="bstat-tokens">10</span></div>
         <div class="stat-row"><span class="stat-label">Requests queued</span><span class="stat-val warn" id="bstat-queued">0</span></div>
-        <div class="stat-row"><span class="stat-label">Total requests</span><span class="stat-val" id="bstat-total">0</span></div>
+        <div class="stat-row"><span class="stat-label">Total served</span><span class="stat-val" id="bstat-total">0</span></div>
         <div class="stat-row"><span class="stat-label">Est. wait (100 req)</span><span class="stat-val warn" id="bstat-wait">—</span></div>
       </div>
 
@@ -1401,9 +825,9 @@
 
       <div style="font-family:monospace;font-size:0.8rem;color:var(--text-dim);line-height:1.8;">
         <div>QPS=5, Burst=10 →</div>
-        <div style="color:var(--warning);">100 requests = ~18s wait</div>
-        <div style="margin-top:0.5rem;">QPS=100, Burst=200 →</div>
-        <div style="color:var(--success);">100 requests = &lt;0.1s wait</div>
+        <div style="color:var(--warning)">100 requests ≈ 18s wait</div>
+        <div style="margin-top:0.5rem">QPS=100, Burst=200 →</div>
+        <div style="color:var(--success)">100 requests &lt;0.1s wait</div>
       </div>
     </div>
 
@@ -1421,565 +845,520 @@
 </section>
 
 <div style="text-align:center;padding:3rem;color:var(--text-dim);font-family:monospace;font-size:0.8rem;border-top:1px solid var(--border);">
-  kubecmds-viz · Node.js vs Go export explainer · vanilla JS
+  kubecmds-viz · export explainer · vanilla JS
 </div>
 
 <script>
 // ════════════════════════════════════════
-// SECTION 1 — RACE CHART
+// §1 — RACE CHART
 // ════════════════════════════════════════
 
-const RACE_DATA = [
-  {
-    label: 'Bash sequential',
-    time: 145,
-    barClass: 'bar-bash-seq',
-    color: '#a07840',
-    math: [
-      { n: '24', unit: 'namespaces' },
-      { op: '×' },
-      { n: '9', unit: 'kubectl / ns' },
-      { op: '=' },
-      { n: '216', unit: 'total kubectl spawns', cls: 'accent' },
-      { sep: true },
-      { n: '1', unit: 'at a time', cls: 'warn' },
-    ],
-    flow: [
-      { text: 'ns1:', col: 'gold' },
-      { text: '  kubectl get deployments  -n ns1', note: 'new proc + TLS ~100ms' },
-      { text: '  kubectl get services     -n ns1', note: 'new proc + TLS ~100ms' },
-      { text: '  kubectl get pods         -n ns1', note: 'new proc + TLS ~100ms' },
-      { text: '  kubectl get configmaps   -n ns1', note: 'new proc + TLS ~100ms' },
-      { text: '  kubectl get secrets      -n ns1', note: 'new proc + TLS ~100ms' },
-      { text: '  kubectl get ingresses    -n ns1', note: 'new proc + TLS ~100ms' },
-      { text: '  kubectl get hpa,pdb      -n ns1', note: 'new proc + TLS ~100ms' },
-      { text: '  kubectl get events       -n ns1', note: 'new proc + TLS ~100ms' },
-      { text: '  kubectl get crds                ', note: 'new proc + TLS ~100ms' },
-      { text: 'ns2: (waits for ns1 to finish)', col: 'dim' },
-      { text: '  kubectl get deployments  -n ns2', note: 'new proc + TLS ~100ms' },
-      { text: '  ... × 9 more' , col: 'dim' },
-      { text: 'ns3 … ns24: same pattern', col: 'dim' },
-    ],
-    keypoints: [
-      'Each kubectl = fork + exec + TLS handshake',
-      '216 calls × ~100ms = ~21s on handshakes alone',
-      'Namespace 2 cannot start until namespace 1 finishes',
-      'API server sits idle while processes spin up',
-    ],
-    bottleneck: '216 TLS handshakes + sequential wait = ~50s wasted before any real work',
-    bnType: 'warn',
-  },
-  {
-    label: 'Bash –jobs 3 batch',
-    time: 94,
-    barClass: 'bar-bash-batch',
-    color: '#b08848',
-    math: [
-      { n: '24', unit: 'namespaces' },
-      { op: '÷' },
-      { n: '3', unit: 'per batch', cls: 'accent' },
-      { op: '=' },
-      { n: '8', unit: 'batches' },
-      { sep: true },
-      { n: '216', unit: 'total spawns' },
-    ],
-    flow: [
-      { text: 'batch 1:', col: 'gold' },
-      { text: '  [ns1] [ns2] [ns3]  ← run in parallel' },
-      { text: '  bash `wait` ─────── blocks until ALL 3 done', col: 'warn' },
-      { text: '' },
-      { text: 'batch 2:', col: 'gold' },
-      { text: '  [ns4] [ns5] [ns6]  ← starts after slowest of batch 1' },
-      { text: '  bash `wait` .......' , col: 'warn' },
-      { text: '' },
-      { text: 'batch 8:', col: 'gold' },
-      { text: '  [ns22] [ns23] [ns24]' },
-      { text: '  └─ done' },
-      { text: '' },
-      { text: 'example: if ns1=8s, ns2=3s, ns3=5s', col: 'dim' },
-      { text: '  batch 1 = 8s  (not the avg 5.3s)', col: 'dim' },
-    ],
-    keypoints: [
-      '3× faster than sequential — but capped by slowest ns',
-      'Idle slots wait for the slowest in the batch',
-      'Still 216 process spawns with TLS overhead',
-      '8 synchronous barriers slow things down',
-    ],
-    bottleneck: 'Synchronous batch barrier: slowest namespace in each batch stalls all others',
-    bnType: 'warn',
-  },
-  {
-    label: 'GNU parallel –jobs 8 (sweet spot)',
-    time: 43,
-    barClass: 'bar-gnu-par',
-    color: '#6dca82',
-    math: [
-      { n: '8', unit: 'slots', cls: 'accent' },
-      { sep: true },
-      { n: '24', unit: 'namespaces' },
-      { sep: true },
-      { n: '216', unit: 'total kubectl spawns' },
-    ],
-    flow: [
-      { text: 'Work-stealing: always 8 slots running', col: 'success' },
-      { text: '' },
-      { text: 'slot 1: [ns1 ──────────] [ns9 ──────] …', col: 'success' },
-      { text: 'slot 2: [ns2 ──────] [ns10 ──────────] …', col: 'success' },
-      { text: '  ...', col: 'dim' },
-      { text: 'slot 8: [ns8 ────] [ns15 ─────] …', col: 'success' },
-      { text: '' },
-      { text: 'any slot done → next ns starts immediately', col: 'dim' },
-      { text: '' },
-      { text: 'vs bash batch (–jobs 8):', col: 'dim' },
-      { text: '  [ns1..ns8] wait for slowest → [ns9..ns16] …', col: 'warn' },
-      { text: '  ≈ 60s (slots idle at batch boundaries)', col: 'warn' },
-      { text: '' },
-      { text: 'each namespace = 9 kubectl processes × new TLS', col: 'dim' },
-    ],
-    keypoints: [
-      'Work-stealing: no idle slots at batch boundaries',
-      'Sweet spot –jobs 8: 43s (–jobs 3 was 69s)',
-      'Still 216 kubectl process spawns across the run',
-      '216 TLS handshakes — no connection reuse possible',
-    ],
-    bottleneck: '216 TLS handshakes (9 kubectl per ns, each a new process). Process spawn is the floor.',
-    bnType: 'info',
-  },
-  {
-    label: 'Node.js workers=4',
-    time: 23,
-    barClass: 'bar-node-workers',
-    color: '#4a8aaa',
-    math: [
-      { n: '4', unit: 'workers', cls: 'accent' },
-      { op: '×' },
-      { n: '22', unit: 'API calls / ns' },
-      { op: '=' },
-      { n: '~88', unit: 'peak concurrent', cls: 'warn' },
-      { sep: true },
-      { n: '~32', unit: 'TCP handshakes' },
-    ],
-    flow: [
-      { text: '// Namespaces statically round-robin assigned', col: 'dim' },
-      { text: 'Worker 0: [ns0, ns4, ns8, …]  (sequential)', col: 'info' },
-      { text: 'Worker 1: [ns1, ns5, ns9, …]  (sequential)', col: 'info' },
-      { text: 'Worker 2: [ns2, ns6, ns10, …] (sequential)', col: 'info' },
-      { text: 'Worker 3: [ns3, ns7, ns11, …] (sequential)', col: 'info' },
-      { text: '' },
-      { text: 'each worker: per-ns Promise.all(22 calls)', col: 'dim' },
-      { text: '' },
-      { text: 'Problem: each worker has its own HTTP pool', col: 'warn' },
-      { text: '  4 pools × ~8 conns = ~32 TCP handshakes', col: 'warn' },
-      { text: '' },
-      { text: 'Problem: istio-system (180 roles) → Worker 2 stalls', col: 'warn' },
-      { text: '  while other workers finish early and wait', col: 'warn' },
-    ],
-    keypoints: [
-      'No process spawn — in-process API client',
-      'Static assignment: slow ns blocks its worker',
-      '4 separate HTTP pools = 4× more TCP handshakes vs single-thread',
-      'workers=4 sweet spot: 23s (workers=5 → 31s, API pressure)',
-    ],
-    bottleneck: 'Static namespace assignment + pool fragmentation. Slow namespace stalls its worker.',
-    bnType: 'warn',
-  },
-  {
-    label: 'Node.js procs=3',
-    time: 23,
-    barClass: 'bar-node-procs',
-    color: '#506aaa',
-    math: [
-      { n: '3', unit: 'child procs', cls: 'accent' },
-      { sep: true },
-      { n: '~24', unit: 'TCP handshakes' },
-      { sep: true },
-      { n: '~450ms', unit: 'spawn overhead', cls: 'warn' },
-    ],
-    flow: [
-      { text: '// Each child = separate Node.js process', col: 'dim' },
-      { text: 'Proc A (PID 1234): [ns0, ns3, ns6, …]', col: 'info' },
-      { text: 'Proc B (PID 1235): [ns1, ns4, ns7, …]', col: 'info' },
-      { text: 'Proc C (PID 1236): [ns2, ns5, ns8, …]', col: 'info' },
-      { text: '' },
-      { text: 'each proc: sequential ns loop with per-ns Promise.all', col: 'dim' },
-      { text: '' },
-      { text: 'V8 init + kubeconfig load per proc: ~150ms', col: 'warn' },
-      { text: '3 procs × 150ms = ~450ms cold-start overhead', col: 'warn' },
-      { text: '' },
-      { text: 'OS-level pool isolation: TCP state not shared', col: 'warn' },
-      { text: '  procs=6 → API throttling, hangs (6 × full V8 heap)', col: 'error' },
-    ],
-    keypoints: [
-      'Same static-assignment problem as workers',
-      'Extra cost: V8 cold-start ~150ms per process',
-      'Durability cliff: procs=6 hangs (RAM pressure)',
-      'GNU parallel tolerates more slots (stateless per job)',
-    ],
-    bottleneck: 'V8 cold-start × N procs + static assignment + isolated OS TCP stacks per process.',
-    bnType: 'warn',
-  },
-  {
-    label: 'Node.js single-thread (jobs=3)',
-    time: 16,
-    barClass: 'bar-nodejs',
-    color: '#6aaccc',
-    math: [
-      { n: '3', unit: 'concurrent ns', cls: 'accent' },
-      { op: '×' },
-      { n: '22', unit: 'API calls / ns' },
-      { op: '=' },
-      { n: '~66', unit: 'peak in-flight', cls: 'ok' },
-      { sep: true },
-      { n: '~95', unit: 'TCP handshakes' },
-    ],
-    flow: [
-      { text: '// Semaphore: always 3 namespaces in-progress', col: 'dim' },
-      { text: 'runWithConcurrency(namespaces, jobs=3, ns => {', col: 'gold' },
-      { text: '  return exportOneNamespace(ns)  // work-stealing', col: 'gold' },
-      { text: '})' },
-      { text: '' },
-      { text: 'exportOneNamespace(ns):', col: 'gold' },
-      { text: '  Promise.all([', col: 'gold' },
-      { text: '    fetchDeployments(ns), fetchStatefulSets(ns), …', col: 'success' },
-      { text: '    fetchServices(ns), fetchIngresses(ns), …', col: 'success' },
-      { text: '    … 22 calls per namespace', col: 'success' },
-      { text: '  ])', col: 'gold' },
-      { text: '' },
-      { text: 'peak: 3 ns × 22 = ~66 concurrent requests', col: 'success' },
-      { text: 'netstat: 66 ESTABLISHED observed, ~95 TIME_WAIT total', col: 'dim' },
-      { text: '  (keep-alive not effective across ns batches)', col: 'warn' },
-    ],
-    keypoints: [
-      'Semaphore work-stealing: no idle slots, no slow-ns stall',
-      '1 HTTP pool shared across all namespaces',
-      '~95 TCP handshakes total (netstat TIME_WAIT confirmed)',
-      'HTTP/1.1 only — @kubernetes/client-node uses https not http2',
-    ],
-    bottleneck: 'HTTP/1.1 only — keep-alive not reused across namespace batches (~95 handshakes). Go HTTP/2 does it in 1.',
-    bnType: 'info',
-  },
-  {
-    label: 'Go (rate limit bug)',
-    time: 103,
-    barClass: 'bar-go-bug',
-    color: '#e07070',
-    math: [
-      { n: '24', unit: 'goroutines' },
-      { op: '×' },
-      { n: '9', unit: 'API calls / ns' },
-      { op: '=' },
-      { n: '216', unit: 'total API calls' },
-      { sep: true },
-      { n: 'QPS=5', unit: 'Burst=10', cls: 'warn' },
-    ],
-    flow: [
-      { text: 'all goroutines fire simultaneously:', col: 'dim' },
-      { text: '' },
-      { text: '  ns1 goroutine: GET .../deployments  ← token ✓', col: 'success' },
-      { text: '  ns2 goroutine: GET .../deployments  ← token ✓', col: 'success' },
-      { text: '  ns3 goroutine: GET .../deployments  ← token ✓', col: 'success' },
-      { text: '  ... × 10  (burst=10 exhausted)', col: 'dim' },
-      { text: '' },
-      { text: '  ns11 goroutine: GET .../deployments  ← wait 200ms', col: 'warn' },
-      { text: '  ns12 goroutine: GET .../deployments  ← wait 400ms', col: 'warn' },
-      { text: '  ns13 goroutine: GET .../deployments  ← wait 600ms', col: 'warn' },
-      { text: '  ...' , col: 'warn' },
-      { text: '' },
-      { text: '206 remaining calls × 200ms avg = ~41s waiting', col: 'error' },
-    ],
-    keypoints: [
-      '1 process, 1 TLS connection — no spawn overhead',
-      'But QPS=5 refills 1 token every 200ms',
-      'After burst=10: 206 calls queue up behind rate limiter',
-      '41s of pure waiting → slower than bash sequential',
-    ],
-    bottleneck: 'QPS=5 Burst=10 default: 206 queued calls × 200ms avg wait ≈ 41s wasted',
-    bnType: 'error',
-  },
-  {
-    label: 'Go (fixed, HTTP/2)',
-    time: 11,
-    barClass: 'bar-go-fixed',
-    color: '#e8b866',
-    math: [
-      { n: '24', unit: 'goroutines' },
-      { op: '×' },
-      { n: '22', unit: 'API calls / ns' },
-      { op: '=' },
-      { n: '~528', unit: 'total API calls' },
-      { sep: true },
-      { n: '1', unit: 'TCP connection', cls: 'ok' },
-    ],
-    flow: [
-      { text: 'ALPN negotiation: client-go → HTTP/2 automatically', col: 'gold' },
-      { text: '' },
-      { text: '  ns1 goroutine: GET .../deployments  ← stream 1', col: 'success' },
-      { text: '  ns2 goroutine: GET .../services     ← stream 3', col: 'success' },
-      { text: '  ns3 goroutine: GET .../pods         ← stream 5', col: 'success' },
-      { text: '  ... all ~528 calls multiplexed over 1 TCP', col: 'success' },
-      { text: '' },
-      { text: '  1 TLS handshake total for entire export', col: 'gold' },
-      { text: '  no fork(), no per-call TLS, no keep-alive issues', col: 'gold' },
-      { text: '' },
-      { text: 'goroutines: 2–8KB stack, scheduler handles parallelism', col: 'dim' },
-      { text: '  24 ns concurrent → API server responds → 11s', col: 'success' },
-    ],
-    keypoints: [
-      'HTTP/2 via ALPN: 1 TCP connection, all requests multiplex',
-      'Node.js https module cannot upgrade to HTTP/2',
-      'Goroutines: 2–8KB stack vs 1MB OS thread',
-      '1 TLS handshake vs ~95 for Node.js single-thread',
-    ],
-    bottleneck: 'No bottleneck. HTTP/2 + goroutines eliminate every overhead that plagues the other approaches.',
-    bnType: 'ok',
-  }
-];
-
-const MAX_TIME = 145;
-
-function renderMath(math) {
-  return math.map(m => {
-    if (m.op)  return `<span class="dm-op">${m.op}</span>`;
-    if (m.sep) return `<span class="dm-sep">·</span>`;
-    return `<span class="dm-num${m.cls ? ' '+m.cls : ''}">${m.n}</span><span class="dm-unit"> ${m.unit}</span>`;
-  }).join(' ');
-}
-
-function renderFlow(flow) {
-  return flow.map(line => {
-    const col = line.col === 'gold'    ? 'var(--gold)' :
-                line.col === 'dim'     ? 'var(--text-dim)' :
-                line.col === 'warn'    ? 'var(--warning)' :
-                line.col === 'error'   ? 'var(--error)' :
-                line.col === 'success' ? 'var(--success)' : 'var(--text)';
-    const note = line.note ? `<span class="flow-note"># ${line.note}</span>` : '';
-    return `<span style="color:${col}">${escHtml(line.text)}</span>${note}`;
-  }).join('\n');
-}
+// sqrt scale: compresses 6s–319s to readable bar widths
+const MAX_RAW = 320;
+function barPct(t) { return Math.sqrt(t) / Math.sqrt(MAX_RAW) * 100; }
 
 function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-function renderDetail(d) {
-  const bnColor = d.bnType === 'ok'    ? 'var(--success)' :
-                  d.bnType === 'error' ? 'var(--error)' :
-                  d.bnType === 'info'  ? 'var(--info)' : 'var(--warning)';
-  const kps = d.keypoints.map(k =>
+function renderMath(math) {
+  return math.map(m => {
+    if (m.op)  return `<span class="dm-op">${m.op}</span>`;
+    if (m.sep) return `<span class="dm-sep"> · </span>`;
+    return `<span class="dm-num${m.cls?' '+m.cls:''}">${m.n}</span><span class="dm-unit"> ${m.unit||''}</span>`;
+  }).join(' ');
+}
+
+function renderFlow(flow) {
+  return flow.map(line => {
+    const col = {gold:'var(--gold)',dim:'var(--text-dim)',warn:'var(--warning)',
+      error:'var(--error)',success:'var(--success)',info:'var(--info)'}[line.col] || 'var(--text)';
+    const note = line.note ? `<span class="flow-note"># ${line.note}</span>` : '';
+    return `<span style="color:${col}">${escHtml(line.text)}</span>${note}`;
+  }).join('\n');
+}
+
+function renderDetail(item, groupColor) {
+  const bnColor = {ok:'var(--success)',error:'var(--error)',info:'var(--info)'}[item.bnType] || 'var(--warning)';
+  const kps = item.keypoints.map(k =>
     `<div class="kp-row"><span class="kp-bullet">→</span><span>${k}</span></div>`
   ).join('');
-
   return `
     <div class="detail-header">
-      <span class="detail-name">${d.label}</span>
-      <span class="detail-time" style="color:${d.color}">${d.time}s</span>
+      <span class="detail-name">${item.config}</span>
+      <span class="detail-time" style="color:${groupColor}">${item.time}s</span>
     </div>
-    <div class="detail-math">${renderMath(d.math)}</div>
+    <div class="detail-math">${renderMath(item.math)}</div>
     <div class="detail-cols">
-      <div class="detail-flow">${renderFlow(d.flow)}</div>
+      <div class="detail-flow">${renderFlow(item.flow)}</div>
       <div class="detail-aside">
         <div class="detail-keypoints">${kps}</div>
         <div class="detail-bottleneck" style="border-color:${bnColor}">
           <span class="bn-label">Bottleneck</span>
-          <span style="color:${bnColor}">${d.bottleneck}</span>
+          <span style="color:${bnColor}">${item.bottleneck}</span>
         </div>
       </div>
-    </div>
-  `;
+    </div>`;
 }
+
+const RACE_GROUPS = [
+  {
+    label: 'Go',
+    color: '#e8b866',
+    items: [
+      {
+        config: 'rate-limit bug (QPS=5, Burst=10)', time: 103, barClass: 'bar-go-bug',
+        math: [{n:'24',unit:'goroutines'},{op:'×'},{n:'9',unit:'calls'},{op:'='},{n:'216',unit:'total'},{sep:true},{n:'QPS=5',unit:'Burst=10',cls:'warn'}],
+        flow: [
+          {text:'all goroutines fire simultaneously:',col:'dim'},
+          {text:'  ns1: GET deployments  ← token ✓',col:'success'},
+          {text:'  ns2: GET deployments  ← token ✓',col:'success'},
+          {text:'  ... × 10  (burst=10 exhausted)',col:'dim'},
+          {text:'  ns11: GET deployments ← wait 200ms',col:'warn'},
+          {text:'  ns12: GET deployments ← wait 400ms',col:'warn'},
+          {text:'  206 remaining calls queue up behind limiter',col:'error'},
+          {text:'  206 × 200ms avg = ~41s of pure waiting',col:'error'},
+        ],
+        keypoints: [
+          'HTTP/2 + goroutines — architecturally correct',
+          'But QPS=5 refills 1 token every 200ms',
+          'Burst=10 exhausted in the first wave of goroutines',
+          '206 API calls sit in the queue → 103s total',
+        ],
+        bottleneck: 'QPS=5 Burst=10 default: 206 queued calls × 200ms avg wait ≈ 41s wasted', bnType:'error',
+      },
+      {
+        config: 'namespaces=2', time: 14, barClass: 'bar-go-dim',
+        math: [{n:'2',unit:'concurrent ns',cls:'warn'},{sep:true},{n:'avg 14s',unit:'(6 runs: 16,14,18,14,11,8)'}],
+        flow: [
+          {text:'sem capacity = 2 — only 2 ns goroutines at a time',col:'warn'},
+          {text:'inner: 7 goroutines per ns still run in parallel',col:'success'},
+          {text:'but outer concurrency is too low',col:'warn'},
+          {text:'24 ns effectively processed in 12 waves of 2',col:'dim'},
+        ],
+        keypoints: ['Under-using goroutine capacity','Consistent: 8–18s across 6 runs','API server barely touched'],
+        bottleneck: 'Too few concurrent namespaces — goroutine capacity mostly idle', bnType:'warn',
+      },
+      {
+        config: 'namespaces=3', time: 9, barClass: 'bar-go-dim',
+        math: [{n:'3',unit:'concurrent ns',cls:'accent'},{sep:true},{n:'avg 9s',unit:'(6 runs: 8,8,9,8,9,9)'}],
+        flow: [
+          {text:'original binary default before tuning',col:'dim'},
+          {text:'3 × 7 inner = 21 concurrent API calls',col:'success'},
+          {text:'very consistent: all runs 8–9s',col:'success'},
+        ],
+        keypoints: ['Consistent — no throttle events','Room to improve','Original default value'],
+        bottleneck: 'Moderate concurrency — not yet pressing API server limits', bnType:'info',
+      },
+      {
+        config: 'namespaces=5', time: 7, barClass: 'bar-go',
+        math: [{n:'5',unit:'concurrent ns',cls:'accent'},{sep:true},{n:'avg 7s',unit:'(6 runs: 6,8,7,6,6,7)'}],
+        flow: [
+          {text:'5 × 7 inner = 35 concurrent API calls',col:'success'},
+          {text:'all 6 runs within 6–8s',col:'success'},
+          {text:'no throttle events observed',col:'success'},
+        ],
+        keypoints: ['Stable — all runs 6–8s','Safe margin from API throttle','Good default for production'],
+        bottleneck: 'No bottleneck at this level', bnType:'ok',
+      },
+      {
+        config: 'namespaces=7', time: 7, barClass: 'bar-go', best: true,
+        math: [{n:'7',unit:'concurrent ns',cls:'ok'},{sep:true},{n:'avg 7s',unit:'(6 runs: 6,6,5,10,6,6)'}],
+        flow: [
+          {text:'7 × 7 inner = 49 concurrent API calls',col:'success'},
+          {text:'5 of 6 runs: 5–6s',col:'success'},
+          {text:'1 run spiked to 10s (transient API pressure)',col:'warn'},
+          {text:'most stable high-concurrency result',col:'success'},
+        ],
+        keypoints: ['Most consistent at high concurrency','5 of 6 runs: 5–6s','One transient 10s spike — not systematic'],
+        bottleneck: 'Occasional transient API pressure — not a systematic problem', bnType:'ok',
+      },
+      {
+        config: 'namespaces=8', time: 6, barClass: 'bar-go',
+        math: [{n:'8',unit:'concurrent ns'},{sep:true},{n:'6s',unit:'stable'},{sep:true},{n:'79s',unit:'outlier',cls:'warn'}],
+        flow: [
+          {text:'pass 1 runs: 17s, 7s, 79s (!!)',col:'warn'},
+          {text:'pass 2 runs: 6s, 5s, 6s',col:'success'},
+          {text:'79s = API throttle triggered after cumulative test load',col:'error'},
+          {text:'with a fresh cluster: consistently 5–6s',col:'success'},
+        ],
+        keypoints: [
+          'Fastest in ideal conditions',
+          '79s outlier from cumulative throttle — not a fresh-cluster result',
+          'Risky in automated pipelines — no safety margin',
+        ],
+        bottleneck: 'API server throttle risk: one bad run = 79s. Reserve for controlled environments.', bnType:'warn',
+      },
+      {
+        config: 'namespaces=10', time: 6, barClass: 'bar-go',
+        math: [{n:'10',unit:'concurrent ns'},{sep:true},{n:'avg 6s',unit:'(6 runs: 9,6,5,6,7,5)'}],
+        flow: [
+          {text:'10 × 7 inner = 70 concurrent API calls',col:'warn'},
+          {text:'runs: 9,6,5,6,7,5 — slightly more variance',col:'dim'},
+          {text:'API server handling it but at the edge',col:'warn'},
+        ],
+        keypoints: ['Fastest average but more variance than j=7–8','API server at its limit','Not meaningfully faster than j=8'],
+        bottleneck: 'API server connection pressure at 70 concurrent calls', bnType:'warn',
+      },
+    ],
+  },
+  {
+    label: 'Node.js — single thread',
+    color: '#6aaccc',
+    items: [
+      {
+        config: 'jobs=1', time: 47, barClass: 'bar-ns-s-d',
+        math: [{n:'1',unit:'concurrent ns',cls:'warn'},{sep:true},{n:'47s'}],
+        flow: [
+          {text:'1 namespace at a time',col:'warn'},
+          {text:'within each ns: Promise.all(22 calls) concurrent',col:'success'},
+          {text:'next ns waits for current to fully finish',col:'warn'},
+        ],
+        keypoints: ['22 concurrent API calls within each ns','No inter-namespace overlap','API server response time adds linearly'],
+        bottleneck: 'Sequential namespaces — no I/O overlap across ns boundaries', bnType:'warn',
+      },
+      {
+        config: 'jobs=3', time: 16, barClass: 'bar-ns-s-d',
+        math: [{n:'3',unit:'concurrent ns',cls:'accent'},{op:'×'},{n:'22',unit:'calls'},{op:'='},{n:'66',unit:'peak in-flight'}],
+        flow: [
+          {text:'work-stealing: always 3 ns in-flight',col:'success'},
+          {text:'ns done → next ns immediately starts',col:'success'},
+          {text:'66 peak concurrent requests',col:'dim'},
+          {text:'TIME_WAIT: 25 measured',col:'dim'},
+        ],
+        keypoints: ['Work-stealing: no idle slots','66 peak in-flight','HTTP/1.1 keep-alive — partial reuse across ns'],
+        bottleneck: 'HTTP/1.1 — no multiplexing. Each new ns cycle may open new TCP connections.', bnType:'info',
+      },
+      {
+        config: 'jobs=5', time: 10, barClass: 'bar-ns-s-d',
+        math: [{n:'5',unit:'concurrent ns',cls:'accent'},{op:'×'},{n:'22',unit:'calls'},{op:'='},{n:'110',unit:'peak in-flight'}],
+        flow: [
+          {text:'110 concurrent requests peak',col:'success'},
+          {text:'API server starting to feel pressure',col:'warn'},
+          {text:'TIME_WAIT: 38 measured',col:'dim'},
+        ],
+        keypoints: ['110 peak — approaching API server limits','Still faster than jobs=3','TIME_WAIT accumulating faster'],
+        bottleneck: 'Approaching API server connection ceiling', bnType:'info',
+      },
+      {
+        config: 'jobs=7', time: 8, barClass: 'bar-ns-s', best: true,
+        math: [{n:'7',unit:'concurrent ns',cls:'ok'},{op:'×'},{n:'22',unit:'calls'},{op:'='},{n:'154',unit:'peak in-flight',cls:'warn'}],
+        flow: [
+          {text:'154 peak ESTABLISHED (measured)',col:'warn'},
+          {text:'at API server limit edge',col:'warn'},
+          {text:'TIME_WAIT: 72 — semaphore burst closes pile up',col:'warn'},
+          {text:'work-stealing: zero idle slots, no stall',col:'success'},
+        ],
+        keypoints: [
+          '154 peak ESTABLISHED — at API server limit',
+          'TIME_WAIT 72 — semaphore causes burst close events',
+          'Still fastest Node.js config: 8s',
+        ],
+        bottleneck: 'API server connection pressure — adding more jobs makes things worse', bnType:'info',
+      },
+    ],
+  },
+  {
+    label: 'Node.js — worker threads',
+    color: '#4a8aaa',
+    items: [
+      {
+        config: 'workers=3', time: 25, barClass: 'bar-ns-w-d',
+        math: [{n:'3',unit:'workers',cls:'accent'},{sep:true},{n:'25s'}],
+        flow: [
+          {text:'round-robin assignment at startup:',col:'dim'},
+          {text:'Worker 0: [ns0, ns3, ns6, ns9, ns12, ns15, ns18, ns21]',col:'info'},
+          {text:'Worker 1: [ns1, ns4, ns7, ..., ns22]',col:'info'},
+          {text:'Worker 2: [ns2, ns5, ns8, ..., ns23]',col:'info'},
+          {text:'each worker: sequential ns loop, per-ns Promise.all',col:'dim'},
+        ],
+        keypoints: ['Static assignment — no work-stealing','Slow ns stalls its worker','3 separate HTTP pools'],
+        bottleneck: 'Static assignment: slow namespace (istio-system, 180 roles) stalls its worker', bnType:'warn',
+      },
+      {
+        config: 'workers=4', time: 22, barClass: 'bar-ns-w', best: true,
+        math: [{n:'4',unit:'workers',cls:'ok'},{sep:true},{n:'22s'},{sep:true},{n:'TIME_WAIT=23',unit:'(fewer than single-thread)'}],
+        flow: [
+          {text:'4 pools × ~6 conns each = ~24 TCP handshakes',col:'dim'},
+          {text:'fewer total TCP opens than single-thread (23 vs 72)',col:'success'},
+          {text:'istio-system → one worker stalls while others idle',col:'warn'},
+        ],
+        keypoints: [
+          'Sweet spot for workers',
+          'Fewer TCP connections than single-thread (pool per worker stays alive)',
+          'Static assignment still creates idle slots at stalling namespace',
+        ],
+        bottleneck: 'istio-system stalls its worker — others finish early and sit idle', bnType:'info',
+      },
+      {
+        config: 'workers=5', time: 27, barClass: 'bar-ns-w-d',
+        math: [{n:'5',unit:'workers',cls:'warn'},{sep:true},{n:'27s'}],
+        flow: [
+          {text:'5 pools → more concurrent API requests',col:'warn'},
+          {text:'API server throttle starts: 429 responses increase',col:'warn'},
+          {text:'each request slower → overall time rises',col:'warn'},
+        ],
+        keypoints: ['Slower than workers=4 — API pressure wins','More pools = more throttling'],
+        bottleneck: 'Too many concurrent pools — API server throttles all of them', bnType:'warn',
+      },
+    ],
+  },
+  {
+    label: 'Node.js — child processes',
+    color: '#506aaa',
+    items: [
+      {
+        config: 'procs=3', time: 22, barClass: 'bar-ns-p-d',
+        math: [{n:'3',unit:'child procs',cls:'accent'},{sep:true},{n:'22s'}],
+        flow: [
+          {text:'3 separate Node.js processes (full V8 + kubeconfig each)',col:'dim'},
+          {text:'~150ms cold-start per process',col:'warn'},
+          {text:'OS-level TCP isolation — pools cannot share connections',col:'warn'},
+          {text:'same static round-robin problem as workers',col:'warn'},
+        ],
+        keypoints: ['V8 cold-start overhead × 3','Completely isolated TCP stacks','Static assignment'],
+        bottleneck: 'V8 cold-start + isolated TCP + static assignment', bnType:'warn',
+      },
+      {
+        config: 'procs=4', time: 21, barClass: 'bar-ns-p', best: true,
+        math: [{n:'4',unit:'child procs',cls:'ok'},{sep:true},{n:'21s'},{sep:true},{n:'TIME_WAIT=26',unit:'(measured)'}],
+        flow: [
+          {text:'4 × ~150ms V8 startup = ~600ms overhead',col:'warn'},
+          {text:'TIME_WAIT: 26 — isolated stacks, smaller per-process bursts',col:'dim'},
+          {text:'best procs result: 21s',col:'success'},
+        ],
+        keypoints: ['Best procs result','V8 overhead manageable at 4','Isolated TCP stacks'],
+        bottleneck: 'Static assignment + V8 process isolation overhead', bnType:'info',
+      },
+      {
+        config: 'procs=5', time: 25, barClass: 'bar-ns-p-d',
+        math: [{n:'5',unit:'child procs',cls:'warn'},{sep:true},{n:'25s'}],
+        flow: [
+          {text:'5 × V8 heap (~100MB each) = ~500MB RAM',col:'warn'},
+          {text:'GC pressure begins',col:'warn'},
+          {text:'procs=6: hung, required ctrl+c to exit',col:'error'},
+        ],
+        keypoints: ['Memory pressure starts at procs=5','procs=6: 600MB+ → GC + API throttle → hang'],
+        bottleneck: 'Memory (V8 heap × N) + API throttling — combinatorially bad past n=5', bnType:'warn',
+      },
+    ],
+  },
+  {
+    label: 'Bash — sequential',
+    color: '#a07840',
+    items: [
+      {
+        config: 'jobs=1', time: 319, barClass: 'bar-bash-s',
+        math: [{n:'24',unit:'ns'},{op:'×'},{n:'9',unit:'kubectl'},{op:'='},{n:'216',unit:'spawns',cls:'warn'},{sep:true},{n:'1',unit:'at a time',cls:'warn'}],
+        flow: [
+          {text:'ns1: kubectl get deployments  ← fork+exec+TLS ~200ms',col:'warn'},
+          {text:'     kubectl get services     ← fork+exec+TLS ~200ms',col:'warn'},
+          {text:'     kubectl get pods         ← fork+exec+TLS ~200ms',col:'warn'},
+          {text:'     ... × 9 kubectl total',col:'warn'},
+          {text:'ns2: (waits for ns1 to fully finish)',col:'dim'},
+          {text:'ns3: (waits for ns2)',col:'dim'},
+          {text:'... 319s total',col:'error'},
+        ],
+        keypoints: [
+          '216 process spawns — all serial',
+          '216 TLS handshakes — all serial',
+          'No overlap possible: ns2 cannot start until ns1 exits completely',
+          'API server idle most of the time',
+        ],
+        bottleneck: 'Fully sequential: 216 spawns × (spawn overhead + API wait) = 319s', bnType:'error',
+      },
+    ],
+  },
+  {
+    label: 'Bash — batch (no GNU parallel)',
+    color: '#b08848',
+    items: [
+      {
+        config: 'jobs=6', time: 70, barClass: 'bar-bash-bd',
+        math: [{n:'24',unit:'ns'},{op:'÷'},{n:'6',unit:'per batch'},{op:'='},{n:'4',unit:'batches',cls:'accent'}],
+        flow: [
+          {text:'batch 1: [ns1][ns2][ns3][ns4][ns5][ns6] &',col:'success'},
+          {text:'         bash wait ← blocks until slowest done',col:'warn'},
+          {text:'batch 2: [ns7]...[ns12] &',col:'success'},
+          {text:'         bash wait',col:'warn'},
+          {text:'example: ns1=8s ns2=3s ns3=5s → batch=8s (not avg 5.3s)',col:'dim'},
+        ],
+        keypoints: ['4 synchronous batch barriers','Slowest ns in each batch stalls all others','216 TLS handshakes still happen'],
+        bottleneck: 'Batch gate: slowest namespace blocks all slots at every barrier', bnType:'warn',
+      },
+      {
+        config: 'jobs=8', time: 58, barClass: 'bar-bash-b', best: true,
+        math: [{n:'24',unit:'ns'},{op:'÷'},{n:'8',unit:'per batch'},{op:'='},{n:'3',unit:'batches',cls:'ok'}],
+        flow: [
+          {text:'3 clean batches of 8 → 58s',col:'success'},
+          {text:'TIME_WAIT: 6 (connections scatter across 58s)',col:'dim'},
+          {text:'Peak ESTABLISHED: 72',col:'dim'},
+          {text:'216 TLS handshakes still happen across run',col:'dim'},
+        ],
+        keypoints: ['Sweet spot — 3 clean batches','TIME_WAIT low: connections scatter, no burst close','216 handshakes spread across 58s'],
+        bottleneck: 'Batch gate still exists at 3 boundaries — GNU parallel eliminates these', bnType:'info',
+      },
+      {
+        config: 'jobs=9', time: 62, barClass: 'bar-bash-bd',
+        math: [{n:'24',unit:'ns'},{op:'÷'},{n:'9',unit:'per batch'},{sep:true},{n:'uneven batches'}],
+        flow: [
+          {text:'24 / 9 = 2 batches of 9, 1 batch of 6',col:'warn'},
+          {text:'batch 3: only 6 slots used — 3 idle',col:'warn'},
+          {text:'slower than jobs=8 due to wasted capacity',col:'warn'},
+        ],
+        keypoints: ['Uneven batch split wastes slots','Slower than jobs=8'],
+        bottleneck: 'Uneven batch: 3 idle slots in final batch of 6', bnType:'warn',
+      },
+    ],
+  },
+  {
+    label: 'Bash — GNU parallel',
+    color: '#6dca82',
+    items: [
+      {
+        config: 'jobs=6', time: 69, barClass: 'bar-bash-gd',
+        math: [{n:'6',unit:'slots',cls:'accent'},{sep:true},{n:'24',unit:'ns'},{sep:true},{n:'69s'}],
+        flow: [
+          {text:'work-stealing: any slot done → next ns immediately',col:'success'},
+          {text:'no synchronous batch barrier',col:'success'},
+          {text:'but 69s vs batch-j6=70s → nearly identical',col:'dim'},
+          {text:'API server uniform → no skewed ns to steal from',col:'dim'},
+        ],
+        keypoints: ['Work-stealing eliminates barriers','But API was uniform — no heavy imbalance to rescue','Nearly same result as batch at jobs=6'],
+        bottleneck: 'Same as batch at this concurrency — no namespace imbalance to exploit', bnType:'info',
+      },
+      {
+        config: 'jobs=8', time: 58, barClass: 'bar-bash-g', best: true,
+        math: [{n:'8',unit:'slots',cls:'ok'},{sep:true},{n:'58s'},{sep:true},{n:'TIME_WAIT=5',unit:'(measured)'}],
+        flow: [
+          {text:'always 8 slots running — zero idle time',col:'success'},
+          {text:'slot finishes → next ns starts immediately',col:'success'},
+          {text:'TIME_WAIT: 5 (same scatter pattern as batch)',col:'dim'},
+          {text:'Peak SYN_SENT: 75 (burst-connect moments)',col:'dim'},
+        ],
+        keypoints: [
+          'Work-stealing eliminates batch barriers',
+          'Same 58s as batch-j8 — API was uniform this run',
+          'TIME_WAIT identical to batch — same connection scatter',
+          '216 TLS handshakes — process spawn is still the floor',
+        ],
+        bottleneck: 'Process spawn is the floor — 216 TLS handshakes regardless of job scheduler', bnType:'info',
+      },
+      {
+        config: 'jobs=9', time: 62, barClass: 'bar-bash-gd',
+        math: [{n:'9',unit:'slots',cls:'warn'},{sep:true},{n:'62s'}],
+        flow: [
+          {text:'slight API server pressure at 9 concurrent ns',col:'warn'},
+          {text:'some kubectl calls respond slower',col:'warn'},
+          {text:'work-stealing helps but API is the bottleneck now',col:'dim'},
+        ],
+        keypoints: ['API throttle starts at jobs=9','Work-stealing cannot help when API is saturated'],
+        bottleneck: 'API server throttle at 9 concurrent namespaces', bnType:'warn',
+      },
+    ],
+  },
+];
 
 function buildRaceChart() {
   const chart = document.getElementById('raceChart');
-  const detail = document.getElementById('raceDetail');
+  const allRows = [];
 
-  RACE_DATA.forEach((d, i) => {
-    const row = document.createElement('div');
-    row.className = 'race-row';
-    row.dataset.i = i;
+  RACE_GROUPS.forEach((group, gi) => {
+    // Accordion wrapper
+    const accordion = document.createElement('div');
+    accordion.className = 'race-accordion' + (gi === 0 ? ' open' : '');
 
-    const pct = (d.time / MAX_TIME * 100).toFixed(1);
+    // Clickable header
+    const header = document.createElement('div');
+    header.className = 'race-group-header';
+    header.innerHTML = `<span style="color:${group.color}">${group.label}</span><span class="race-chevron">&#9654;</span>`;
+    header.addEventListener('click', () => accordion.classList.toggle('open'));
 
-    row.innerHTML = `
-      <div class="race-label">${d.label}</div>
-      <div class="race-track">
-        <div class="race-bar ${d.barClass}" data-pct="${pct}" style="width:0">
-          <span class="race-bar-inner-label">${d.time}s</span>
+    // Collapsible body
+    const body = document.createElement('div');
+    body.className = 'race-accordion-body';
+    const inner = document.createElement('div');
+    inner.className = 'race-accordion-inner';
+
+    // Detail panel — lives ABOVE bars
+    const detail = document.createElement('div');
+    detail.className = 'race-item-detail';
+    inner.appendChild(detail);
+
+    // Bar rows
+    group.items.forEach(item => {
+      const pct = barPct(item.time).toFixed(1);
+      const bestClass = item.best ? ' best' : '';
+      const row = document.createElement('div');
+      row.className = 'race-row';
+      row.innerHTML = `
+        <div class="race-label">${item.config}</div>
+        <div class="race-track">
+          <div class="race-bar ${item.barClass}${bestClass}" data-pct="${pct}" style="width:0"></div>
         </div>
-      </div>
-      <div class="race-time" style="color:${d.color}">${d.time}s</div>
-    `;
+        <div class="race-time" style="color:${group.color}">${item.time}s</div>`;
 
-    row.addEventListener('click', () => {
-      document.querySelectorAll('.race-row').forEach(r => r.classList.remove('active'));
-      row.classList.add('active');
-      detail.innerHTML = renderDetail(RACE_DATA[i]);
-      detail.classList.add('visible');
+      row.addEventListener('click', () => {
+        // Open accordion if closed
+        accordion.classList.add('open');
+        // Highlight active row within this group
+        inner.querySelectorAll('.race-row').forEach(r => r.classList.remove('active'));
+        row.classList.add('active');
+        detail.innerHTML = renderDetail(item, group.color);
+        detail.classList.add('visible');
+        // Scroll detail into view
+        setTimeout(() => detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+      });
+
+      inner.appendChild(row);
+      allRows.push(row);
     });
 
-    chart.appendChild(row);
+    body.appendChild(inner);
+    accordion.appendChild(header);
+    accordion.appendChild(body);
+    chart.appendChild(accordion);
   });
 
-  // animate bars after a tick
   requestAnimationFrame(() => {
     setTimeout(() => {
-      document.querySelectorAll('.race-bar').forEach(bar => {
-        const pct = bar.dataset.pct;
-        bar.style.width = pct + '%';
-        bar.classList.add('animated');
-      });
+      document.querySelectorAll('.race-bar').forEach(b => { b.style.width = b.dataset.pct + '%'; });
     }, 200);
-
-    // auto-open first entry
-    setTimeout(() => {
-      document.querySelector('.race-row').click();
-    }, 600);
+    // Auto-select first item in first group
+    setTimeout(() => { allRows[0] && allRows[0].click(); }, 600);
   });
 }
 
 buildRaceChart();
 
-// ════════════════════════════════════════
-// SECTION 2 — EVENT LOOP ANIMATION
-// ════════════════════════════════════════
-
-(function initEloAnimation() {
-  const ioChips = document.querySelectorAll('[data-elo="io"]');
-  const eloBar  = document.getElementById('elo-t1');
-  const gorBars = ['gor-t1','gor-t2','gor-t3'].map(id => document.getElementById(id));
-
-  let started = false;
-
-  function startAnim() {
-    if (started) return;
-    started = true;
-
-    // I/O chips appear staggered
-    ioChips.forEach((chip, i) => {
-      setTimeout(() => chip.classList.add('visible'), i * 80);
-    });
-
-    // Event loop: single bar fills to 100% (representing sequential callbacks)
-    setTimeout(() => {
-      if (eloBar) eloBar.style.width = '100%';
-    }, 300);
-
-    // Go bars: all fill simultaneously to 17% (5s / 29s max ≈ 17%)
-    setTimeout(() => {
-      gorBars.forEach(b => { if (b) b.style.width = '29%'; });
-    }, 300);
-  }
-
-  const section = document.getElementById('tree');
-  if (!section) return;
-
+// Nav active section tracking
+(function() {
+  const links = document.querySelectorAll('nav a');
   const obs = new IntersectionObserver(entries => {
-    if (entries[0].isIntersecting) {
-      setTimeout(startAnim, 500);
-      obs.disconnect();
-    }
-  }, { threshold: 0.2 });
-  obs.observe(section);
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const l = document.querySelector(`nav a[href="#${e.target.id}"]`);
+        if (l) l.classList.add('active');
+      }
+    });
+  }, { threshold: 0.3 });
+  document.querySelectorAll('.section').forEach(s => obs.observe(s));
 })();
 
 // ════════════════════════════════════════
-// SECTION 3 — PRIMITIVES VISUALS
-// ════════════════════════════════════════
-
-function buildPrimVisual(id, type) {
-  const el = document.getElementById(id);
-  const configs = {
-    process: { cls: 'mem-isolated', label: 'P', count: 4, note: 'isolated' },
-    thread:  { cls: 'mem-shared',   label: 'T', count: 6, note: 'shared heap' },
-    goroutine: { cls: 'mem-tiny',   label: 'G', count: 12, note: '~2KB each' }
-  };
-  const c = configs[type];
-  for (let i = 0; i < c.count; i++) {
-    const b = document.createElement('div');
-    b.className = `mem-block ${c.cls}`;
-    b.title = c.note;
-    b.textContent = c.label;
-    el.appendChild(b);
-  }
-}
-
-buildPrimVisual('vis-process',   'process');
-buildPrimVisual('vis-thread',    'thread');
-buildPrimVisual('vis-goroutine', 'goroutine');
-
-// Spawn simulation — dot grid (each dot = 1 MB)
-const SPAWN_ITEMS = [
-  { id: 'thread',    dots: 8000, color: '#d4956a', label: '~8,000 MB (8 GB)', note: '8 MB stack × 1,000 = 8,000 MB  (Linux/macOS default)', cls: 'warn' },
-  { id: 'goroutine', dots: 2,    color: '#6dca82', label: '~2 MB',            note: '2 KB stack × 1,000 = 2 MB  —  4,000× less than a thread', cls: 'ok' },
-];
-
-// Pre-create all dot elements on page load
-SPAWN_ITEMS.forEach(item => {
-  const grid = document.getElementById(`dg-${item.id}`);
-  for (let i = 0; i < item.dots; i++) {
-    const d = document.createElement('div');
-    d.className = 'dot';
-    d.dataset.color = item.color;
-    grid.appendChild(d);
-  }
-});
-
-function runSpawn() {
-  SPAWN_ITEMS.forEach((item, itemIdx) => {
-    const dots = Array.from(document.getElementById(`dg-${item.id}`).children);
-    const batchSize = Math.max(1, Math.ceil(item.dots / 40));
-    let i = 0;
-    function step() {
-      const end = Math.min(i + batchSize, dots.length);
-      for (; i < end; i++) dots[i].style.background = item.color;
-      if (i < dots.length) { requestAnimationFrame(step); return; }
-      document.getElementById(`smv-${item.id}`).textContent = item.label;
-      document.getElementById(`smv-${item.id}`).className = `smc-value ${item.cls}`;
-      document.getElementById(`smn-${item.id}`).textContent = item.note;
-    }
-    setTimeout(() => requestAnimationFrame(step), itemIdx * 300);
-  });
-}
-
-function resetSpawn() {
-  SPAWN_ITEMS.forEach(item => {
-    Array.from(document.getElementById(`dg-${item.id}`).children)
-      .forEach(d => d.style.background = '');
-    document.getElementById(`smv-${item.id}`).textContent = '—';
-    document.getElementById(`smv-${item.id}`).className = 'smc-value';
-    document.getElementById(`smn-${item.id}`).textContent = '';
-  });
-}
-
-// ════════════════════════════════════════
-// SECTION 4 — TOKEN BUCKET ANIMATION
+// §5 — TOKEN BUCKET
 // ════════════════════════════════════════
 
 const canvas = document.getElementById('bucketCanvas');
 const ctx = canvas.getContext('2d');
-
 const DPR = window.devicePixelRatio || 1;
-canvas.width  = 380 * DPR;
-canvas.height = 340 * DPR;
-canvas.style.width  = '380px';
-canvas.style.height = '340px';
+canvas.width  = 380 * DPR; canvas.height = 340 * DPR;
+canvas.style.width = '380px'; canvas.style.height = '340px';
 ctx.scale(DPR, DPR);
-
 const W = 380, H = 340;
-
-const MODES = {
-  slow: { qps: 5,   burst: 10  },
-  fast: { qps: 100, burst: 200 }
-};
-
-let mode = 'slow';
-let tokens = MODES[mode].burst;
-let requests = [];
-let totalServed = 0;
-let lastTime = null;
-let tokenFrac = 0;
-let animId = null;
-
-// bucket dimensions
+const MODES = { slow: { qps: 5, burst: 10 }, fast: { qps: 100, burst: 200 } };
+let mode = 'slow', tokens = 10, requests = [], totalServed = 0, lastTime = null, tokenFrac = 0;
 const BX = 110, BY = 60, BW = 160, BH = 200;
 
 function setMode(m) {
@@ -1990,22 +1369,13 @@ function setMode(m) {
 }
 
 function resetBucket() {
-  tokens = MODES[mode].burst;
-  requests = [];
-  totalServed = 0;
-  tokenFrac = 0;
-  lastTime = null;
+  tokens = MODES[mode].burst; requests = []; totalServed = 0; tokenFrac = 0; lastTime = null;
   updateBucketStats();
 }
 
 function fireBurst() {
   for (let i = 0; i < 30; i++) {
-    requests.push({
-      x: W + 20 + i * 12,
-      y: BY + 20 + Math.random() * (BH - 40),
-      state: 'flying',
-      waitMs: 0,
-    });
+    requests.push({ x: W + 20 + i * 12, y: BY + 20 + Math.random() * (BH - 40), state: 'flying', waitMs: 0 });
   }
 }
 
@@ -2014,225 +1384,98 @@ function updateBucketStats() {
   document.getElementById('bstat-qps').textContent    = cfg.qps;
   document.getElementById('bstat-burst').textContent  = cfg.burst;
   document.getElementById('bstat-tokens').textContent = Math.floor(tokens);
-  const waiting = requests.filter(r => r.state === 'waiting').length;
-  document.getElementById('bstat-queued').textContent = waiting;
+  document.getElementById('bstat-queued').textContent = requests.filter(r => r.state === 'waiting').length;
   document.getElementById('bstat-total').textContent  = totalServed;
   const over = Math.max(0, 100 - cfg.burst);
-  const waitSec = over / cfg.qps;
-  document.getElementById('bstat-wait').textContent = waitSec < 0.5 ? '<0.5s' : waitSec.toFixed(1) + 's';
+  const w = over / cfg.qps;
+  document.getElementById('bstat-wait').textContent = w < 0.5 ? '<0.5s' : w.toFixed(1) + 's';
 }
 
 function bucketPath() {
   ctx.beginPath();
-  ctx.moveTo(BX + 10, BY);
-  ctx.lineTo(BX + BW - 10, BY);
-  ctx.lineTo(BX + BW, BY + BH);
-  ctx.lineTo(BX, BY + BH);
+  ctx.moveTo(BX + 10, BY); ctx.lineTo(BX + BW - 10, BY);
+  ctx.lineTo(BX + BW, BY + BH); ctx.lineTo(BX, BY + BH);
   ctx.closePath();
 }
 
 function drawBucket() {
-  const cfg  = MODES[mode];
-  const cx   = BX + BW / 2;
-  const tok  = Math.floor(tokens);
-  const pct  = tok / cfg.burst;
+  const cfg = MODES[mode];
+  const tok = Math.floor(tokens);
+  const pct = tok / cfg.burst;
   const fillH = Math.max(0, BH * pct);
   const fillY = BY + BH - fillH;
 
-  // Background
+  bucketPath(); ctx.fillStyle = '#0e0b08'; ctx.fill();
+
+  if (fillH > 0) {
+    ctx.save(); bucketPath(); ctx.clip();
+    ctx.fillStyle = 'rgba(232,184,102,0.22)';
+    ctx.fillRect(BX, fillY, BW, fillH);
+    ctx.restore();
+  }
+
   bucketPath();
-  ctx.fillStyle = '#0e0b08';
-  ctx.fill();
+  ctx.strokeStyle = tok < cfg.burst * 0.3 ? '#e07070' : tok < cfg.burst * 0.7 ? '#d4956a' : '#e8b866';
+  ctx.lineWidth = 2; ctx.stroke();
 
-  // Water fill — drains visibly as tokens consumed
-  ctx.save();
-  bucketPath();
-  ctx.clip();
-  ctx.fillStyle = pct < 0.15 ? '#3a0a0a'        // red tint: nearly empty
-                : pct < 0.5  ? '#2a1808'         // amber tint: half
-                :               '#0a2018';        // green tint: plenty
-  ctx.fillRect(BX - 2, fillY, BW + 4, fillH + 2);
-  ctx.restore();
+  ctx.fillStyle = '#e8dcc8'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
+  ctx.fillText(`${tok} / ${cfg.burst} tokens`, BX + BW / 2, BY + BH + 20);
 
-  // Border
-  bucketPath();
-  ctx.strokeStyle = '#e8b866';
-  ctx.lineWidth   = 2;
-  ctx.stroke();
-
-  // ── Large token count — the primary indicator ──
-  const numColor = pct < 0.15 ? '#e07070'
-                 : pct < 0.5  ? '#d4956a'
-                 :               '#6dca82';
-  ctx.fillStyle    = numColor;
-  ctx.font         = `bold ${cfg.burst > 99 ? 34 : 44}px monospace`;
-  ctx.textAlign    = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(tok, cx, BY + BH / 2 - 8);
-
-  ctx.fillStyle    = '#686860';
-  ctx.font         = '10px monospace';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillText(`/ ${cfg.burst} tokens`, cx, BY + BH / 2 + 20);
-
-  // Label
-  ctx.fillStyle = '#e8b866';
-  ctx.font      = 'bold 11px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('Token Bucket', cx, BY - 10);
-
-  // Refill annotation
-  ctx.fillStyle = '#6aaccc';
-  ctx.font      = '9px monospace';
-  ctx.fillText(`refill: +${cfg.qps}/s`, cx, BY - 30);
-
-  // Refill arrow (dashed, into bucket)
-  ctx.strokeStyle = '#6aaccc';
-  ctx.lineWidth   = 1.5;
-  ctx.setLineDash([3, 3]);
+  ctx.fillStyle = '#6dca82'; ctx.font = '11px monospace';
+  ctx.fillText(`+${cfg.qps} tokens/s`, BX + BW / 2, BY - 20);
   ctx.beginPath();
-  ctx.moveTo(cx, BY - 26);
-  ctx.lineTo(cx, BY - 4);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle = '#6aaccc';
-  ctx.beginPath();
-  ctx.moveTo(cx, BY - 2);
-  ctx.lineTo(cx - 5, BY - 11);
-  ctx.lineTo(cx + 5, BY - 11);
-  ctx.fill();
+  ctx.moveTo(BX + BW / 2, BY - 6); ctx.lineTo(BX + BW / 2 - 4, BY - 14); ctx.lineTo(BX + BW / 2 + 4, BY - 14);
+  ctx.closePath(); ctx.fillStyle = '#6dca82'; ctx.fill();
 }
 
-function drawRequest(r) {
-  // flying = info blue (in-flight, neutral — not yet served)
-  // served = green (got token, went through)
-  // waiting = red (no token, blocked)
-  const color = r.state === 'waiting' ? '#e07070'
-              : r.state === 'served'  ? '#6dca82'
-              :                         '#6aaccc'; // flying = blue
-
-  ctx.beginPath();
-  ctx.arc(r.x, r.y, 7, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.fill();
-
-  if (r.state === 'waiting' && r.waitMs > 80) {
-    ctx.fillStyle    = '#e07070';
-    ctx.font         = '8px monospace';
-    ctx.textAlign    = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`${Math.round(r.waitMs)}ms`, r.x + 10, r.y);
-  }
-}
-
-function drawCounters() {
-  const waiting = requests.filter(r => r.state === 'waiting').length;
-  ctx.font         = 'bold 11px monospace';
-  ctx.textBaseline = 'alphabetic';
-
-  if (totalServed > 0) {
-    ctx.fillStyle = '#6dca82';
-    ctx.textAlign = 'left';
-    ctx.fillText(`✓ ${totalServed} served`, 8, H - 12);
-  }
-  if (waiting > 0) {
-    ctx.fillStyle = '#e07070';
-    ctx.textAlign = 'right';
-    ctx.fillText(`⏳ ${waiting} waiting`, W - 8, H - 12);
-  }
-}
-
-function bucketTick(ts) {
-  if (!lastTime) lastTime = ts;
-  const dt = Math.min((ts - lastTime) / 1000, 0.1);
-  lastTime = ts;
-
+function updateBucket(dt) {
   const cfg = MODES[mode];
-
-  // Refill
   tokenFrac += cfg.qps * dt;
-  const newTok = Math.floor(tokenFrac);
-  tokenFrac -= newTok;
-  tokens = Math.min(tokens + newTok, cfg.burst);
+  const toAdd = Math.floor(tokenFrac);
+  if (toAdd > 0) { tokens = Math.min(tokens + toAdd, cfg.burst); tokenFrac -= toAdd; }
 
-  // Move requests
-  requests.forEach(r => {
-    if (r.state === 'flying') {
-      const tx = BX + BW / 2, ty = BY + BH / 2;
-      const dx = tx - r.x, dy = ty - r.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const speed = 80; // slowed from 180 so you can see consumption
-      if (dist < 8) {
+  const SPEED = 180;
+  requests.forEach(req => {
+    if (req.state === 'flying') {
+      req.x -= SPEED * dt;
+      if (req.x <= BX + BW) {
         if (tokens >= 1) {
-          tokens -= 1;
-          totalServed++;
-          r.state = 'served';
-          r.x = BX - 10;
-          r.y = BY + BH / 2 + (Math.random() - 0.5) * 80;
-        } else {
-          r.state = 'waiting';
-          r.x = BX + BW + 18 + Math.random() * 50;
-          r.y = BY + 10 + Math.random() * (BH - 20);
-        }
-      } else {
-        r.x += (dx / dist) * speed * dt;
-        r.y += (dy / dist) * speed * dt;
+          tokens -= 1; req.state = 'served'; totalServed++;
+          req.tx = 40 + Math.random() * 60; req.ty = 20 + Math.random() * 280;
+        } else { req.state = 'waiting'; }
       }
-    } else if (r.state === 'waiting') {
-      r.waitMs += dt * 1000;
-      if (tokens >= 1) {
-        tokens -= 1;
-        totalServed++;
-        r.state = 'served';
-        r.x = BX - 10;
-        r.y = BY + BH / 2 + (Math.random() - 0.5) * 80;
-      }
-    } else if (r.state === 'served') {
-      r.x -= 100 * dt;
+    } else if (req.state === 'waiting') {
+      req.waitMs += dt * 1000;
+      if (tokens >= 1) { tokens -= 1; req.state = 'served'; totalServed++; req.tx = 40 + Math.random() * 60; req.ty = 20 + Math.random() * 280; }
+    } else if (req.state === 'served') {
+      req.x += (req.tx - req.x) * 0.12;
+      req.y += (req.ty - req.y) * 0.12;
     }
   });
+  requests = requests.filter(r => !(r.state === 'served' && Math.abs(r.x - r.tx) < 2 && Math.abs(r.y - r.ty) < 2 && r.waitMs > 200));
+}
 
-  requests = requests.filter(r => !(r.state === 'served' && r.x < -30));
+function drawRequests() {
+  requests.forEach(req => {
+    ctx.beginPath(); ctx.arc(req.x, req.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = req.state === 'waiting' ? '#e07070' : req.state === 'served' ? '#6dca82' : '#e8dcc8';
+    ctx.fill();
+  });
+}
 
+function frame(ts) {
+  const now = ts / 1000;
+  const dt = lastTime ? Math.min(now - lastTime, 0.05) : 0;
+  lastTime = now;
   ctx.clearRect(0, 0, W, H);
+  updateBucket(dt);
   drawBucket();
-  requests.forEach(drawRequest);
-  drawCounters();
+  drawRequests();
   updateBucketStats();
-
-  animId = requestAnimationFrame(bucketTick);
+  requestAnimationFrame(frame);
 }
 
-animId = requestAnimationFrame(bucketTick);
-
-// ════════════════════════════════════════
-// NAV scroll spy
-// ════════════════════════════════════════
-
-const navLinks = document.querySelectorAll('nav a');
-const sections = document.querySelectorAll('section.section, .hero');
-
-function onScroll() {
-  const scrollY = window.scrollY + 120;
-  let active = null;
-  document.querySelectorAll('section.section').forEach(s => {
-    if (s.offsetTop <= scrollY) active = s.id;
-  });
-  navLinks.forEach(a => {
-    a.classList.toggle('active', a.getAttribute('href') === '#' + active);
-  });
-}
-
-window.addEventListener('scroll', onScroll, { passive: true });
-
-// smooth scroll
-navLinks.forEach(a => {
-  a.addEventListener('click', e => {
-    e.preventDefault();
-    const target = document.querySelector(a.getAttribute('href'));
-    if (target) target.scrollIntoView({ behavior: 'smooth' });
-  });
-});
+requestAnimationFrame(frame);
 </script>
 </body>
 </html>

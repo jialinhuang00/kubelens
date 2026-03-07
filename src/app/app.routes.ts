@@ -23,6 +23,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'benchmark',
+    loadComponent: () =>
+      import('./features/benchmark/benchmark.component').then(
+        (m) => m.BenchmarkComponent
+      ),
+  },
+  {
     path: 'knowledge',
     loadComponent: () =>
       import('./features/knowledge/knowledge.component').then(

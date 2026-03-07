@@ -1,0 +1,548 @@
+<div class="theme-corner">
+  <app-theme-switcher />
+</div>
+
+<nav class="bench-nav">
+  <a routerLink="/" class="nav-back">← home</a>
+  <button class="nav-link" [class.active]="activeSection() === 'race'"   (click)="scrollTo('race')"  >§1 Export Race</button>
+  <button class="nav-link" [class.active]="activeSection() === 'tree'"   (click)="scrollTo('tree')"  >§2 Process Tree</button>
+  <button class="nav-link" [class.active]="activeSection() === 'tcp'"    (click)="scrollTo('tcp')"   >§3 TCP</button>
+  <button class="nav-link" [class.active]="activeSection() === 'prims'"  (click)="scrollTo('prims')" >§4 Primitives</button>
+  <button class="nav-link" [class.active]="activeSection() === 'bucket'" (click)="scrollTo('bucket')">§5 Token Bucket</button>
+  <button class="nav-link" [class.active]="activeSection() === 'faq'"    (click)="scrollTo('faq')"   >§6 FAQ</button>
+</nav>
+
+<div class="bench-hero">
+  <div class="hero-eyebrow">K8s Export · Optimization Story</div>
+  <h1 class="hero-title">319 seconds became 6.</h1>
+  <p class="hero-sub">Bash, Node.js, Go. Same 24 namespaces. Same 276 files. How it went from "run kubectl in a loop" to a Go binary with HTTP/2.</p>
+  <div class="speedup-badge">53× faster</div>
+</div>
+
+<!-- ── §1 Export Race ─────────────────────────────────────── -->
+<section class="bench-section" id="race">
+  <div class="bench-section-inner">
+    <div class="section-eyebrow">§ 01</div>
+    <div class="section-title-row">
+      <h2 class="section-title">The Export Race</h2>
+      <button class="compare-btn" (click)="openCompare()">Compare all →</button>
+    </div>
+    <p class="section-lead">Go values averaged across 6 runs. Bar width is √time — compresses 6s–319s to be readable. Click any bar for details.</p>
+
+    <div class="race-chart">
+      @for (group of groups; track group.label; let gi = $index) {
+        <div class="race-accordion" [class.open]="isOpen(gi)">
+          <button class="race-group-header" (click)="toggleGroup(gi)">
+            <span [style.color]="group.color">{{ group.label }}</span>
+            <span class="race-chevron">&#9654;</span>
+          </button>
+          <div class="race-accordion-body">
+            <div class="race-accordion-inner">
+
+              <!-- Detail panel — above bars -->
+              @let sel = getSelected(gi);
+              @if (sel) {
+                <div class="race-item-detail" [id]="'detail-' + gi">
+                  <div class="detail-header">
+                    <span class="detail-name">{{ sel.config }}</span>
+                    <span class="detail-time" [style.color]="group.color">{{ sel.time }}s</span>
+                  </div>
+                  <div class="detail-math">
+                    @for (m of sel.math; track $index) {
+                      @if (m.op) {
+                        <span class="dm-op">{{ m.op }}</span>
+                      } @else if (m.sep) {
+                        <span class="dm-sep"> · </span>
+                      } @else {
+                        <span class="dm-num" [class]="m.cls ?? ''">{{ m.n }}</span><span class="dm-unit"> {{ m.unit }}</span>
+                      }
+                    }
+                  </div>
+                  <div class="detail-cols">
+                    <div class="detail-flow">
+                      @for (line of sel.flow; track $index) {
+                        <span [class]="'flow-' + line.col">{{ line.text }}</span><br>
+                      }
+                    </div>
+                    <div class="detail-aside">
+                      <div class="detail-keypoints">
+                        @for (kp of sel.keypoints; track $index) {
+                          <div class="kp-row"><span class="kp-bullet">→</span><span>{{ kp }}</span></div>
+                        }
+                      </div>
+                      <div class="detail-bottleneck" [class]="'bn-' + sel.bnType">
+                        <span class="bn-label">Bottleneck</span>
+                        <span>{{ sel.bottleneck }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- Bars -->
+              @for (item of group.items; track item.config) {
+                <div class="race-row"
+                     [class.active]="isSelected(gi, item)"
+                     (click)="selectItem(gi, item)">
+                  <div class="race-label">{{ item.config }}</div>
+                  <div class="race-track">
+                    <div class="race-bar"
+                         [class]="item.barClass + (item.best ? ' best' : '')"
+                         [attr.data-pct]="barPct(item.time).toFixed(1)"
+                         style="width: 0"></div>
+                  </div>
+                  <div class="race-time" [style.color]="group.color">{{ item.time }}s</div>
+                </div>
+              }
+
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- ── §2 Process Tree ────────────────────────────────────── -->
+<section class="bench-section" id="tree">
+  <div class="bench-section-inner">
+    <div class="section-eyebrow">§ 02</div>
+    <h2 class="section-title">Process Tree Comparison</h2>
+    <p class="section-lead">Three architectures for the same 528 API calls. The difference is what lives inside the process boundary — and how many TLS handshakes result.</p>
+
+    <div class="tree-grid">
+
+      <!-- bash -->
+      <div class="tree-panel">
+        <h3>bash + kubectl (subprocess)</h3>
+        <div class="tree-svg-wrap">
+          <svg class="tree-svg" viewBox="0 0 320 260" xmlns="http://www.w3.org/2000/svg">
+            <rect x="80" y="10" width="160" height="32" rx="5" class="node-box root"/>
+            <text x="160" y="26" class="node-text gold">server.js (PID 1)</text>
+            <line x1="160" y1="42" x2="160" y2="64" class="tree-edge"/>
+            <text x="172" y="57" class="node-text dim" font-size="9" text-anchor="start">spawn()</text>
+            <rect x="80" y="64" width="160" height="32" rx="5" class="node-box proc"/>
+            <text x="160" y="80" class="node-text">bash (PID 2)</text>
+            <line x1="160" y1="96" x2="160" y2="118" class="tree-edge"/>
+            <rect x="80" y="118" width="160" height="36" rx="5" class="node-box proc"/>
+            <text x="160" y="134" class="node-text">kubectl ×9</text>
+            <text x="160" y="148" class="node-text dim">per namespace</text>
+            <rect x="60" y="166" width="200" height="18" rx="8" class="badge-warn"/>
+            <text x="160" y="175" class="badge-text-warn">new TLS ~100ms each spawn</text>
+            <text x="160" y="206" class="node-text dim">×24 namespaces = 216 spawns</text>
+            <text x="160" y="222" class="node-text warn">216 TLS handshakes (~21s alone)</text>
+          </svg>
+        </div>
+        <div class="tree-cost warn">
+          <span class="cost-time">58s</span>
+          <span>216 process spawns · 216 TLS handshakes · API server idle while procs spin up</span>
+        </div>
+      </div>
+
+      <!-- Go -->
+      <div class="tree-panel">
+        <h3>Go binary (two-layer goroutines)</h3>
+        <div class="tree-svg-wrap">
+          <svg class="tree-svg" viewBox="0 0 320 260" xmlns="http://www.w3.org/2000/svg">
+            <rect x="80" y="10" width="160" height="32" rx="5" class="node-box root"/>
+            <text x="160" y="26" class="node-text gold">Go process (1 PID)</text>
+            <line x1="160" y1="42" x2="160" y2="64" class="tree-edge"/>
+            <rect x="25" y="64" width="270" height="32" rx="5" class="node-box pool"/>
+            <text x="160" y="79" class="node-text gold">HTTP/2 pool (ALPN)</text>
+            <text x="160" y="91" class="node-text dim">1 TCP · all streams multiplex</text>
+            <line x1="160" y1="96" x2="160" y2="118" class="tree-edge"/>
+            <rect x="25" y="118" width="270" height="36" rx="4" class="node-box sem"/>
+            <text x="160" y="140" class="node-text sem-text">outer goroutine × namespace</text>
+            <line x1="160" y1="154" x2="160" y2="176" class="tree-edge"/>
+            <rect x="25" y="176" width="270" height="36" rx="5" class="node-box goroutine"/>
+            <text x="160" y="192" class="node-text">7 inner goroutines</text>
+            <text x="160" y="206" class="node-text dim">6 resource batches + 1 pods</text>
+            <rect x="60" y="224" width="200" height="18" rx="8" class="badge-ok"/>
+            <text x="160" y="233" class="badge-text-ok">stream reused — no new TLS ✓</text>
+          </svg>
+        </div>
+        <div class="tree-cost ok">
+          <span class="cost-time">6s</span>
+          <span>1 TLS handshake total · 2–8 KB goroutine stack · 7 ns × 7 inner = 49 concurrent calls</span>
+        </div>
+      </div>
+
+      <!-- Node.js -->
+      <div class="tree-panel">
+        <h3>Node.js &#64;kubernetes/client-node</h3>
+        <div class="tree-svg-wrap">
+          <svg class="tree-svg" viewBox="0 0 320 260" xmlns="http://www.w3.org/2000/svg">
+            <rect x="80" y="10" width="160" height="32" rx="5" class="node-box root"/>
+            <text x="160" y="26" class="node-text gold">Node.js (1 PID)</text>
+            <line x1="160" y1="42" x2="160" y2="64" class="tree-edge"/>
+            <rect x="20" y="64" width="280" height="32" rx="5" class="node-box pool"/>
+            <text x="160" y="79" class="node-text gold">HTTP/1.1 keep-alive pool</text>
+            <text x="160" y="91" class="node-text warn">no HTTP/2 (https module only)</text>
+            <line x1="160" y1="96" x2="160" y2="118" class="tree-edge"/>
+            <rect x="20" y="118" width="280" height="36" rx="4" class="node-box sem-node"/>
+            <text x="160" y="140" class="node-text info">semaphore (jobs=7) — work-stealing</text>
+            <line x1="160" y1="154" x2="160" y2="176" class="tree-edge"/>
+            <rect x="20" y="176" width="280" height="36" rx="5" class="node-box promise"/>
+            <text x="160" y="192" class="node-text">Promise.all (22 calls per ns)</text>
+            <text x="160" y="206" class="node-text dim">async I/O concurrent, JS sequential</text>
+            <rect x="60" y="224" width="200" height="18" rx="8" class="badge-ok"/>
+            <text x="160" y="233" class="badge-text-ok">I/O concurrent ✓</text>
+          </svg>
+        </div>
+        <div class="tree-cost info">
+          <span class="cost-time">8s</span>
+          <span>~72 TCP handshakes · no HTTP/2 multiplexing · 7 ns × 22 calls = 154 peak in-flight</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="tree-legend">
+      <div class="tl-item"><div class="tl-box proc"></div> OS Process — PID, isolated memory, TLS per spawn</div>
+      <div class="tl-item"><div class="tl-box goroutine"></div> Goroutine — no PID, ~2KB stack, no new TLS</div>
+      <div class="tl-item"><div class="tl-box promise"></div> Promise — async I/O concurrent, CPU sequential</div>
+      <div class="tl-item"><div class="tl-box pool"></div> Connection pool — shared within process</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── §3 TCP Connections ─────────────────────────────────── -->
+<section class="bench-section" id="tcp">
+  <div class="bench-section-inner">
+    <div class="section-eyebrow">§ 03</div>
+    <h2 class="section-title">TCP Connection Analysis</h2>
+    <p class="section-lead">netstat polled every 0.5s, filtering EKS endpoint IPs. TIME_WAIT holds for 60s after close — final accumulated count ≈ total unique TCP connections opened during the entire export run.</p>
+
+    <div class="tcp-key">
+      <strong>ESTABLISHED</strong> — connections alive right now.
+      <strong>SYN_SENT</strong> — mid-handshake (transient, &lt;200ms).
+      <strong>TIME_WAIT</strong> — closed, waiting 60s expiry. Accumulates across the run.
+    </div>
+
+    <div class="tcp-table-wrap">
+      <table class="tcp-table">
+        <thead>
+          <tr>
+            <th>Mode</th>
+            <th class="num">Peak ESTAB</th>
+            <th class="num">Peak SYN_SENT</th>
+            <th class="num">TIME_WAIT</th>
+            <th>Why</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of tcpRows; track row.mode) {
+            <tr [class.best-row]="row.best">
+              <td [class]="'mode-' + row.color">{{ row.mode }}</td>
+              <td class="num">{{ row.established }}</td>
+              <td class="num">{{ row.synSent }}</td>
+              <td class="num">{{ row.timeWait }}</td>
+              <td class="why-col">{{ row.why }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tcp-notes">
+      <p><strong class="hl-warn">bash TIME_WAIT = 3–6:</strong> 216 kubectl connections scatter across the full run. No burst of simultaneous closes. Individual connections enter TIME_WAIT and expire before the run ends.</p>
+      <p><strong class="hl-warn">Node.js TIME_WAIT = 25–72:</strong> the semaphore releases N namespaces at once. They all finish at roughly the same time, close ~N×22 connections simultaneously, and TIME_WAIT spikes.</p>
+      <p><strong class="hl-ok">Go TIME_WAIT = 3:</strong> HTTP/2 multiplexes all 528 requests over 1–3 TCP connections. Those 3 are 2 EKS IP endpoints + 1 occasional reconnect.</p>
+      <p><strong class="hl-warn">Why Node.js can't use HTTP/2:</strong> <code>&#64;kubernetes/client-node</code> uses Node.js <code>https</code> (HTTP/1.1). The <code>http2</code> module is a completely separate API — no automatic ALPN upgrade. Go's client-go negotiates HTTP/2 automatically. The result: Go opens 3 TCP connections for the entire export. Node.js opens 72.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── §4 Concurrency Primitives ──────────────────────────── -->
+<section class="bench-section" id="prims">
+  <div class="bench-section-inner">
+    <div class="section-eyebrow">§ 04</div>
+    <h2 class="section-title">Process / Thread / Goroutine</h2>
+    <p class="section-lead">Three primitives with very different costs. In this workload — 99% I/O wait — only one difference ultimately matters.</p>
+
+    <div class="prim-grid">
+      @for (card of primCards; track card.title) {
+        <div class="prim-card">
+          <h3>{{ card.title }}</h3>
+          @for (stat of card.stats; track stat.label) {
+            <div class="prim-stat">
+              <span class="stat-label">{{ stat.label }}</span>
+              <span [class]="'stat-val' + (stat.cls ? ' stat-' + stat.cls : '')">{{ stat.value }}</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="prim-callout">
+      <strong>Why primitives matter less than TLS here:</strong>
+      <br><br>
+      The export is 99% I/O wait. CPU barely registers. Adding more threads vs goroutines is a <em>constant</em> improvement. Switching from HTTP/1.1 (72 handshakes) to HTTP/2 (3 handshakes) is a <em>multiplicative</em> improvement.
+      <br><br>
+      Goroutines at 2KB each vs threads at 1MB each — 500× less memory. But for 200 goroutines that's 400KB vs 200MB. Significant at scale; not the reason Go wins here.
+      <br><br>
+      <strong class="hl-accent">Go wins because client-go negotiates HTTP/2 via ALPN. Every other advantage is secondary.</strong>
+    </div>
+  </div>
+</section>
+
+<!-- ── §5 Token Bucket ────────────────────────────────────── -->
+<section class="bench-section" id="bucket">
+  <div class="bench-section-inner">
+    <div class="section-eyebrow">§ 05</div>
+    <h2 class="section-title">Token Bucket Rate Limiter</h2>
+    <p class="section-lead">Default QPS=5, Burst=10 turned an 11s export into 103s. Why does client-go have this at all — and why don't other language clients?</p>
+
+    <div class="bucket-why">
+      <p><strong>Kubernetes is written in Go.</strong> client-go is not a third-party SDK — it is Kubernetes's own internal client. The same code runs inside kube-controller-manager, kube-scheduler, and every Kubernetes controller.</p>
+      <p><strong>The rate limiter exists for controllers, not for tools.</strong> A Kubernetes controller running 200 goroutines would flood the API server if every LIST/WATCH fired unrestricted. QPS=5, Burst=10 makes sense when one controller shares an API server with 50 others. It makes no sense for a bulk export tool running alone.</p>
+      <p><strong>Other language clients don't have this.</strong> Python's <code>kubernetes</code>, Java's <code>kubernetes-client</code>, Node.js's <code>&#64;kubernetes/client-node</code> — all generated from the OpenAPI spec. They implement the HTTP surface only. They never had access to the controller internals.</p>
+      <p><strong>The bug and the fix:</strong> <code class="hl">clientcmd.BuildConfigFromFlags</code> returns controller defaults baked in.
+        <br><code class="fix">cfg.QPS = 100; cfg.Burst = 200</code>
+        <br>103s → 11s. Then namespaces=7 → 6s.</p>
+    </div>
+
+    <div class="bucket-layout">
+      <div class="bucket-controls">
+        <div class="bucket-toggle">
+          <button [class.active]="bucketMode() === 'slow'" (click)="setBucketMode('slow')">
+            QPS=5 Burst=10<br><small>(default / buggy)</small>
+          </button>
+          <button [class.active]="bucketMode() === 'fast'" (click)="setBucketMode('fast')">
+            QPS=100 Burst=200<br><small>(fixed)</small>
+          </button>
+        </div>
+
+        <div class="bucket-stats">
+          <div class="stat-row"><span class="stat-label">QPS (refill/s)</span><span class="stat-val">{{ bucketMode() === 'slow' ? 5 : 100 }}</span></div>
+          <div class="stat-row"><span class="stat-label">Burst (capacity)</span><span class="stat-val">{{ bucketMode() === 'slow' ? 10 : 200 }}</span></div>
+          <div class="stat-row"><span class="stat-label">Tokens now</span><span class="stat-val hl-accent">{{ bTokens() }}</span></div>
+          <div class="stat-row"><span class="stat-label">Requests queued</span><span class="stat-val hl-warn">{{ bQueued() }}</span></div>
+          <div class="stat-row"><span class="stat-label">Total served</span><span class="stat-val">{{ bTotal() }}</span></div>
+          <div class="stat-row"><span class="stat-label">Est. wait (100 req)</span><span class="stat-val hl-warn">{{ bucketWaitLabel() }}</span></div>
+        </div>
+
+        <div class="bucket-actions">
+          <button class="bench-btn" (click)="fireBurst()">Fire 30 requests</button>
+          <button class="bench-btn" (click)="resetBucket()">Reset</button>
+        </div>
+
+        <div class="bucket-math">
+          <div>QPS=5, Burst=10 → <span class="hl-warn">100 req ≈ 18s wait</span></div>
+          <div>QPS=100, Burst=200 → <span class="hl-ok">&lt;0.1s wait</span></div>
+        </div>
+      </div>
+
+      <div class="bucket-canvas-wrap">
+        <canvas id="bucketCanvas" width="380" height="300"></canvas>
+        <div class="bucket-legend">
+          <div class="legend-item"><div class="legend-dot accent"></div> Token (available)</div>
+          <div class="legend-item"><div class="legend-dot ok"></div> Request (served)</div>
+          <div class="legend-item"><div class="legend-dot error"></div> Request (waiting)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── §6 FAQ ──────────────────────────────────────────────── -->
+<section class="bench-section" id="faq">
+  <div class="bench-section-inner">
+    <div class="section-eyebrow">§ 06</div>
+    <h2 class="section-title">FAQ</h2>
+
+    <div class="faq-list">
+
+      <div class="faq-item">
+        <div class="faq-q">Go (ns=8) runs in 6s. Node.js (jobs=7) runs in 8s. Same concurrency — why the 2s gap?</div>
+        <div class="faq-refs">
+          <button class="faq-chip" (click)="scrollTo('race')">§1 Race Chart</button>
+          <button class="faq-chip" (click)="scrollTo('tree')">§2 Process Tree</button>
+        </div>
+        <div class="faq-a">
+          <p>Both send HTTP requests to the Kubernetes API concurrently. I/O wait is the same. The gap is what happens after the response arrives.</p>
+
+          <div class="faq-case faq-case-go">
+            <div class="faq-case-label">Go — 154 goroutines running in parallel</div>
+            <div class="faq-timeline">
+              <div class="ftl-row"><span class="ftl-label">goroutine 1</span><span class="ftl-bar ok">parse → write → done</span></div>
+              <div class="ftl-row"><span class="ftl-label">goroutine 2</span><span class="ftl-bar ok">parse → write → done</span></div>
+              <div class="ftl-row"><span class="ftl-label">goroutine 3</span><span class="ftl-bar ok">parse → write → done</span></div>
+              <div class="ftl-row ftl-dots"><span class="ftl-label">...</span><span class="ftl-bar ok faded">parse → write → done</span></div>
+            </div>
+            <p class="faq-note">Each goroutine owns its full pipeline. No waiting for others.</p>
+          </div>
+
+          <div class="faq-case faq-case-node">
+            <div class="faq-case-label">Node.js — 154 callbacks sharing one event loop</div>
+            <div class="faq-timeline">
+              <div class="ftl-row">
+                <span class="ftl-label">responses</span>
+                <span class="ftl-queue">
+                  <span class="ftl-q-item warn">1</span><span class="ftl-q-item warn">2</span><span class="ftl-q-item warn">3</span><span class="ftl-q-item warn">4</span><span class="ftl-q-dim">… 154 queued</span>
+                </span>
+              </div>
+              <div class="ftl-row">
+                <span class="ftl-label">event loop</span>
+                <span class="ftl-serial">
+                  <span class="ftl-slot">[1]</span><span class="ftl-slot">[2]</span><span class="ftl-slot">[3]</span><span class="ftl-slot">[4]</span><span class="ftl-q-dim">→ … → [154]</span>
+                </span>
+              </div>
+            </div>
+            <p class="faq-note">154 responses land at once. Each callback must wait its turn on the single event loop thread. That serialization is the 2s.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">Do my CPU and memory affect these numbers?</div>
+        <div class="faq-refs">
+          <button class="faq-chip" (click)="scrollTo('race')">§1 Race Chart</button>
+        </div>
+        <div class="faq-a">
+          <p>Almost none. The bottleneck is network I/O, not local compute.</p>
+          <div class="faq-timeline">
+            <div class="ftl-row">
+              <span class="ftl-label">per request</span>
+              <span class="ftl-bar ok" style="flex:0 0 auto;margin-right:4px">send &lt;1ms</span>
+              <span class="ftl-bar warn" style="flex:1">wait API Server + network  10–70ms</span>
+              <span class="ftl-bar ok" style="flex:0 0 auto;margin-left:4px">parse &lt;1ms</span>
+            </div>
+          </div>
+          <p>CPU work is under 1% of total time. A machine 10× faster produces nearly the same result.</p>
+          <div class="faq-compare">
+            <div class="faq-case faq-case-go">
+              <div class="faq-case-label">What actually matters</div>
+              <div class="faq-flow">
+                <span class="flow-step warn">latency to the API server</span>
+                <span class="flow-step warn">API server load at the time</span>
+                <span class="flow-step warn">--jobs / concurrency setting</span>
+              </div>
+            </div>
+            <div class="faq-case faq-case-node">
+              <div class="faq-case-label">What doesn't matter</div>
+              <div class="faq-flow">
+                <span class="flow-step muted">local CPU speed</span>
+                <span class="flow-step muted">RAM size</span>
+                <span class="flow-step muted">local disk speed</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Compare dialog ─────────────────────────────────────── -->
+@if (compareOpen()) {
+  <div class="cmp-backdrop" (click)="closeCompare()"></div>
+  <div class="cmp-modal" role="dialog" aria-modal="true">
+    <div class="cmp-header">
+      <span class="cmp-title">Mode Comparison</span>
+      <div class="cmp-header-actions">
+        @if (compareSelections().length < 5) {
+          <button class="cmp-add" (click)="addCmpCol()">+ Add column</button>
+        }
+        <button class="cmp-close" (click)="closeCompare()">✕</button>
+      </div>
+    </div>
+
+    <div class="cmp-table-wrap">
+      <table class="cmp-table">
+        <thead>
+          <tr>
+            <th class="cmp-row-label"></th>
+            @for (sel of compareSelections(); track $index; let ci = $index) {
+              @let fi = getCmpItem(sel);
+              <th [class.cmp-col-best]="$index === bestCmpCol()">
+                <div class="cmp-col-head">
+                  <select class="cmp-select"
+                          [value]="sel"
+                          (change)="setCmpCol(ci, +$any($event.target).value)">
+                    @for (g of groups; track g.label) {
+                      <optgroup [label]="g.label">
+                        @for (item of g.items; track item.config) {
+                            <option [value]="getFlatIdx(g, item)">{{ item.config }}</option>
+                        }
+                      </optgroup>
+                    }
+                  </select>
+                  @if (compareSelections().length > 2) {
+                    <button class="cmp-remove" (click)="removeCmpCol(ci)" title="Remove">×</button>
+                  }
+                </div>
+                <div class="cmp-col-group" [style.color]="fi.group.color">{{ fi.group.label }}</div>
+              </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Hero time -->
+          <tr class="cmp-row-time">
+            <td class="cmp-row-label">Time</td>
+            @for (sel of compareSelections(); track $index) {
+              @let fi = getCmpItem(sel);
+              <td [class.cmp-col-best]="$index === bestCmpCol()">
+                <span class="cmp-time" [style.color]="fi.group.color">{{ fi.item.time }}s</span>
+              </td>
+            }
+          </tr>
+          <!-- Spec rows -->
+          <tr>
+            <td class="cmp-row-label">Concurrency</td>
+            @for (sel of compareSelections(); track $index) {
+              @let fi = getCmpItem(sel);
+              <td [class.cmp-col-best]="$index === bestCmpCol()">{{ fi.group.meta.concurrency }}</td>
+            }
+          </tr>
+          <tr>
+            <td class="cmp-row-label">Protocol</td>
+            @for (sel of compareSelections(); track $index) {
+              @let fi = getCmpItem(sel);
+              <td [class.cmp-col-best]="$index === bestCmpCol()"
+                  [class.cmp-val-ok]="fi.group.meta.protocol.startsWith('HTTP/2')">{{ fi.group.meta.protocol }}</td>
+            }
+          </tr>
+          <tr>
+            <td class="cmp-row-label">TLS handshakes</td>
+            @for (sel of compareSelections(); track $index) {
+              @let fi = getCmpItem(sel);
+              <td [class.cmp-col-best]="$index === bestCmpCol()"
+                  [class.cmp-val-ok]="fi.group.meta.tls === '3'"
+                  [class.cmp-val-warn]="fi.group.meta.tls === '216'">{{ fi.group.meta.tls }}</td>
+            }
+          </tr>
+          <tr>
+            <td class="cmp-row-label">Process spawns</td>
+            @for (sel of compareSelections(); track $index) {
+              @let fi = getCmpItem(sel);
+              <td [class.cmp-col-best]="$index === bestCmpCol()"
+                  [class.cmp-val-warn]="fi.group.meta.spawns === '216'">{{ fi.group.meta.spawns }}</td>
+            }
+          </tr>
+          <tr>
+            <td class="cmp-row-label">Rate limiter</td>
+            @for (sel of compareSelections(); track $index) {
+              @let fi = getCmpItem(sel);
+              <td [class.cmp-col-best]="$index === bestCmpCol()"
+                  [class.cmp-val-ok]="fi.group.meta.rateLimiter !== 'none'">{{ fi.group.meta.rateLimiter }}</td>
+            }
+          </tr>
+          <tr>
+            <td class="cmp-row-label">Bottleneck</td>
+            @for (sel of compareSelections(); track $index) {
+              @let fi = getCmpItem(sel);
+              <td [class.cmp-col-best]="$index === bestCmpCol()" class="cmp-bottleneck">{{ fi.item.bottleneck }}</td>
+            }
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+<footer class="bench-footer">
+  kubecmds-viz · export benchmark · <a routerLink="/">home</a>
+</footer>

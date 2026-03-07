@@ -80,13 +80,12 @@
               <button class="mode-opt" [class.selected]="exportService.mode() === 'workers'" (click)="setMode('workers'); showModeDropdown.set(false)">workers <span class="opt-hint">— thread pool</span></button>
               <button class="mode-opt" [class.selected]="exportService.mode() === 'procs'" (click)="setMode('procs'); showModeDropdown.set(false)">procs <span class="opt-hint">— subprocesses</span></button>
               <button class="mode-opt" [class.selected]="exportService.mode() === 'go'" (click)="setMode('go'); showModeDropdown.set(false)">go <span class="opt-hint">— ~6x faster</span></button>
-              <button class="mode-opt" [class.selected]="exportService.mode() === 'bash'" (click)="setMode('bash'); showModeDropdown.set(false)">bash</button>
-              <button class="mode-opt" [class.selected]="exportService.mode() === 'bash-batch'" (click)="setMode('bash-batch'); showModeDropdown.set(false)">bash-batch</button>
+              <button class="mode-opt" [class.selected]="exportService.mode() === 'bash'" (click)="setMode('bash'); showModeDropdown.set(false)">bash <span class="opt-hint">{{ exportService.mode() === 'bash' ? (exportService.workers() === 1 ? '— sequential' : '— batch') : '' }}</span></button>
               <button class="mode-opt" [class.selected]="exportService.mode() === 'bash-parallel'" [disabled]="!exportService.parallelAvailable()" [title]="exportService.parallelAvailable() ? '' : 'GNU parallel not installed'" (click)="setMode('bash-parallel'); showModeDropdown.set(false)">bash-parallel <span class="opt-hint">{{ exportService.parallelAvailable() ? '' : '— not installed' }}</span></button>
             </div>
           }
         </div>
-        @if (['bash-batch', 'bash-parallel', 'node', 'workers', 'procs'].includes(exportService.mode())) {
+        @if (['bash', 'bash-parallel', 'node', 'workers', 'procs', 'go'].includes(exportService.mode())) {
           <div class="number-stepper">
             <button class="stepper-btn" (click)="decrementWorkers()">&#8212;</button>
             <span class="stepper-val">{{ exportService.workers() }} <span class="stepper-unit">{{ workerLabel() }}</span></span>
@@ -135,12 +134,12 @@
                 <button class="mode-opt" [class.selected]="exportService.mode() === 'procs'" (click)="setMode('procs'); showModeDropdown.set(false)">procs <span class="opt-hint">— subprocesses</span></button>
                 <button class="mode-opt" [class.selected]="exportService.mode() === 'go'" (click)="setMode('go'); showModeDropdown.set(false)">go <span class="opt-hint">— ~6x faster</span></button>
                 <button class="mode-opt" [class.selected]="exportService.mode() === 'bash'" (click)="setMode('bash'); showModeDropdown.set(false)">bash</button>
-                <button class="mode-opt" [class.selected]="exportService.mode() === 'bash-batch'" (click)="setMode('bash-batch'); showModeDropdown.set(false)">bash-batch</button>
+
                 <button class="mode-opt" [class.selected]="exportService.mode() === 'bash-parallel'" [disabled]="!exportService.parallelAvailable()" [title]="exportService.parallelAvailable() ? '' : 'GNU parallel not installed'" (click)="setMode('bash-parallel'); showModeDropdown.set(false)">bash-parallel <span class="opt-hint">{{ exportService.parallelAvailable() ? '' : '— not installed' }}</span></button>
               </div>
             }
           </div>
-          @if (['bash-batch', 'bash-parallel', 'node', 'workers', 'procs'].includes(exportService.mode())) {
+          @if (['bash', 'bash-parallel', 'node', 'workers', 'procs', 'go'].includes(exportService.mode())) {
             <div class="number-stepper">
               <span class="stepper-val">{{ exportService.workers() }} <span class="stepper-unit">{{ workerLabel() }}</span></span>
               <button class="stepper-btn" (click)="decrementWorkers()">&#8212;</button>
@@ -166,6 +165,11 @@
       <span class="card-icon">&#9678;</span>
       <span class="card-label">Graph</span>
       <span class="card-desc">GPU-accelerated resource topology visualization</span>
+    </a>
+    <a class="card" routerLink="/benchmark">
+      <span class="card-icon">&#9201;</span>
+      <span class="card-label">Benchmark</span>
+      <span class="card-desc">kubectl loop → Go binary — 319s to 6s, step by step</span>
     </a>
   </div>
 
