@@ -30,7 +30,7 @@ const EXPORT_TIPS = [
 ];
 
 @Injectable({ providedIn: 'root' })
-export class K8sExportService {
+export class SnapshotService {
   private http = inject(HttpClient);
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private tipTimer: ReturnType<typeof setInterval> | null = null;
@@ -57,7 +57,7 @@ export class K8sExportService {
 
     try {
       const data = await firstValueFrom(
-        this.http.get<ExportProgress>(`${API_BASE}/k8s-export/progress`)
+        this.http.get<ExportProgress>(`${API_BASE}/snapshot`)
       );
       this.applyProgress(data);
 
@@ -91,7 +91,7 @@ export class K8sExportService {
       const body: Record<string, unknown> = { resume, mode: this.mode() };
       if (this.mode() === 'workers' || this.mode() === 'procs' || this.mode() === 'parallel') body['workers'] = this.workers();
       await firstValueFrom(
-        this.http.post(`${API_BASE}/k8s-export/start`, body)
+        this.http.post(`${API_BASE}/snapshot`, { ...body, command: 'start' })
       );
       this.isRunning.set(true);
       this.startPolling();
@@ -104,7 +104,7 @@ export class K8sExportService {
   async pauseExport(): Promise<void> {
     try {
       await firstValueFrom(
-        this.http.post(`${API_BASE}/k8s-export/stop`, {})
+        this.http.post(`${API_BASE}/snapshot`, { command: 'stop' })
       );
     } catch {
       // ignore
@@ -169,7 +169,7 @@ export class K8sExportService {
   private async fetchProgress(): Promise<void> {
     try {
       const data = await firstValueFrom(
-        this.http.get<ExportProgress>(`${API_BASE}/k8s-export/progress`)
+        this.http.get<ExportProgress>(`${API_BASE}/snapshot`)
       );
 
       this.applyProgress(data);

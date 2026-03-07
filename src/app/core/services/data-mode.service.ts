@@ -1,7 +1,7 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { K8sExportService } from './k8s-export.service';
+import { SnapshotService } from './snapshot.service';
 import { API_BASE } from '../constants/api';
 
 @Injectable({ providedIn: 'root' })
@@ -9,7 +9,7 @@ export class DataModeService {
   private static readonly STORAGE_KEY = 'kubecmds-data-mode';
 
   private http = inject(HttpClient);
-  private exportService = inject(K8sExportService);
+  private exportService = inject(SnapshotService);
 
   // Eagerly restore saved preference so it's correct before any ping completes
   isSnapshotMode = signal(localStorage.getItem(DataModeService.STORAGE_KEY) === 'snapshot');

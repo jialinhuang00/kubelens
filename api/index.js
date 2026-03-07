@@ -30,7 +30,7 @@ const graphRouter = require('./routes/graph');
 const statusRouter = require('./routes/status');
 const resourceCountsRouter = require('./routes/resource-counts');
 const ecrRouter = require('./routes/ecr');
-const k8sExportRouter = require('./routes/k8s-export');
+const snapshotRouter = require('./routes/snapshot');
 
 // Stream routes need io reference, mount them onto the router before app.use
 mountStream(executeRouter, io);
@@ -40,7 +40,7 @@ app.use('/api', graphRouter);
 app.use('/api', statusRouter);
 app.use('/api', resourceCountsRouter);
 app.use('/api', ecrRouter);
-app.use('/api', k8sExportRouter);
+app.use('/api', snapshotRouter);
 
 // WebSocket connection
 io.on('connection', (socket) => {

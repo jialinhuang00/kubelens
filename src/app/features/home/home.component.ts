@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DataModeService } from '../../core/services/data-mode.service';
-import { K8sExportService, ExportMode } from '../../core/services/k8s-export.service';
+import { SnapshotService, ExportMode } from '../../core/services/snapshot.service';
 import { TickFlashDirective } from '../../shared/directives/tick-flash.directive';
 import { ThemeSwitcherComponent } from '../../shared/components/theme-switcher/theme-switcher.component';
 import { HandbookComponent } from '../../shared/components/handbook/handbook.component';
@@ -16,7 +16,7 @@ import { MemMonitorComponent } from '../../shared/components/mem-monitor/mem-mon
 })
 export class HomeComponent implements OnInit {
   dataModeService = inject(DataModeService);
-  exportService = inject(K8sExportService);
+  exportService = inject(SnapshotService);
   showExport = signal(false);
   showModeDropdown = signal(false);
 

@@ -60,8 +60,26 @@ async function countDoneNamespaces() {
   }
 }
 
-// POST /api/k8s-export/start
-router.post('/k8s-export/start', async (req, res) => {
+// POST /api/snapshot  { command: "start", mode, workers, resume }
+router.post('/snapshot', async (req, res) => {
+  const command = req.body?.command;
+
+  // --- STOP ---
+  if (command === 'stop') {
+    if (!exportState.running || !exportState.pid) {
+      return res.status(400).json({ error: 'No export running' });
+    }
+    try {
+      process.kill(-exportState.pid, 'SIGTERM');
+      exportState.running = false;
+      exportState.paused = true;
+      return res.json({ stopped: true });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // --- START ---
   if (exportState.running) {
     return res.status(409).json({ error: 'Export already running' });
   }
@@ -106,22 +124,22 @@ router.post('/k8s-export/start', async (req, res) => {
     args = [];
   } else if (mode === 'parallel') {
     spawnCmd = 'bash';
-    args = [path.join(__dirname, '../..', 'scripts', 'k8s-export.sh')];
+    args = [path.join(__dirname, '../..', 'scripts', 'snapshot-bash.sh')];
     if (workers) args.push('--jobs', String(workers));
   } else if (mode === 'workers') {
     spawnCmd = process.execPath;
-    args = [path.join(__dirname, '../..', 'scripts', 'k8s-export-node-workers.js')];
+    args = [path.join(__dirname, '../..', 'scripts', 'snapshot-node-workers.js')];
     if (workers) args.push('--workers', String(workers));
   } else if (mode === 'procs') {
     spawnCmd = process.execPath;
-    args = [path.join(__dirname, '../..', 'scripts', 'k8s-export-node-procs.js')];
+    args = [path.join(__dirname, '../..', 'scripts', 'snapshot-node-procs.js')];
     if (workers) args.push('--procs', String(workers));
   } else if (mode === 'node') {
     spawnCmd = process.execPath;
-    args = [path.join(__dirname, '../..', 'scripts', 'k8s-export-node.js')];
+    args = [path.join(__dirname, '../..', 'scripts', 'snapshot-node.js')];
   } else {
     spawnCmd = 'bash';
-    args = [path.join(__dirname, '../..', 'scripts', 'k8s-export.sh')];
+    args = [path.join(__dirname, '../..', 'scripts', 'snapshot-bash.sh')];
   }
   if (resume) args.push('--resume');
 
@@ -213,8 +231,8 @@ router.post('/k8s-export/start', async (req, res) => {
   res.json({ started: true, pid: child.pid, resume });
 });
 
-// GET /api/k8s-export/progress
-router.get('/k8s-export/progress', async (req, res) => {
+// GET /api/snapshot
+router.get('/snapshot', async (req, res) => {
   let [liveCount, doneNs, hasCompleteMarker] = await Promise.all([
     countFiles(snapshotDir),
     countDoneNamespaces(),
@@ -284,20 +302,5 @@ router.get('/k8s-export/progress', async (req, res) => {
   res.json(response);
 });
 
-// POST /api/k8s-export/stop — used for both pause and hard stop
-router.post('/k8s-export/stop', (req, res) => {
-  if (!exportState.running || !exportState.pid) {
-    return res.status(400).json({ error: 'No export running' });
-  }
-
-  try {
-    process.kill(-exportState.pid, 'SIGTERM');  // negative = kill entire process group
-    exportState.running = false;
-    exportState.paused = true;
-    res.json({ stopped: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 module.exports = router;

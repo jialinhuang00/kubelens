@@ -47,7 +47,11 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(git log:*)",
       "Bash(git:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(go build:*)",
+      "Bash(./cmd/k8s-export/k8s-export:*)",
+      "Bash(go:*)",
+      "Bash(stty:*)"
     ],
     "deny": [],
     "ask": []
