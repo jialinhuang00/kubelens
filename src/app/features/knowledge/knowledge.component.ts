@@ -4,13 +4,11 @@ import {
   signal, computed, inject, effect,
 } from '@angular/core';
 import { Router } from '@angular/router';
-import { KeyValuePipe } from '@angular/common';
 import { GraphDataService } from '../universe/services/graph-data.service';
 import { DataModeService } from '../../core/services/data-mode.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { BackLinkComponent } from '../../shared/components/back-link/back-link.component';
 import { NamespaceChipsComponent } from '../../shared/components/namespace-chips/namespace-chips.component';
-import { ModeToggleComponent } from '../../shared/components/mode-toggle/mode-toggle.component';
 import { ThemeSwitcherComponent } from '../../shared/components/theme-switcher/theme-switcher.component';
 import { NetworkPatternsComponent, type NetworkType } from './network-patterns/network-patterns.component';
 import {
@@ -1388,7 +1386,7 @@ export const CRD_GLOSSARY: Record<CrdField, CrdInfo> = {
 
 @Component({
   selector: 'app-knowledge',
-  imports: [KeyValuePipe, BackLinkComponent, ModeToggleComponent, ThemeSwitcherComponent, NamespaceChipsComponent, NetworkPatternsComponent],
+  imports: [BackLinkComponent, ThemeSwitcherComponent, NamespaceChipsComponent, NetworkPatternsComponent],
   templateUrl: './knowledge.component.html',
   styleUrls: ['./knowledge.component.scss'],
 })
