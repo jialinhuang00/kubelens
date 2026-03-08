@@ -33,6 +33,7 @@ $sidebar-width: 320px;
 }
 
 .sidebar {
+  position: relative;
   width: $sidebar-width;
   height: 100%;
   background: var(--t-bg-body);
@@ -260,16 +261,15 @@ $sidebar-width: 320px;
 }
 
 // ============================================================
-// DETAIL CARD — docked inside sidebar flow
+// DETAIL CARD — overlays sidebar content when node is selected
 // ============================================================
 .detail-card {
-  flex: 1;
-  min-height: 0;
-  margin: 4px 10px 10px;
+  position: absolute;
+  inset: 0;
+  z-index: 10;
   background: var(--t-bg-panel);
-  border: 1px solid var(--t-border);
-  border-radius: var(--t-radius-md);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  border-right: 1px solid var(--t-border);
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.12);
   overflow: hidden;
   display: flex;
   flex-direction: column;

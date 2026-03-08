@@ -17,8 +17,27 @@
   display: block;
   background: var(--bg);
   min-height: 100vh;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: 'Inter', sans-serif;
   color: var(--text);
+}
+
+// ── Mono override — code/data elements stay monospaced ────────
+.bench-nav a, .bench-nav .nav-link,
+.hero-title, .speedup-badge,
+.section-eyebrow, .section-title,
+.race-group-header, .race-label, .race-time,
+.detail-name, .detail-time, .detail-math,
+.detail-flow, .dm-num, .dm-unit, .dm-op,
+.section-label-tag,
+table.tcp-table,
+.bucket-toggle button, .bucket-stats, .bucket-math, .bench-btn,
+.prim-stat, .stat-label, .stat-val, .stat-ok, .stat-warn, .stat-error,
+.node-text, .badge-text-warn, .badge-text-ok,
+.cmp-table, .cmp-time, .cmp-select,
+.faq-chip, .ftl-label, .ftl-bar, .ftl-slot, .ftl-q-item,
+.race-item-detail .detail-header,
+.race-track, code {
+  font-family: 'IBM Plex Mono', monospace;
 }
 
 // ── Theme corner ──────────────────────────────────────────────
@@ -84,7 +103,7 @@
   letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.3rem;
 }
 .section-title { font-size: 1.65rem; margin: 0 0 0.5rem; color: var(--text); font-weight: 600; }
-.section-lead  { color: var(--text-dim); max-width: 640px; margin: 0 0 2.5rem; font-size: 0.9rem; line-height: 1.65; }
+.section-lead  { color: var(--text-dim); max-width: 640px; margin: 0 0 2.5rem; font-size: 0.95rem; line-height: 1.75; }
 
 // ── Race chart ────────────────────────────────────────────────
 .race-chart { display: flex; flex-direction: column; }
@@ -539,7 +558,7 @@ table.tcp-table {
   &:hover { border-color: var(--accent); background: var(--surface); }
 }
 .faq-a {
-  p { font-size: 0.82rem; color: var(--text-dim); line-height: 1.7; margin: 0 0 1rem; }
+  p { font-size: 0.9rem; color: var(--text-dim); line-height: 1.8; margin: 0 0 1rem; }
 }
 .faq-compare { display: flex; flex-direction: column; gap: 0.75rem; }
 .faq-case {
