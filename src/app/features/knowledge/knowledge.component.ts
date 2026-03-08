@@ -9,9 +9,9 @@ import { GraphDataService } from '../universe/services/graph-data.service';
 import { DataModeService } from '../../core/services/data-mode.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { BackLinkComponent } from '../../shared/components/back-link/back-link.component';
+import { NamespaceChipsComponent } from '../../shared/components/namespace-chips/namespace-chips.component';
 import { ModeToggleComponent } from '../../shared/components/mode-toggle/mode-toggle.component';
 import { ThemeSwitcherComponent } from '../../shared/components/theme-switcher/theme-switcher.component';
-import { NamespaceChipsComponent } from '../../shared/components/namespace-chips/namespace-chips.component';
 import { NetworkPatternsComponent, type NetworkType } from './network-patterns/network-patterns.component';
 import {
   GraphNode, GraphEdge,
@@ -570,7 +570,7 @@ export const MULTI_KINDS: NodeKind[] = [
 ];
 
 /** Per-kind direction hints shown under the Outgoing / Incoming toggle. */
-export const KIND_DIRECTION_HINTS: Partial<Record<NodeKind, { out: string; in: string }>> = {
+export const KIND_DIRECTION_HINTS: Record<string, { out: string; in: string }> = {
   Deployment:  { out: '→ ConfigMap · Secret · PVC · ServiceAccount', in: '← Service · HPA' },
   StatefulSet: { out: '→ ConfigMap · Secret · PVC · ServiceAccount', in: '← Service · HPA' },
   DaemonSet:   { out: '→ ConfigMap · Secret · ServiceAccount',       in: '← Service' },
@@ -1454,7 +1454,7 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
   @ViewChild('mainArea') mainAreaRef?: ElementRef<HTMLElement>;
 
   readonly selectedGraphKind     = signal<NodeKind | null>(null);
-  readonly selectedNodeId        = signal<string | null>(null);
+  readonly selectedNamespace     = signal<string | null>(null);
   readonly selectedNetworkType   = signal<NetworkType | null>(null);
   readonly networkSections: { label: string; types: NetworkType[] }[] = [
     { label: 'SERVICE TYPE', types: ['ClusterIP', 'NodePort', 'LoadBalancer'] },
@@ -1468,28 +1468,42 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
   readonly multiSvgH     = signal<number>(400);
   readonly multiSvgW     = signal<number>(800);
   readonly multiKinds          = MULTI_KINDS;
-  readonly kindDirectionHints  = KIND_DIRECTION_HINTS;
+  readonly kindDirectionHints: Record<string, { out: string; in: string }> = KIND_DIRECTION_HINTS;
   readonly reverseMode         = signal(false);
+  readonly snapshotOpen        = signal(true);
+  readonly glossaryOpen        = signal(true);
+  readonly crdOpen             = signal(false);
+  readonly networkOpen         = signal(false);
 
-  /** All nodes of the selected kind in the selected namespace (for sidebar node list). */
-  readonly kindNodes = computed<GraphNode[]>(() => {
-    const kind = this.selectedGraphKind();
-    if (!kind || kind === 'Pod' || this.graphData.loading()) return [];
+  /** All unique namespaces in the graph (for top-level namespace selector). */
+  readonly allNamespaces = computed<string[]>(() => {
+    if (this.graphData.loading()) return [];
     const nodes = this.graphData.nodes();
-    return nodes.filter(n => n.kind === kind);
+    return [...new Set(nodes.map(n => n.namespace).filter((ns): ns is string => !!ns))].sort();
   });
 
-  /** All radial layouts — one per kindNode. Used when there are multiple nodes to show.
-   *  When a specific node is selected via the sidebar list, only that node is shown. */
+  /** All nodes of the selected kind, filtered by selected namespace. */
+  readonly kindNodes = computed<GraphNode[]>(() => {
+    const kind = this.selectedGraphKind();
+    if (!kind || this.graphData.loading()) return [];
+    const ns = this.selectedNamespace();
+    const nodes = this.graphData.nodes();
+    return nodes.filter(n => n.kind === kind && (!ns || n.namespace === ns));
+  });
+
+  /** Nodes to render in the main view — same as kindNodes (namespace already applied). */
+  readonly nodesForView = computed<GraphNode[]>(() => {
+    const kn = this.kindNodes();
+    if (!this.selectedGraphKind() || (!this.selectedNamespace() && kn.length > 1)) return [];
+    return kn;
+  });
+
+  /** All radial layouts — one per node in the selected namespace. */
   readonly allRadialLayouts = computed<RadialLayoutView[]>(() => {
     const kind = this.selectedGraphKind();
-    if (!kind || kind === 'Pod' || this.graphData.loading()) return [];
-    const kn = this.kindNodes();
-    if (kn.length <= 1) return [];
-    // Require a specific node selection — never auto-expand all nodes at once
-    const selectedId = this.selectedNodeId();
-    if (!selectedId) return [];
-    const nodesToRender = kn.filter(n => n.id === selectedId);
+    if (!kind || this.graphData.loading()) return [];
+    const nodesToRender = this.nodesForView();
+    if (!nodesToRender.length) return [];
     const edges   = this.graphData.edges();
     const nodes   = this.graphData.nodes();
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
@@ -1557,13 +1571,10 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
     const hasData = nodes.length > 0;
 
-    // When multiple nodes exist, wait for the user to select one explicitly
-    if (kind !== 'Pod' && this.kindNodes().length > 1 && !this.selectedNodeId()) return null;
+    // When multiple nodes exist, wait for the user to select a namespace first
+    if (this.kindNodes().length > 1 && !this.selectedNamespace()) return null;
 
-    const nodeId = this.selectedNodeId();
-    let srcNode = nodeId
-      ? nodes.find(n => n.id === nodeId)
-      : nodes.find(n => n.kind === kind);
+    let srcNode = nodes.find(n => n.kind === kind && (!this.selectedNamespace() || n.namespace === this.selectedNamespace()));
 
     // Pod is stored separately in graphData.pods(), not in nodes()
     if (!srcNode && kind === 'Pod') {
@@ -1754,7 +1765,6 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     this.selectedFieldGlossary.set(null);
     this.selectedCrdField.set(null);
     this.selectedNetworkType.set(null);
-    this.selectedNodeId.set(null);
     this.reverseMode.set(false);
     this.multiPaths.set([]);
     this.dragOffset.set({ x: 0, y: 0 });
@@ -1762,8 +1772,10 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     this.needsPathUpdate = true;
   }
 
-  selectNode(id: string): void {
-    this.selectedNodeId.set(this.selectedNodeId() === id ? null : id);
+  selectNamespace(ns: string): void {
+    this.selectedNamespace.set(this.selectedNamespace() === ns ? null : ns);
+    this.selectedGraphKind.set(null);
+    this.reverseMode.set(false);
     this.radialPaths.set([]);
     this.dragOffset.set({ x: 0, y: 0 });
     this.scale.set(1);

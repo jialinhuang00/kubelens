@@ -8,84 +8,91 @@
     </div>
 
     <div class="sidebar-content">
-      <div class="section-label section-label--snapshot">Snapshot Resources</div>
-      <div class="kind-list">
-        @for (kind of multiKinds; track kind) {
-          <button class="kind-item kind-item--snapshot" [class.active]="selectedGraphKind() === kind" (click)="selectGraphKind(kind)">
-            {{ kind }}
-          </button>
-        }
-      </div>
-
-      @if (selectedGraphKind(); as gk) {
-        <div class="direction-toggle">
-          <button class="direction-btn" [class.active]="!reverseMode()" (click)="setReverseMode(false)">
-            Outgoing
-          </button>
-          <button class="direction-btn" [class.active]="reverseMode()" (click)="setReverseMode(true)">
-            Incoming
-          </button>
+      <button class="section-label accordion-toggle" [class.open]="snapshotOpen()" (click)="snapshotOpen.set(!snapshotOpen())">
+        Snapshot Resources <span class="accordion-chevron">{{ snapshotOpen() ? '▾' : '▸' }}</span>
+      </button>
+      @if (snapshotOpen()) {
+        <app-namespace-chips
+          [namespaces]="allNamespaces()"
+          [selected]="selectedNamespace()"
+          (select)="selectNamespace($event)" />
+        <div class="kind-list">
+          @for (kind of multiKinds; track kind) {
+            <button class="kind-item" [class.active]="selectedGraphKind() === kind" (click)="selectGraphKind(kind)">
+              {{ kind }}
+            </button>
+          }
         </div>
-        @if (kindDirectionHints[$any(gk)]; as hint) {
-          <div class="direction-hint">{{ reverseMode() ? hint.in : hint.out }}</div>
+
+        @if (selectedGraphKind(); as gk) {
+          <div class="direction-toggle">
+            <button class="direction-btn" [class.active]="!reverseMode()" (click)="setReverseMode(false)">
+              Outgoing
+            </button>
+            <button class="direction-btn" [class.active]="reverseMode()" (click)="setReverseMode(true)">
+              Incoming
+            </button>
+          </div>
+          @if (kindDirectionHints[$any(gk)]; as hint) {
+            <div class="direction-hint">{{ reverseMode() ? hint.in : hint.out }}</div>
+          }
         }
       }
 
-      @if (kindNodes().length > 1) {
-        <div class="node-list">
-          @for (node of kindNodes(); track node.id) {
-            <button class="node-item"
-                    [class.active]="selectedNodeId() === node.id"
-                    (click)="selectNode(node.id)">
-              <span class="node-item-ns">{{ node.namespace }}</span>
-              <span class="node-item-name">{{ node.name }}</span>
+      <button class="section-label accordion-toggle" [class.open]="glossaryOpen()" (click)="glossaryOpen.set(!glossaryOpen())">
+        Field Glossary <span class="accordion-chevron">{{ glossaryOpen() ? '▾' : '▸' }}</span>
+      </button>
+      @if (glossaryOpen()) {
+        <div class="field-list">
+          @for (field of sidebarFields; track field) {
+            <button
+              class="field-item field-item--glossary"
+              [class.active]="selectedFieldGlossary() === field"
+              [style.--edge-color]="getEdgeColor(fieldGlossary[field].edgeType)"
+              (click)="selectFieldGlossary(field)">
+              <span class="field-short">{{ fieldGlossary[field].short }}</span>
+              <code class="field-yaml">{{ fieldGlossary[field].yaml }}</code>
             </button>
           }
         </div>
       }
 
-      <div class="section-label section-label--glossary">Field Glossary</div>
-      <div class="field-list">
-        @for (field of sidebarFields; track field) {
-          <button
-            class="field-item field-item--glossary"
-            [class.active]="selectedFieldGlossary() === field"
-            [style.--edge-color]="getEdgeColor(fieldGlossary[field].edgeType)"
-            (click)="selectFieldGlossary(field)">
-            <span class="field-short">{{ fieldGlossary[field].short }}</span>
-            <code class="field-yaml">{{ fieldGlossary[field].yaml }}</code>
-          </button>
-        }
-      </div>
-
-      <div class="section-label section-label--crd">CRD Pattern</div>
-      <div class="field-list">
-        @for (field of crdFields; track field) {
-          <button
-            class="field-item crd-item"
-            [class.active]="selectedCrdField() === field"
-            (click)="selectCrdField(field)">
-            <span class="field-short">{{ crdGlossary[field].short }}</span>
-            <code class="field-yaml">{{ crdGlossary[field].edgeLabel }}</code>
-          </button>
-        }
-      </div>
-
-      <div class="section-label section-label--network">Network Patterns</div>
-      @for (section of networkSections; track section.label) {
-        <div class="net-section-group">
-          <div class="net-section-sublabel">{{ section.label }}</div>
-          <div class="field-list">
-            @for (type of section.types; track type) {
-              <button
-                class="field-item"
-                [class.active]="selectedNetworkType() === type"
-                (click)="selectNetworkType(type)">
-                <span class="field-short">{{ type }}</span>
-              </button>
-            }
-          </div>
+      <button class="section-label accordion-toggle" [class.open]="crdOpen()" (click)="crdOpen.set(!crdOpen())">
+        CRD Pattern <span class="accordion-chevron">{{ crdOpen() ? '▾' : '▸' }}</span>
+      </button>
+      @if (crdOpen()) {
+        <div class="field-list">
+          @for (field of crdFields; track field) {
+            <button
+              class="field-item crd-item"
+              [class.active]="selectedCrdField() === field"
+              (click)="selectCrdField(field)">
+              <span class="field-short">{{ crdGlossary[field].short }}</span>
+              <code class="field-yaml">{{ crdGlossary[field].edgeLabel }}</code>
+            </button>
+          }
         </div>
+      }
+
+      <button class="section-label accordion-toggle" [class.open]="networkOpen()" (click)="networkOpen.set(!networkOpen())">
+        Network Patterns <span class="accordion-chevron">{{ networkOpen() ? '▾' : '▸' }}</span>
+      </button>
+      @if (networkOpen()) {
+        @for (section of networkSections; track section.label) {
+          <div class="net-section-group">
+            <div class="net-section-sublabel">{{ section.label }}</div>
+            <div class="field-list">
+              @for (type of section.types; track type) {
+                <button
+                  class="field-item"
+                  [class.active]="selectedNetworkType() === type"
+                  (click)="selectNetworkType(type)">
+                  <span class="field-short">{{ type }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
       }
     </div>
   </div>
@@ -106,8 +113,11 @@
     @if (error() && !selectedNetworkType(); as err) {
       <div class="overlay-msg error">{{ err }}</div>
     }
-    @if (selectedGraphKind() && kindNodes().length > 1 && !selectedNodeId() && !loading()) {
-      <div class="overlay-msg">Select a node from the sidebar list</div>
+    @if (selectedNamespace() && !selectedGraphKind() && !selectedFieldGlossary() && !selectedCrdField() && !selectedNetworkType() && !loading()) {
+      <div class="overlay-msg">Select a resource kind from the sidebar</div>
+    }
+    @if (selectedGraphKind() && !selectedNamespace() && nodesForView().length === 0 && !loading()) {
+      <div class="overlay-msg">Select a namespace from the sidebar</div>
     }
 
     @if (!selectedFieldGlossary() && !selectedGraphKind() && !selectedCrdField() && !selectedNetworkType() && !loading()) {

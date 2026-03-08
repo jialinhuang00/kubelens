@@ -41,48 +41,47 @@
 }
 
 .section-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--t-text-dim);
-  padding: 6px 10px 8px 12px;
-  margin-top: 6px;
-  border-left: 3px solid transparent;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--t-text-primary);
+  padding: 8px 10px 8px 12px;
+  background: rgba(0, 0, 0, 0.06);
+  border-left: 2px solid var(--t-border);
+  border-bottom: 1px solid var(--t-border);
 }
 
-// ── Section colour strips ───────────────────────────────────────────────────
-// Each section gets a distinct hue so the user immediately knows which
-// rendering mode they're about to enter.
+.accordion-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  box-sizing: border-box;
+  cursor: pointer;
+  background: none;
+  border: none;
+  text-align: left;
+  font: inherit;
+  letter-spacing: inherit;
 
-$c-snapshot: #6090c0;   // blue  — Snapshot Resources (radial / bipartite)
-$c-glossary: #e8b866;   // gold  — Field Glossary (two-card + connector)
-$c-crd:      #6dca82;   // green — CRD Pattern (two-card, CRD style)
-$c-network:  #b08cd0;   // purple — Network Patterns (SVG diagrams)
+  &:hover { background: rgba(0, 0, 0, 0.05); }
 
-.section-label--snapshot {
-  border-left-color: $c-snapshot;
-  color: mix(white, $c-snapshot, 20%);
-  background: color-mix(in srgb, #{$c-snapshot} 6%, transparent);
+  &.open {
+    background: rgba(0, 0, 0, 0.12);
+    border-left-color: var(--t-border);
+  }
 }
 
-.section-label--glossary {
-  border-left-color: $c-glossary;
-  color: $c-glossary;
-  background: color-mix(in srgb, #{$c-glossary} 6%, transparent);
+.accordion-chevron {
+  font-size: 9px;
+  opacity: 0.5;
+  margin-right: 6px;
+  font-style: normal;
 }
 
-.section-label--crd {
-  border-left-color: $c-crd;
-  color: $c-crd;
-  background: color-mix(in srgb, #{$c-crd} 6%, transparent);
-}
 
-.section-label--network {
-  border-left-color: $c-network;
-  color: $c-network;
-  background: color-mix(in srgb, #{$c-network} 6%, transparent);
-}
+
 
 .direction-toggle {
   display: flex;
@@ -175,21 +174,10 @@ $c-network:  #b08cd0;   // purple — Network Patterns (SVG diagrams)
   }
 }
 
-// Snapshot Resources items — blue accent
-.field-item--snapshot {
-  &:hover { background: color-mix(in srgb, #{$c-snapshot} 7%, transparent); }
-  &.active {
-    background: color-mix(in srgb, #{$c-snapshot} 12%, transparent);
-    border-left-color: $c-snapshot;
-  }
-}
-
-// Field Glossary items — keep edge-color per item, already handled by --edge-color
+// Field Glossary items — border-left-color set via --edge-color inline style
 .field-item--glossary {
-  &:hover { background: color-mix(in srgb, #{$c-glossary} 5%, transparent); }
   &.active {
-    background: color-mix(in srgb, #{$c-glossary} 10%, transparent);
-    // border-left-color set via --edge-color inline style
+    background: color-mix(in srgb, var(--edge-color, var(--t-accent)) 8%, transparent);
   }
 }
 
@@ -370,14 +358,6 @@ $c-network:  #b08cd0;   // purple — Network Patterns (SVG diagrams)
   }
 }
 
-// Snapshot Resources kind list uses blue
-.kind-item--snapshot {
-  &:hover { background: color-mix(in srgb, #{$c-snapshot} 7%, transparent); }
-  &.active {
-    background: color-mix(in srgb, #{$c-snapshot} 12%, transparent);
-    border-left-color: $c-snapshot;
-  }
-}
 
 // ── Cards container ────────────────────────────────────────────────────────
 
@@ -642,47 +622,6 @@ $c-network:  #b08cd0;   // purple — Network Patterns (SVG diagrams)
 
 // ── Node list (kind instance picker) ──────────────────────────────────────
 
-.node-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  border-bottom: 1px solid var(--t-border);
-  margin-bottom: 4px;
-}
-
-.node-item {
-  all: unset;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 5px 14px;
-  cursor: pointer;
-  border-left: 2px solid transparent;
-  transition: background 0.1s, border-color 0.1s;
-  width: 100%;
-  box-sizing: border-box;
-
-  &:hover {
-    background: color-mix(in srgb, var(--t-accent) 5%, transparent);
-  }
-
-  &.active {
-    background: color-mix(in srgb, var(--t-accent) 8%, transparent);
-    border-left-color: var(--t-accent);
-  }
-}
-
-.node-item-ns {
-  font-size: 9px;
-  color: var(--t-text-dim);
-  opacity: 0.7;
-}
-
-.node-item-name {
-  font-size: 11px;
-  color: var(--t-text-primary);
-  word-break: break-all;
-}
 
 // ── CRD overrides ─────────────────────────────────────────────────────────
 
