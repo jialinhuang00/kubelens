@@ -17,7 +17,7 @@
         }
       </div>
 
-      @if (selectedGraphKind()) {
+      @if (selectedGraphKind(); as gk) {
         <div class="direction-toggle">
           <button class="direction-btn" [class.active]="!reverseMode()" (click)="setReverseMode(false)">
             Outgoing
@@ -26,6 +26,9 @@
             Incoming
           </button>
         </div>
+        @if (kindDirectionHints[$any(gk)]; as hint) {
+          <div class="direction-hint">{{ reverseMode() ? hint.in : hint.out }}</div>
+        }
       }
 
       @if (kindNodes().length > 1) {

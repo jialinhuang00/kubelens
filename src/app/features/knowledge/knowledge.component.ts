@@ -569,6 +569,21 @@ export const MULTI_KINDS: NodeKind[] = [
   'Service', 'Ingress', 'HTTPRoute', 'TCPRoute', 'RoleBinding', 'Pod',
 ];
 
+/** Per-kind direction hints shown under the Outgoing / Incoming toggle. */
+export const KIND_DIRECTION_HINTS: Partial<Record<NodeKind, { out: string; in: string }>> = {
+  Deployment:  { out: '→ ConfigMap · Secret · PVC · ServiceAccount', in: '← Service · HPA' },
+  StatefulSet: { out: '→ ConfigMap · Secret · PVC · ServiceAccount', in: '← Service · HPA' },
+  DaemonSet:   { out: '→ ConfigMap · Secret · ServiceAccount',       in: '← Service' },
+  CronJob:     { out: '→ Job · ConfigMap · Secret · ServiceAccount', in: '(none typical)' },
+  Job:         { out: '→ ConfigMap · Secret · ServiceAccount',       in: '← CronJob (owns)' },
+  Service:     { out: '→ Pod / Deployment (selector)',               in: '← Ingress · HTTPRoute · TCPRoute' },
+  Ingress:     { out: '→ Service · Secret (TLS)',                    in: '(none typical)' },
+  HTTPRoute:   { out: '→ Service · Gateway (parentRef)',             in: '(none typical)' },
+  TCPRoute:    { out: '→ Service · Gateway (parentRef)',             in: '(none typical)' },
+  RoleBinding: { out: '→ Role · ServiceAccount (subjects)',          in: '(none typical)' },
+  Pod:         { out: '→ ConfigMap · Secret · PVC · ServiceAccount', in: '← Deployment · StatefulSet · DaemonSet (ownerRef)' },
+};
+
 /** Natural YAML section order — targets are sorted by this to prevent bezier crossings. */
 /** Maps a source field to the side where its target card appears in the radial hub layout. */
 const SIDE_BY_FIELD: Partial<Record<SourceField, 'top' | 'right' | 'bottom' | 'left'>> = {
@@ -1452,8 +1467,9 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
   readonly multiPaths    = signal<string[]>([]);
   readonly multiSvgH     = signal<number>(400);
   readonly multiSvgW     = signal<number>(800);
-  readonly multiKinds    = MULTI_KINDS;
-  readonly reverseMode   = signal(false);
+  readonly multiKinds          = MULTI_KINDS;
+  readonly kindDirectionHints  = KIND_DIRECTION_HINTS;
+  readonly reverseMode         = signal(false);
 
   /** All nodes of the selected kind in the selected namespace (for sidebar node list). */
   readonly kindNodes = computed<GraphNode[]>(() => {
@@ -1463,18 +1479,22 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     return nodes.filter(n => n.kind === kind);
   });
 
-  /** All radial layouts — one per kindNode. Used when there are multiple nodes to show. */
+  /** All radial layouts — one per kindNode. Used when there are multiple nodes to show.
+   *  When a specific node is selected via the sidebar list, only that node is shown. */
   readonly allRadialLayouts = computed<RadialLayoutView[]>(() => {
     const kind = this.selectedGraphKind();
     if (!kind || kind === 'Pod' || this.graphData.loading()) return [];
     const kn = this.kindNodes();
     if (kn.length <= 1) return [];
+    // When a specific node is selected, focus on just that one
+    const selectedId = this.selectedNodeId();
+    const nodesToRender = selectedId ? kn.filter(n => n.id === selectedId) : kn;
     const edges   = this.graphData.edges();
     const nodes   = this.graphData.nodes();
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
     const reverse = this.reverseMode();
     const layouts: RadialLayoutView[] = [];
-    for (const srcNode of kn) {
+    for (const srcNode of nodesToRender) {
       const rawTargets = reverse
         ? edges
             .filter(e => e.target === srcNode.id && e.sourceField && nodeMap.has(e.source))
