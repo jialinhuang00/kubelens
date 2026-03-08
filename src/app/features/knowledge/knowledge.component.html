@@ -94,6 +94,23 @@
           </div>
         }
       }
+
+      <button class="section-label accordion-toggle" [class.open]="podConfigOpen()" (click)="podConfigOpen.set(!podConfigOpen())">
+        Pod Config Keys <span class="accordion-chevron">{{ podConfigOpen() ? '▾' : '▸' }}</span>
+      </button>
+      @if (podConfigOpen()) {
+        <div class="field-list">
+          @for (entry of podConfigKeys; track entry.key) {
+            <button
+              class="field-item"
+              [class.active]="selectedPodConfig() === entry.key"
+              (click)="selectPodConfig(entry.key)">
+              <span class="field-short">{{ entry.short }}</span>
+              <code class="field-yaml">{{ entry.key }}</code>
+            </button>
+          }
+        </div>
+      }
     </div>
   </div>
 
@@ -106,6 +123,18 @@
        (mouseup)="onDragEnd()"
        (mouseleave)="onDragEnd()"
        (wheel)="onWheel($event)" style="touch-action:none">
+
+    @if (selectedPodConfigEntry(); as cfg) {
+      <div class="pod-config-card">
+        <div class="pc-header">
+          <code class="pc-key">{{ cfg.key }}</code>
+          <div class="pc-appears">{{ cfg.appearsIn }}</div>
+        </div>
+        <p class="pc-what">{{ cfg.what }}</p>
+        <pre class="pc-yaml">{{ cfg.yaml }}</pre>
+        <div class="pc-trap"><span class="pc-trap-label">Trap</span>{{ cfg.trap }}</div>
+      </div>
+    }
 
     @if (loading() && !selectedNetworkType()) {
       <div class="overlay-msg">Loading graph…</div>
@@ -120,7 +149,7 @@
       <div class="overlay-msg">Select a namespace from the sidebar</div>
     }
 
-    @if (!selectedFieldGlossary() && !selectedGraphKind() && !selectedCrdField() && !selectedNetworkType() && !loading()) {
+    @if (!selectedFieldGlossary() && !selectedGraphKind() && !selectedCrdField() && !selectedNetworkType() && !selectedPodConfig() && !loading()) {
       <div class="cheatsheet">
         <div class="cs-title">K8s Resource Relationships</div>
 

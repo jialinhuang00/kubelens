@@ -562,6 +562,156 @@ export interface MultiExampleView {
 }
 
 /** Kinds that have interesting multi-edge outgoing relationships. */
+// ── Pod Config Keys ────────────────────────────────────────────────────────
+
+export interface PodConfigEntry {
+  key: string;
+  short: string;
+  appearsIn: string;
+  what: string;
+  yaml: string;
+  trap: string;
+}
+
+export const POD_CONFIG_KEYS: PodConfigEntry[] = [
+  {
+    key: 'livenessProbe',
+    short: 'Restart on health failure',
+    appearsIn: 'containers[] — Deployment · StatefulSet · DaemonSet · Job',
+    what: 'kubelet pings a health endpoint on a schedule. Three failures in a row — it kills and restarts the container. Fixes deadlocked processes that are still running but no longer responding.',
+    yaml: `livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  failureThreshold: 3
+  periodSeconds: 10`,
+    trap: 'initialDelaySeconds too short — the app hasn\'t finished starting, the probe fires and fails, the container restarts before it ever ran. Use startupProbe instead.',
+  },
+  {
+    key: 'readinessProbe',
+    short: 'Drop from Service endpoints on failure',
+    appearsIn: 'containers[] — Deployment · StatefulSet · DaemonSet · Job',
+    what: 'Failure does not restart anything. It removes the Pod from the Service\'s endpoint list — traffic stops arriving, the container keeps running. Critical during rolling deploys: new Pod must pass readiness before old Pod drains.',
+    yaml: `readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  failureThreshold: 3
+  periodSeconds: 5`,
+    trap: 'Using liveness where readiness is correct. A slow database connection causes container restarts instead of just falling out of rotation.',
+  },
+  {
+    key: 'startupProbe',
+    short: 'Gate liveness until app has booted',
+    appearsIn: 'containers[] — Deployment · StatefulSet · DaemonSet · Job',
+    what: 'Runs first, repeatedly, until it succeeds. Only then does liveness take over. Eliminates the guesswork of initialDelaySeconds for slow-starting apps.',
+    yaml: `startupProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  failureThreshold: 30  # 30 × 2s = 60s max boot time
+  periodSeconds: 2`,
+    trap: 'Few people know this exists — it shipped in 1.16. Most teams reach for initialDelaySeconds and accept the guesswork.',
+  },
+  {
+    key: 'nodeAffinity',
+    short: 'Schedule on specific node types',
+    appearsIn: 'spec.affinity — Deployment · StatefulSet · DaemonSet · Job',
+    what: 'Two modes: required (hard rule, no match = unschedulable) and preferred (soft rule, scheduler tries then moves on). The IgnoredDuringExecution suffix means: if a node label changes after scheduling, the Pod stays — it is not evicted.',
+    yaml: `affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values: [us-east-1a]`,
+    trap: 'matchExpressions supports In, NotIn, Exists, DoesNotExist. Most people discover this when matchLabels does not support what they need.',
+  },
+  {
+    key: 'podAntiAffinity',
+    short: 'Spread replicas across nodes or zones',
+    appearsIn: 'spec.affinity — Deployment · StatefulSet · DaemonSet',
+    what: 'Tells the scheduler: do not place this Pod next to another Pod with these labels. topologyKey defines "next to" — kubernetes.io/hostname means same node, topology.kubernetes.io/zone means same zone.',
+    yaml: `affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app: my-app
+        topologyKey: kubernetes.io/hostname`,
+    trap: 'Using preferred instead of required. Not enough nodes? The scheduler ignores the preference and packs them anyway — you get false protection.',
+  },
+  {
+    key: 'topologySpreadConstraints',
+    short: 'Evenly spread Pods across zones',
+    appearsIn: 'spec — Deployment · StatefulSet · DaemonSet',
+    what: 'podAntiAffinity is binary. topologySpreadConstraints can say "spread evenly". maxSkew: 1 means the difference between the busiest zone and least busy must be at most 1.',
+    yaml: `topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        app: my-app`,
+    trap: 'whenUnsatisfiable: DoNotSchedule blocks scheduling if no valid spread exists. A new node that has not joined yet stalls your deploy. Use ScheduleAnyway for best-effort.',
+  },
+  {
+    key: 'resources.requests / limits',
+    short: 'Scheduler hint vs kernel cap',
+    appearsIn: 'containers[] · initContainers[] — all Pod-bearing kinds',
+    what: 'requests talks to the scheduler — "I need at least 500m CPU to start." limits talks to the Linux kernel — the container\'s cgroup is capped. Exceed memory limit: OOM kill. Exceed CPU limit: throttled, not killed.',
+    yaml: `resources:
+  requests:
+    cpu: "500m"
+    memory: "256Mi"
+  limits:
+    cpu: "1"
+    memory: "512Mi"`,
+    trap: 'Setting limits without requests. K8s defaults requests to equal limits. A container needing 100m CPU but with a limit of 2000m blocks 2000m of schedulable capacity on the node.',
+  },
+  {
+    key: 'securityContext',
+    short: 'Two levels: Pod and container',
+    appearsIn: 'spec · containers[] — all Pod-bearing kinds',
+    what: 'Pod-level sets: runAsUser, runAsGroup, fsGroup, sysctls. Container-level sets: runAsUser (overrides pod-level), allowPrivilegeEscalation, capabilities, readOnlyRootFilesystem.',
+    yaml: `spec:
+  securityContext:        # pod level
+    runAsUser: 1000
+    fsGroup: 2000
+  containers:
+    - securityContext:    # container level
+        runAsUser: 2000
+        allowPrivilegeEscalation: false`,
+    trap: 'fsGroup only exists at pod level — it sets group ownership of mounted volumes. People look for it at container level and do not find it.',
+  },
+  {
+    key: 'initContainers',
+    short: 'Run sequentially before main containers',
+    appearsIn: 'spec — all Pod-bearing kinds',
+    what: 'Init containers run one by one, in order. Each must exit 0 before the next starts. Main containers do not start until all succeed. Since 1.29: a container with restartPolicy: Always inside initContainers is a native sidecar — starts before main containers and stays running.',
+    yaml: `initContainers:
+  - name: wait-for-db
+    image: busybox
+    command: ['sh', '-c', 'until nc -z db 5432; do sleep 2; done']`,
+    trap: 'Before 1.29, people faked sidecars by running a never-exiting process as an init container — which blocked the entire init chain indefinitely.',
+  },
+  {
+    key: 'terminationGracePeriodSeconds',
+    short: 'Time between SIGTERM and SIGKILL',
+    appearsIn: 'spec — all Pod-bearing kinds',
+    what: 'On delete: (1) preStop hook fires, (2) SIGTERM sent to PID 1, (3) grace period countdown starts (default 30s), (4) timer hits 0 → SIGKILL. preStop and SIGTERM run concurrently inside the grace period.',
+    yaml: `spec:
+  terminationGracePeriodSeconds: 60
+  containers:
+    - lifecycle:
+        preStop:
+          exec:
+            command: ["/bin/sh", "-c", "sleep 5"]`,
+    trap: 'preStop takes 25s, app needs 10s more to drain connections — you need 60s total, not 30. The default 30s is often too short for database connections.',
+  },
+];
+
 export const MULTI_KINDS: NodeKind[] = [
   'Deployment', 'StatefulSet', 'DaemonSet', 'CronJob', 'Job',
   'Service', 'Ingress', 'HTTPRoute', 'TCPRoute', 'RoleBinding', 'Pod',
@@ -1469,9 +1619,15 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
   readonly kindDirectionHints: Record<string, { out: string; in: string }> = KIND_DIRECTION_HINTS;
   readonly reverseMode         = signal(false);
   readonly snapshotOpen        = signal(true);
-  readonly glossaryOpen        = signal(true);
+  readonly glossaryOpen        = signal(false);
   readonly crdOpen             = signal(false);
   readonly networkOpen         = signal(false);
+  readonly podConfigOpen       = signal(false);
+  readonly podConfigKeys       = POD_CONFIG_KEYS;
+  readonly selectedPodConfig   = signal<string | null>(null);
+  readonly selectedPodConfigEntry = computed(() =>
+    POD_CONFIG_KEYS.find(e => e.key === this.selectedPodConfig()) ?? null
+  );
 
   /** All unique namespaces in the graph (for top-level namespace selector). */
   readonly allNamespaces = computed<string[]>(() => {
@@ -1732,6 +1888,15 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     this.selectedFieldGlossary.set(null);
     this.selectedGraphKind.set(null);
     this.selectedCrdField.set(null);
+    this.selectedPodConfig.set(null);
+  }
+
+  selectPodConfig(key: string): void {
+    this.selectedPodConfig.set(this.selectedPodConfig() === key ? null : key);
+    this.selectedFieldGlossary.set(null);
+    this.selectedGraphKind.set(null);
+    this.selectedCrdField.set(null);
+    this.selectedNetworkType.set(null);
   }
 
   selectFieldGlossary(field: SourceField): void {
