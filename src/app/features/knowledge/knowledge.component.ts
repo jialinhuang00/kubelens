@@ -12,6 +12,7 @@ import { BackLinkComponent } from '../../shared/components/back-link/back-link.c
 import { ModeToggleComponent } from '../../shared/components/mode-toggle/mode-toggle.component';
 import { ThemeSwitcherComponent } from '../../shared/components/theme-switcher/theme-switcher.component';
 import { NamespaceChipsComponent } from '../../shared/components/namespace-chips/namespace-chips.component';
+import { NetworkPatternsComponent, type NetworkType } from './network-patterns/network-patterns.component';
 import {
   GraphNode, GraphEdge,
   EdgeType, SourceField, NodeKind,
@@ -20,12 +21,20 @@ import {
 
 // ── Field Glossary data ────────────────────────────────────────────────────
 
+export interface RuntimeStep {
+  kind: string;
+  name: string;
+  label: string;
+}
+
 export interface FieldInfo {
   short: string;
   yaml: string;
   edgeType: EdgeType;
   notes: string;
   usage: string[];
+  runtimeChain?: RuntimeStep[];
+  groupKind?: NodeKind;
 }
 
 export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
@@ -33,11 +42,15 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     short: 'Runs as ServiceAccount',
     yaml: 'spec.template.spec.serviceAccountName',
     edgeType: EdgeType.UsesServiceAccount,
-    notes: 'Pod needs to call K8s API (list pods, read secrets). Token auto-mounted at a well-known path. Default SA has minimal permissions — create a dedicated SA + Role.',
+    notes: 'Deployment tells K8s which ServiceAccount to use. At runtime, K8s mounts the SA token into every Pod at a well-known path. The container process reads that token to authenticate against the K8s API. Default SA has minimal permissions — create a dedicated SA and bind a Role to it.',
     usage: [
       '// Node.js — @kubernetes/client-node',
       'kc.loadFromCluster()  // reads token from auto-mounted path',
       '// token path: /var/run/secrets/kubernetes.io/serviceaccount/token',
+    ],
+    runtimeChain: [
+      { kind: 'Pod',     name: 'my-app-xyz',     label: 'creates → mounts SA token' },
+      { kind: 'K8s API', name: 'kube-apiserver', label: 'authenticates with token' },
     ],
   },
   [SourceField.EnvFromConfigMap]: {
@@ -188,7 +201,8 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     short: 'RoleBinding binds this Role',
     yaml: 'roleRef.name',
     edgeType: EdgeType.BindsRole,
-    notes: 'RoleBinding wires a Role (what actions are allowed) to subjects (who can do them). Role defines verbs + resources; RoleBinding grants that Role to a ServiceAccount. ClusterRole/ClusterRoleBinding for cluster-wide scope.',
+    groupKind: 'RoleBinding',
+    notes: 'RoleBinding is the bridge: roleRef points to a Role (what is allowed), subjects points to a ServiceAccount (who gets it). Without a RoleBinding, a Role grants nothing — it is just a list of permissions with no owner. ClusterRole/ClusterRoleBinding for cluster-wide scope.',
     usage: [
       '// allow SA to list pods:',
       '// Role: verbs: [get, list], resources: [pods]',
@@ -199,6 +213,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     short: 'RoleBinding grants access to ServiceAccount',
     yaml: 'subjects[].name',
     edgeType: EdgeType.BindsRole,
+    groupKind: 'RoleBinding',
     notes: "The ServiceAccount name here must match the serviceAccountName on the workload pod spec. If they do not match, the pod runs but without the Role's permissions — silent failure.",
     usage: [
       '// subjects[].name === spec.template.spec.serviceAccountName',
@@ -214,6 +229,17 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
       'kubectl delete deployment my-app',
       '// K8s follows ownerReferences → deletes ReplicaSets → deletes Pods',
       '// also used by garbage collector for orphaned resources',
+    ],
+  },
+  [SourceField.IngressTLS]: {
+    short: 'Ingress TLS terminates with a Secret',
+    yaml: 'spec.tls[].secretName',
+    edgeType: EdgeType.UsesSecret,
+    notes: 'The Secret must contain tls.crt and tls.key. Ingress controller reads the Secret at runtime and presents the certificate to clients. If the Secret is missing or malformed, TLS handshakes fail silently — always test with curl -v.',
+    usage: [
+      'curl -v https://my-app.example.com',
+      '// check: * SSL certificate verify ok',
+      '// if Secret missing → SSL_ERROR_RX_RECORD_TOO_LONG',
     ],
   },
 };
@@ -239,6 +265,7 @@ const STATIC_EXAMPLES: Record<SourceField, { srcKind: NodeKind; srcName: string;
   [SourceField.RoleRef]:            { srcKind: 'RoleBinding',             srcName: 'my-binding',    tgtKind: 'Role',                  tgtName: 'my-role' },
   [SourceField.Subjects]:           { srcKind: 'RoleBinding',             srcName: 'my-binding',    tgtKind: 'ServiceAccount',        tgtName: 'my-app-sa' },
   [SourceField.OwnerReference]:     { srcKind: 'Pod',                     srcName: 'my-app-abc12',  tgtKind: 'ReplicaSet',            tgtName: 'my-app-7f9b2' },
+  [SourceField.IngressTLS]:         { srcKind: 'Ingress',                 srcName: 'my-ingress',    tgtKind: 'Secret',                tgtName: 'tls-secret' },
 };
 
 // ── YAML snippet builder ───────────────────────────────────────────────────
@@ -257,8 +284,19 @@ function buildSnippet(
   const name = tgt.name;
 
   const targetLines = ((): YamlLine[] => {
+    if (tgt.kind === 'Role') {
+      return [
+        s('# Role'),
+        s('metadata:'),
+        s(`  name: ${name}`, true),
+        s('rules:'),
+        s('  - apiGroups: [""]'),
+        s('    resources: [pods]'),
+        s('    verbs: [get, list]'),
+      ];
+    }
     if (tgt.kind === 'ConfigMap' || tgt.kind === 'Secret' || tgt.kind === 'PersistentVolumeClaim'
-        || tgt.kind === 'ServiceAccount' || tgt.kind === 'Role') {
+        || tgt.kind === 'ServiceAccount') {
       return [
         s(`# ${tgt.kind}`),
         s('metadata:'),
@@ -457,6 +495,15 @@ function buildSnippet(
           s('              service:'),
           s(`                name: ${name}`, true),
         ];
+      case SourceField.IngressTLS:
+        return [
+          s(`# ${src.kind}`),
+          s('spec:'),
+          s('  tls:'),
+          s('    - hosts:'),
+          s('        - my-app.example.com'),
+          s(`      secretName: ${name}`, true),
+        ];
       case SourceField.ScaleTargetRef:
         return [
           s(`# ${src.kind}`),
@@ -518,8 +565,8 @@ export interface MultiExampleView {
 
 /** Kinds that have interesting multi-edge outgoing relationships. */
 export const MULTI_KINDS: NodeKind[] = [
-  'Deployment', 'StatefulSet', 'DaemonSet', 'CronJob',
-  'Service', 'HTTPRoute', 'TCPRoute', 'RoleBinding', 'Pod',
+  'Deployment', 'StatefulSet', 'DaemonSet', 'CronJob', 'Job',
+  'Service', 'Ingress', 'HTTPRoute', 'TCPRoute', 'RoleBinding', 'Pod',
 ];
 
 /** Natural YAML section order — targets are sorted by this to prevent bezier crossings. */
@@ -530,6 +577,7 @@ const SIDE_BY_FIELD: Partial<Record<SourceField, 'top' | 'right' | 'bottom' | 'l
   [SourceField.ScaleTargetRef]:     'right',
   [SourceField.BackendRefs]:        'right',
   [SourceField.IngressBackend]:     'right',
+  [SourceField.IngressTLS]:         'top',
   [SourceField.EnvFromConfigMap]:   'top',
   [SourceField.EnvConfigMapKey]:    'top',
   [SourceField.VolumeConfigMap]:    'top',
@@ -748,6 +796,19 @@ function buildCombinedSnippet(
         lines.push(s('        - projected:'), s('            sources:'), s('              - secret:'));
         lines.push(s(`                  name: ${name}`, true));
       }
+    }
+  }
+
+  // ── Ingress ──
+  if (src.kind === 'Ingress') {
+    lines.push(s('spec:'));
+    for (const name of names(SourceField.IngressTLS)) {
+      lines.push(s('  tls:'), s('    - hosts: [...]'));
+      lines.push(s(`      secretName: ${name}`, true));
+    }
+    for (const name of names(SourceField.IngressBackend)) {
+      lines.push(s('  rules:'), s('    - http:'), s('        paths:'), s('          - backend:'), s('              service:'));
+      lines.push(s(`                name: ${name}`, true));
     }
   }
 
@@ -1312,7 +1373,7 @@ export const CRD_GLOSSARY: Record<CrdField, CrdInfo> = {
 
 @Component({
   selector: 'app-knowledge',
-  imports: [KeyValuePipe, BackLinkComponent, ModeToggleComponent, ThemeSwitcherComponent, NamespaceChipsComponent],
+  imports: [KeyValuePipe, BackLinkComponent, ModeToggleComponent, ThemeSwitcherComponent, NamespaceChipsComponent, NetworkPatternsComponent],
   templateUrl: './knowledge.component.html',
   styleUrls: ['./knowledge.component.scss'],
 })
@@ -1345,6 +1406,19 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
 
   readonly fieldGlossary  = FIELD_GLOSSARY;
   readonly crdGlossary    = CRD_GLOSSARY;
+  readonly sidebarFields: SourceField[] = [
+    SourceField.Selector,
+    SourceField.ServiceAccountName,
+    SourceField.EnvFromConfigMap, SourceField.EnvFromSecret,
+    SourceField.EnvConfigMapKey,  SourceField.EnvSecretKey,
+    SourceField.VolumePVC, SourceField.VolumeConfigMap, SourceField.VolumeSecret,
+    SourceField.ProjectedConfigMap, SourceField.ProjectedSecret,
+    SourceField.ParentRefs, SourceField.BackendRefs,
+    SourceField.IngressBackend, SourceField.IngressTLS,
+    SourceField.ScaleTargetRef,
+    SourceField.RoleRef, SourceField.Subjects,
+    SourceField.OwnerReference,
+  ];
   readonly crdFields      = Object.values(CrdField);
   readonly selectedField  = signal<SourceField | null>(null);
   readonly selectedCrdField = signal<CrdField | null>(null);
@@ -1364,9 +1438,17 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
 
   @ViewChild('mainArea') mainAreaRef?: ElementRef<HTMLElement>;
 
-  readonly selectedKind       = signal<NodeKind | null>(null);
-  readonly selectedNamespace  = signal<string | null>(null);
-  readonly selectedNodeId     = signal<string | null>(null);
+  readonly selectedKind          = signal<NodeKind | null>(null);
+  readonly selectedNodeId        = signal<string | null>(null);
+  readonly selectedNetworkType   = signal<NetworkType | null>(null);
+  readonly networkSections: { label: string; types: NetworkType[] }[] = [
+    { label: 'SERVICE TYPE', types: ['ClusterIP', 'NodePort', 'LoadBalancer'] },
+    { label: 'TOPOLOGY',     types: ['NodeNamespace', 'WorkloadTypes'] },
+    { label: 'ROUTING',      types: ['Ingress', 'Gateway'] },
+    { label: 'PROXY MODE',   types: ['ProxyMode'] },
+    { label: 'CLUSTER',      types: ['MasterWorker', 'PodLifecycle', 'ScenarioDeploy', 'ScenarioCrash', 'ScenarioTraffic'] },
+    { label: 'INTERFACES',   types: ['Interfaces'] },
+  ];
   readonly multiPaths    = signal<string[]>([]);
   readonly multiSvgH     = signal<number>(400);
   readonly multiSvgW     = signal<number>(800);
@@ -1377,9 +1459,8 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
   readonly kindNodes = computed<GraphNode[]>(() => {
     const kind = this.selectedKind();
     if (!kind || kind === 'Pod' || this.graphData.loading()) return [];
-    const ns    = this.selectedNamespace();
     const nodes = this.graphData.nodes();
-    return nodes.filter(n => n.kind === kind && (!ns || n.namespace === ns));
+    return nodes.filter(n => n.kind === kind);
   });
 
   /** All radial layouts — one per kindNode. Used when there are multiple nodes to show. */
@@ -1391,24 +1472,33 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     const edges   = this.graphData.edges();
     const nodes   = this.graphData.nodes();
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
+    const reverse = this.reverseMode();
     const layouts: RadialLayoutView[] = [];
     for (const srcNode of kn) {
-      const rawTargets = edges
-        .filter(e => e.source === srcNode.id && e.sourceField && nodeMap.has(e.target))
-        .map(e => {
-          const tgtNode = nodeMap.get(e.target)!;
-          const { targetLines } = buildSnippet(e.sourceField!, srcNode, tgtNode);
-          return { targetNode: tgtNode, edge: e, targetLines };
-        });
+      const rawTargets = reverse
+        ? edges
+            .filter(e => e.target === srcNode.id && e.sourceField && nodeMap.has(e.source))
+            .map(e => {
+              const refNode = nodeMap.get(e.source)!;
+              const { sourceLines } = buildSnippet(e.sourceField!, refNode, srcNode);
+              return { targetNode: refNode, edge: e, targetLines: sourceLines };
+            })
+        : edges
+            .filter(e => e.source === srcNode.id && e.sourceField && nodeMap.has(e.target))
+            .map(e => {
+              const tgtNode = nodeMap.get(e.target)!;
+              const { targetLines } = buildSnippet(e.sourceField!, srcNode, tgtNode);
+              return { targetNode: tgtNode, edge: e, targetLines };
+            });
       if (!rawTargets.length) continue;
       const sorted = [...rawTargets].sort((a, b) => {
         const ia = FIELD_SECTION_ORDER.indexOf(a.edge.sourceField!);
         const ib = FIELD_SECTION_ORDER.indexOf(b.edge.sourceField!);
         return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
       });
-      const combinedLines = buildCombinedSnippet(
-        srcNode, sorted.map(t => ({ field: t.edge.sourceField!, targetNode: t.targetNode })),
-      );
+      const combinedLines = reverse
+        ? buildSnippet(sorted[0].edge.sourceField!, sorted[0].targetNode, srcNode).targetLines
+        : buildCombinedSnippet(srcNode, sorted.map(t => ({ field: t.edge.sourceField!, targetNode: t.targetNode })));
       const mx: MultiExampleView = { sourceNode: srcNode, combinedLines, targets: sorted };
       const rl = buildRadialLayout(mx);
       if (rl) layouts.push(rl);
@@ -1431,6 +1521,13 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
 
   // Real-data example — uses live/snapshot cluster graph
   readonly multiExample = computed<MultiExampleView | null>(() => {
+    // groupKind field selected: show static multi-example for the group kind
+    const field = this.selectedField();
+    if (field) {
+      const groupKind = FIELD_GLOSSARY[field].groupKind;
+      if (groupKind) return buildStaticMultiExample(groupKind);
+    }
+
     const kind = this.selectedKind();
     if (!kind) return null;
     if (this.graphData.loading()) return null;
@@ -1439,16 +1536,15 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
     const hasData = nodes.length > 0;
 
-    const ns     = this.selectedNamespace();
     const nodeId = this.selectedNodeId();
     let srcNode = nodeId
       ? nodes.find(n => n.id === nodeId)
-      : nodes.find(n => n.kind === kind && (!ns || n.namespace === ns));
+      : nodes.find(n => n.kind === kind);
 
     // Pod is stored separately in graphData.pods(), not in nodes()
     if (!srcNode && kind === 'Pod') {
       const allPods = (Object.values(this.graphData.pods()) as GraphNode[][]).flat();
-      srcNode = ns ? allPods.find(p => p.namespace === ns) : allPods[0];
+      srcNode = allPods[0];
     }
 
     if (!srcNode) {
@@ -1467,9 +1563,9 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     // Show all pods in the selected namespace (or all if none selected).
     if (kind === 'Pod') {
       const allPods = (Object.values(this.graphData.pods()) as GraphNode[][]).flat();
-      const filteredPods = ns ? allPods.filter(p => p.namespace === ns) : allPods;
+      const filteredPods = allPods;
       if (!filteredPods.length) {
-        return { sourceNode: { id: '', name: '', kind, category: 'workload', namespace: '', metadata: {} }, combinedLines: [], targets: [], emptyMsg: `No Pod found in snapshot${ns ? ' (namespace: ' + ns + ')' : ''}` };
+        return { sourceNode: { id: '', name: '', kind, category: 'workload', namespace: '', metadata: {} }, combinedLines: [], targets: [], emptyMsg: `No Pod found in snapshot` };
       }
       const podRows: PodRow[] = [];
       for (const pod of filteredPods) {
@@ -1487,13 +1583,22 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
       return { sourceNode: filteredPods[0], combinedLines: [], targets: [], podRows };
     }
 
-    const rawTargets = edges
-      .filter(e => e.source === srcNode!.id && e.sourceField && nodeMap.has(e.target))
-      .map(e => {
-        const tgtNode = nodeMap.get(e.target)!;
-        const { targetLines } = buildSnippet(e.sourceField!, srcNode!, tgtNode);
-        return { targetNode: tgtNode, edge: e, targetLines };
-      });
+    const reverse = this.reverseMode();
+    const rawTargets = reverse
+      ? edges
+          .filter(e => e.target === srcNode!.id && e.sourceField && nodeMap.has(e.source))
+          .map(e => {
+            const refNode = nodeMap.get(e.source)!;
+            const { sourceLines } = buildSnippet(e.sourceField!, refNode, srcNode!);
+            return { targetNode: refNode, edge: e, targetLines: sourceLines };
+          })
+      : edges
+          .filter(e => e.source === srcNode!.id && e.sourceField && nodeMap.has(e.target))
+          .map(e => {
+            const tgtNode = nodeMap.get(e.target)!;
+            const { targetLines } = buildSnippet(e.sourceField!, srcNode!, tgtNode);
+            return { targetNode: tgtNode, edge: e, targetLines };
+          });
 
     if (!rawTargets.length) {
       if (hasData) {
@@ -1501,7 +1606,9 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
           sourceNode: srcNode,
           combinedLines: [],
           targets: [],
-          emptyMsg: `No outgoing edges found for ${kind} "${srcNode.name}"`,
+          emptyMsg: reverse
+            ? `No resources reference ${kind} "${srcNode.name}"`
+            : `No outgoing edges found for ${kind} "${srcNode.name}"`,
         };
       }
       return buildStaticMultiExample(kind);
@@ -1514,10 +1621,10 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
       return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
     });
 
-    const combinedLines = buildCombinedSnippet(
-      srcNode,
-      sorted.map(t => ({ field: t.edge.sourceField!, targetNode: t.targetNode })),
-    );
+    // In incoming mode, the source card shows the referenced resource's YAML
+    const combinedLines = reverse
+      ? buildSnippet(sorted[0].edge.sourceField!, sorted[0].targetNode, srcNode!).targetLines
+      : buildCombinedSnippet(srcNode, sorted.map(t => ({ field: t.edge.sourceField!, targetNode: t.targetNode })));
 
     return { sourceNode: srcNode, combinedLines, targets: sorted };
   });
@@ -1526,6 +1633,7 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
   readonly example = computed<ExampleView | null>(() => {
     const field = this.selectedField();
     if (!field) return null;
+    if (FIELD_GLOSSARY[field].groupKind) return null;  // grouped fields use radial view
     const ex = STATIC_EXAMPLES[field];
     if (!ex) return null;
 
@@ -1548,7 +1656,7 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
   });
 
   ngOnInit(): void {
-    this.graphData.fetchGraph();
+    this.graphData.fetchGraph(true);
     effect(() => {
       this.themeService.activeTheme(); // track theme changes
       this.edgeColors.set(getThemedEdgeColors());
@@ -1558,7 +1666,10 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
   ngAfterViewChecked(): void {
     if (this.needsPathUpdate) {
       this.needsPathUpdate = false;
-      if (this.selectedField() || this.selectedCrdField()) {
+      const field = this.selectedField();
+      if (field && FIELD_GLOSSARY[field].groupKind) {
+        this.updateRadialPaths();
+      } else if (field || this.selectedCrdField()) {
         this.updatePath();
       } else if (this.selectedKind()) {
         const mx = this.multiExample();
@@ -1583,10 +1694,18 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     return lines.findIndex(l => l.highlight) === idx;
   }
 
+  selectNetworkType(type: NetworkType): void {
+    this.selectedNetworkType.set(this.selectedNetworkType() === type ? null : type);
+    this.selectedField.set(null);
+    this.selectedKind.set(null);
+    this.selectedCrdField.set(null);
+  }
+
   selectField(field: SourceField): void {
     this.selectedField.set(this.selectedField() === field ? null : field);
     this.selectedKind.set(null);
     this.selectedCrdField.set(null);
+    this.selectedNetworkType.set(null);
     this.connectorPath.set('');
     this.connectorMid.set(null);
     this.dragOffset.set({ x: 0, y: 0 });
@@ -1598,6 +1717,7 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     this.selectedCrdField.set(this.selectedCrdField() === field ? null : field);
     this.selectedField.set(null);
     this.selectedKind.set(null);
+    this.selectedNetworkType.set(null);
     this.connectorPath.set('');
     this.connectorMid.set(null);
     this.dragOffset.set({ x: 0, y: 0 });
@@ -1609,19 +1729,12 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     this.selectedKind.set(this.selectedKind() === kind ? null : kind);
     this.selectedField.set(null);
     this.selectedCrdField.set(null);
+    this.selectedNetworkType.set(null);
     this.selectedNodeId.set(null);
     this.reverseMode.set(false);
     this.multiPaths.set([]);
     this.dragOffset.set({ x: 0, y: 0 });
     this.scale.set(1);
-    this.needsPathUpdate = true;
-  }
-
-  onNamespaceSelect(ns: string): void {
-    this.selectedNamespace.set(this.selectedNamespace() === ns ? null : ns);
-    this.selectedNodeId.set(null);
-    this.multiPaths.set([]);
-    this.dragOffset.set({ x: 0, y: 0 });
     this.needsPathUpdate = true;
   }
 
@@ -1634,6 +1747,7 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
   }
 
   onDragStart(event: MouseEvent): void {
+    if (this.selectedNetworkType()) return;
     this.isDragging.set(true);
     this.dragStart = { x: event.clientX - this.dragOffset().x, y: event.clientY - this.dragOffset().y };
     event.preventDefault();
@@ -1649,9 +1763,10 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
   }
 
   onWheel(event: WheelEvent): void {
+    if (this.selectedNetworkType()) return;
     event.preventDefault();
     const oldScale = this.scale();
-    const factor = event.deltaY < 0 ? 1.04 : 0.96;
+    const factor = Math.exp(-event.deltaY * 0.0015);
     const newScale = Math.min(3, Math.max(0.25, oldScale * factor));
 
     // Zoom toward mouse cursor
@@ -1802,8 +1917,4 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     this.router.navigate(['/']);
   }
 
-  onModeChanged(): void {
-    this.edgeColors.set(getThemedEdgeColors());
-    this.graphData.fetchGraph();
-  }
 }

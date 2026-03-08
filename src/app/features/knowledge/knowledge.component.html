@@ -7,16 +7,6 @@
       <app-theme-switcher />
     </div>
 
-    <app-mode-toggle (modeChanged)="onModeChanged()" />
-
-    @if (graphData.namespaces().length > 0) {
-      <app-namespace-chips
-        [namespaces]="graphData.namespaces()"
-        [selected]="selectedNamespace()"
-        [disabled]="loading()"
-        (select)="onNamespaceSelect($event)" />
-    }
-
     <div class="sidebar-content">
       <div class="section-label">By Resource</div>
       <div class="kind-list">
@@ -44,9 +34,7 @@
             <button class="node-item"
                     [class.active]="selectedNodeId() === node.id"
                     (click)="selectNode(node.id)">
-              @if (!selectedNamespace()) {
-                <span class="node-item-ns">{{ node.namespace }}</span>
-              }
+              <span class="node-item-ns">{{ node.namespace }}</span>
               <span class="node-item-name">{{ node.name }}</span>
             </button>
           }
@@ -55,14 +43,14 @@
 
       <div class="section-label">Field Glossary</div>
       <div class="field-list">
-        @for (entry of fieldGlossary | keyvalue; track entry.key) {
+        @for (field of sidebarFields; track field) {
           <button
             class="field-item"
-            [class.active]="selectedField() === entry.key"
-            [style.--edge-color]="getEdgeColor(entry.value.edgeType)"
-            (click)="selectField($any(entry.key))">
-            <span class="field-short">{{ entry.value.short }}</span>
-            <code class="field-yaml">{{ entry.value.yaml }}</code>
+            [class.active]="selectedField() === field"
+            [style.--edge-color]="getEdgeColor(fieldGlossary[field].edgeType)"
+            (click)="selectField(field)">
+            <span class="field-short">{{ fieldGlossary[field].short }}</span>
+            <code class="field-yaml">{{ fieldGlossary[field].yaml }}</code>
           </button>
         }
       </div>
@@ -79,6 +67,23 @@
           </button>
         }
       </div>
+
+      <div class="section-label">Network Patterns</div>
+      @for (section of networkSections; track section.label) {
+        <div class="net-section-group">
+          <div class="net-section-sublabel">{{ section.label }}</div>
+          <div class="field-list">
+            @for (type of section.types; track type) {
+              <button
+                class="field-item"
+                [class.active]="selectedNetworkType() === type"
+                (click)="selectNetworkType(type)">
+                <span class="field-short">{{ type }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
     </div>
   </div>
 
@@ -92,17 +97,67 @@
        (mouseleave)="onDragEnd()"
        (wheel)="onWheel($event)" style="touch-action:none">
 
-    @if (loading()) {
+    @if (loading() && !selectedNetworkType()) {
       <div class="overlay-msg">Loading graph…</div>
     }
-    @if (error(); as err) {
+    @if (error() && !selectedNetworkType(); as err) {
       <div class="overlay-msg error">{{ err }}</div>
     }
 
-    @if (!selectedField() && !selectedKind() && !selectedCrdField() && !loading()) {
-      <div class="empty-state">Select a field to see an example</div>
+    @if (!selectedField() && !selectedKind() && !selectedCrdField() && !selectedNetworkType() && !loading()) {
+      <div class="cheatsheet">
+        <div class="cs-title">K8s Resource Relationships</div>
+
+        <div class="cs-section">
+          <div class="cs-label">WORKLOAD CHAIN</div>
+          <div class="cs-rows">
+            <div class="cs-row"><span class="cs-src">Deployment</span><span class="cs-arrow">──owns──►</span><span class="cs-via dim">ReplicaSet</span><span class="cs-arrow">──owns──►</span><span class="cs-tgt">Pod</span><span class="cs-note">ReplicaSet hidden — impl detail</span></div>
+            <div class="cs-row"><span class="cs-src">StatefulSet</span><span class="cs-arrow">──owns──►</span><span class="cs-tgt">Pod</span></div>
+            <div class="cs-row"><span class="cs-src">DaemonSet</span><span class="cs-arrow">──owns──►</span><span class="cs-tgt">Pod</span></div>
+            <div class="cs-row"><span class="cs-src">CronJob</span><span class="cs-arrow">──owns──►</span><span class="cs-via">Job</span><span class="cs-arrow">──owns──►</span><span class="cs-tgt">Pod</span><span class="cs-note">Job kept — run history / retry count matters</span></div>
+            <div class="cs-row"><span class="cs-src">Job</span><span class="cs-arrow">──owns──►</span><span class="cs-tgt">Pod</span></div>
+          </div>
+        </div>
+
+        <div class="cs-section">
+          <div class="cs-label">CONFIGURATION</div>
+          <div class="cs-rows">
+            <div class="cs-row"><span class="cs-src">Deployment / StatefulSet / DaemonSet</span><span class="cs-arrow">──uses-configmap──►</span><span class="cs-tgt">ConfigMap</span></div>
+            <div class="cs-row"><span class="cs-src">Deployment / StatefulSet / DaemonSet</span><span class="cs-arrow">──uses-secret──────►</span><span class="cs-tgt">Secret</span></div>
+            <div class="cs-row"><span class="cs-src">Deployment / StatefulSet / DaemonSet</span><span class="cs-arrow">──uses-pvc─────────►</span><span class="cs-tgt">PersistentVolumeClaim</span></div>
+            <div class="cs-row"><span class="cs-src">Deployment / StatefulSet / DaemonSet</span><span class="cs-arrow">──uses-sa──────────►</span><span class="cs-tgt">ServiceAccount</span></div>
+            <div class="cs-row"><span class="cs-src">Job / CronJob</span><span class="cs-arrow">──uses-configmap/secret/pvc/sa──►</span><span class="cs-tgt">ConfigMap / Secret / PVC / ServiceAccount</span><span class="cs-note">same as workloads — has pod spec</span></div>
+          </div>
+        </div>
+
+        <div class="cs-section">
+          <div class="cs-label">NETWORKING</div>
+          <div class="cs-rows">
+            <div class="cs-row"><span class="cs-src">Service</span><span class="cs-arrow">──exposes──►</span><span class="cs-tgt">Deployment / StatefulSet / DaemonSet</span></div>
+            <div class="cs-row"><span class="cs-src">HorizontalPodAutoscaler</span><span class="cs-arrow">──exposes──►</span><span class="cs-tgt">Deployment / StatefulSet</span></div>
+            <div class="cs-row"><span class="cs-src">Ingress</span><span class="cs-arrow">──routes-to──►</span><span class="cs-tgt">Service</span></div>
+            <div class="cs-row"><span class="cs-src">HTTPRoute / TCPRoute</span><span class="cs-arrow">──routes-to──►</span><span class="cs-tgt">Service</span></div>
+            <div class="cs-row"><span class="cs-src">HTTPRoute / TCPRoute</span><span class="cs-arrow">──parent-gateway──►</span><span class="cs-tgt">Gateway</span></div>
+            <div class="cs-row"><span class="cs-src">Ingress</span><span class="cs-arrow">──uses-secret (TLS)──►</span><span class="cs-tgt">Secret</span><span class="cs-note">spec.tls[].secretName — cert + key</span></div>
+          </div>
+        </div>
+
+        <div class="cs-section">
+          <div class="cs-label">RBAC</div>
+          <div class="cs-rows">
+            <div class="cs-row"><span class="cs-src">RoleBinding</span><span class="cs-arrow">──binds-role──►</span><span class="cs-tgt">Role</span></div>
+            <div class="cs-row"><span class="cs-src">RoleBinding</span><span class="cs-arrow">──binds-role──►</span><span class="cs-tgt">ServiceAccount</span></div>
+          </div>
+        </div>
+      </div>
     }
 
+
+    @if (selectedNetworkType(); as nt) {
+      <div class="network-scroll">
+        <app-network-patterns [type]="nt" />
+      </div>
+    }
 
     <div class="drag-canvas"
          [style.transform]="'translate(' + dragOffset().x + 'px, ' + dragOffset().y + 'px) scale(' + scale() + ')'"
@@ -164,7 +219,7 @@
       </div>
     } @else if (multiExamples(); as bv) {
       @if (bv.sources.length === 0) {
-        <div class="overlay-msg">No {{ selectedKind() }} found in namespace {{ selectedNamespace() }}</div>
+        <div class="overlay-msg">No {{ selectedKind() }} found</div>
       } @else {
         <div class="bipartite-layout" [style.height.px]="bv.svgH" [style.width.px]="bv.svgW">
           <svg class="bipartite-svg" [attr.width]="bv.svgW" [attr.height]="bv.svgH">
@@ -442,6 +497,28 @@
           <span class="edge-field">via {{ fieldGlossary[sf].yaml }}</span>
         }
       </div>
+
+      @if (ex.edge.sourceField && fieldGlossary[ex.edge.sourceField].runtimeChain; as chain) {
+        <div class="runtime-chain">
+          <div class="runtime-chain-header">AT RUNTIME</div>
+          <div class="runtime-chain-flow">
+            <div class="runtime-node">
+              <span class="runtime-kind">{{ ex.sourceNode.kind }}</span>
+              <span class="runtime-name">{{ ex.sourceNode.name }}</span>
+            </div>
+            @for (step of chain; track $index) {
+              <div class="runtime-arrow">
+                <span class="runtime-edge-label">{{ step.label }}</span>
+                <span class="runtime-arrow-line">→</span>
+              </div>
+              <div class="runtime-node">
+                <span class="runtime-kind">{{ step.kind }}</span>
+                <span class="runtime-name">{{ step.name }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
     }
 
     @if (selectedCrdField(); as cf) {

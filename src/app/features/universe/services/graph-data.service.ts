@@ -22,14 +22,15 @@ export class GraphDataService {
   readonly pods       = computed(() => this._data()?.pods       ?? {});
   readonly namespaces = computed(() => this._data()?.namespaces ?? []);
 
-  fetchGraph(): void {
+  fetchGraph(forceSnapshot = false): void {
     // Cancel previous in-flight request (server detects client disconnect)
     this.inflight?.unsubscribe();
 
     this._loading.set(true);
     this._error.set(null);
 
-    this.inflight = this.http.get<GraphDataResponse>(`${API_BASE}/graph`).subscribe({
+    const url = forceSnapshot ? `${API_BASE}/graph?snapshot=true` : `${API_BASE}/graph`;
+    this.inflight = this.http.get<GraphDataResponse>(url).subscribe({
       next: (data) => {
         this._data.set(data);
         this._loading.set(false);
