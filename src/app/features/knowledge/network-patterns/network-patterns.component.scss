@@ -1,0 +1,210 @@
+.net-diagram {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 32px;
+}
+
+// ── SVG base ───────────────────────────────────────────────────────────────
+
+.net-svg {
+  overflow: visible;
+}
+
+// ── Cluster boundary ───────────────────────────────────────────────────────
+
+.net-bound {
+  fill: none;
+  stroke: var(--t-border);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  rx: 8;
+}
+
+.net-bound-label {
+  fill: var(--t-text-dim);
+  font-size: 10px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  text-anchor: middle;
+  opacity: 0.5;
+}
+
+// ── Edges ──────────────────────────────────────────────────────────────────
+
+.net-edge {
+  fill: none;
+  stroke: var(--t-text-dim);
+  stroke-width: 1.5;
+  opacity: 0.6;
+}
+
+.arrow-head {
+  fill: var(--t-text-dim);
+  opacity: 0.6;
+}
+
+// ── Blocks ─────────────────────────────────────────────────────────────────
+
+.net-block {
+  rx: 6;
+  stroke-width: 1.5;
+}
+
+.net-block--external {
+  fill: var(--t-bg-surface);
+  stroke: var(--t-text-dim);
+  opacity: 0.7;
+}
+
+.net-block--node {
+  fill: color-mix(in srgb, #6090c0 15%, var(--t-bg-surface));
+  stroke: #6090c0;
+}
+
+.net-block--service {
+  fill: color-mix(in srgb, #e8b866 12%, var(--t-bg-surface));
+  stroke: #e8b866;
+}
+
+.net-block--pod {
+  fill: color-mix(in srgb, #6dca82 12%, var(--t-bg-surface));
+  stroke: #6dca82;
+}
+
+.net-block-label {
+  fill: var(--t-text-body);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.net-block-sub {
+  fill: var(--t-text-dim);
+  font-size: 9px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+// ── Bound style variants ───────────────────────────────────────────────────
+
+.net-bound--node {
+  stroke: #6090c0;
+  stroke-width: 2;
+  stroke-dasharray: none;
+  fill: color-mix(in srgb, #6090c0 5%, transparent);
+}
+
+.net-bound--ns-game {
+  stroke: #e8b866;
+  stroke-width: 1.5;
+  stroke-dasharray: 8 4;
+  fill: color-mix(in srgb, #e8b866 6%, transparent);
+}
+
+.net-bound--ns-shop {
+  stroke: #6dca82;
+  stroke-width: 1.5;
+  stroke-dasharray: 8 4;
+  fill: color-mix(in srgb, #6dca82 6%, transparent);
+}
+
+.net-bound--ns-db {
+  stroke: #d4956a;
+  stroke-width: 1.5;
+  stroke-dasharray: 8 4;
+  fill: color-mix(in srgb, #d4956a 6%, transparent);
+}
+
+// ── Edge label ─────────────────────────────────────────────────────────────
+
+.net-edge-label {
+  fill: var(--t-accent);
+  font-size: 9px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  text-anchor: middle;
+  opacity: 0.9;
+}
+
+// ── Comparison table ───────────────────────────────────────────────────────
+
+.net-table {
+  border-collapse: collapse;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--t-text-body);
+  max-width: 560px;
+
+  th {
+    padding: 6px 14px;
+    border: 1px solid var(--t-border);
+    background: var(--t-bg-surface);
+    color: var(--t-accent);
+    font-weight: 600;
+    text-align: left;
+  }
+
+  td {
+    padding: 5px 14px;
+    border: 1px solid var(--t-border);
+    line-height: 1.6;
+    white-space: pre-line;
+    vertical-align: top;
+
+    &:first-child {
+      color: var(--t-text-dim);
+      font-weight: 600;
+    }
+  }
+
+  tr:nth-child(even) td {
+    background: color-mix(in srgb, var(--t-bg-surface) 60%, transparent);
+  }
+}
+
+// ── Meta (IP + note) ──────────────────────────────────────────────────────
+
+.net-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 480px;
+}
+
+.net-ip {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--t-accent);
+  opacity: 0.85;
+}
+
+.net-steps {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  li {
+    font-size: 13px;
+    font-family: 'Libre Baskerville', serif;
+    color: var(--t-text-body);
+    line-height: 1.7;
+  }
+}
+
+.net-yaml {
+  margin: 0;
+  padding: 10px 14px;
+  background: var(--t-bg-surface);
+  border: 1px solid var(--t-border);
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--t-text-body);
+  line-height: 1.6;
+  white-space: pre;
+}

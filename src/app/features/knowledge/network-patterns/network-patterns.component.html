@@ -1,0 +1,75 @@
+@if (diagram(); as d) {
+  <div class="net-diagram">
+
+    <div class="net-meta">
+      <div class="net-ip">{{ d.ip }}</div>
+      <ul class="net-steps">
+        @for (step of d.steps; track $index) {
+          <li>{{ step }}</li>
+        }
+      </ul>
+      <pre class="net-yaml">{{ d.yaml }}</pre>
+    </div>
+
+    @if (!d.svgHide) {
+      <svg [attr.width]="d.svgW" [attr.height]="d.svgH" class="net-svg">
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+            <path d="M 0 0 L 8 3 L 0 6 Z" class="arrow-head" />
+          </marker>
+        </defs>
+
+        <!-- Cluster / node / namespace boundaries -->
+        @for (b of d.bounds; track b.label) {
+          <rect [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h"
+                class="net-bound" [ngClass]="b.style ? 'net-bound--' + b.style : ''" />
+          <text [attr.x]="b.x + b.w / 2" [attr.y]="boundLabelY(b)"
+                class="net-bound-label">{{ b.label }}</text>
+        }
+
+        <!-- Edges -->
+        @for (e of d.edges; track $index) {
+          <path [attr.d]="edgePath(e)" class="net-edge" marker-end="url(#arrow)" />
+          @if (e.label) {
+            <text [attr.x]="edgeMidX(e)" [attr.y]="edgeMidY(e)"
+                  class="net-edge-label">{{ e.label }}</text>
+          }
+        }
+
+        <!-- Blocks -->
+        @for (b of d.blocks; track $index) {
+          <rect [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h"
+                class="net-block" [ngClass]="'net-block--' + b.kind" />
+          <text [attr.x]="b.x + b.w / 2" [attr.y]="textY(b)"
+                class="net-block-label">{{ b.label }}</text>
+          @if (b.sub) {
+            <text [attr.x]="b.x + b.w / 2" [attr.y]="b.y + b.h / 2 + 11"
+                  class="net-block-sub">{{ b.sub }}</text>
+          }
+        }
+      </svg>
+    }
+
+    @if (d.table) {
+      <table class="net-table">
+        <thead>
+          <tr>
+            @for (col of d.table.cols; track $index) {
+              <th>{{ col }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of d.table.rows; track $index) {
+            <tr>
+              @for (cell of row; track $index) {
+                <td>{{ cell }}</td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+
+  </div>
+}
