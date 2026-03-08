@@ -106,6 +106,9 @@
     @if (error() && !selectedNetworkType(); as err) {
       <div class="overlay-msg error">{{ err }}</div>
     }
+    @if (selectedGraphKind() && kindNodes().length > 1 && !selectedNodeId() && !loading()) {
+      <div class="overlay-msg">Select a node from the sidebar list</div>
+    }
 
     @if (!selectedFieldGlossary() && !selectedGraphKind() && !selectedCrdField() && !selectedNetworkType() && !loading()) {
       <div class="cheatsheet">

@@ -1486,9 +1486,10 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     if (!kind || kind === 'Pod' || this.graphData.loading()) return [];
     const kn = this.kindNodes();
     if (kn.length <= 1) return [];
-    // When a specific node is selected, focus on just that one
+    // Require a specific node selection — never auto-expand all nodes at once
     const selectedId = this.selectedNodeId();
-    const nodesToRender = selectedId ? kn.filter(n => n.id === selectedId) : kn;
+    if (!selectedId) return [];
+    const nodesToRender = kn.filter(n => n.id === selectedId);
     const edges   = this.graphData.edges();
     const nodes   = this.graphData.nodes();
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
@@ -1555,6 +1556,9 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     const edges   = this.graphData.edges();
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
     const hasData = nodes.length > 0;
+
+    // When multiple nodes exist, wait for the user to select one explicitly
+    if (kind !== 'Pod' && this.kindNodes().length > 1 && !this.selectedNodeId()) return null;
 
     const nodeId = this.selectedNodeId();
     let srcNode = nodeId
