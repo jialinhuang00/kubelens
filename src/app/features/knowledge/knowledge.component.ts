@@ -628,7 +628,7 @@ const FIELD_SECTION_ORDER: SourceField[] = [
   SourceField.RoleRef, SourceField.Subjects,
 ];
 
-/** Static fallback data for By Resource view — used when no cluster data is available. */
+/** Static fallback data for Snapshot Resources view — used when no cluster data is available. */
 const STATIC_MULTI_EXAMPLES: Partial<Record<NodeKind, Array<{ field: SourceField; tgtKind: NodeKind; tgtName: string }>>> = {
   Deployment: [
     { field: SourceField.ServiceAccountName, tgtKind: 'ServiceAccount',        tgtName: 'my-app-sa'   },
@@ -1420,7 +1420,7 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     SourceField.OwnerReference,
   ];
   readonly crdFields      = Object.values(CrdField);
-  readonly selectedField  = signal<SourceField | null>(null);
+  readonly selectedFieldGlossary = signal<SourceField | null>(null);
   readonly selectedCrdField = signal<CrdField | null>(null);
   readonly connectorPath  = signal<string>('');
   readonly connectorH     = signal<number>(200);
@@ -1438,7 +1438,7 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
 
   @ViewChild('mainArea') mainAreaRef?: ElementRef<HTMLElement>;
 
-  readonly selectedKind          = signal<NodeKind | null>(null);
+  readonly selectedGraphKind     = signal<NodeKind | null>(null);
   readonly selectedNodeId        = signal<string | null>(null);
   readonly selectedNetworkType   = signal<NetworkType | null>(null);
   readonly networkSections: { label: string; types: NetworkType[] }[] = [
@@ -1457,7 +1457,7 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
 
   /** All nodes of the selected kind in the selected namespace (for sidebar node list). */
   readonly kindNodes = computed<GraphNode[]>(() => {
-    const kind = this.selectedKind();
+    const kind = this.selectedGraphKind();
     if (!kind || kind === 'Pod' || this.graphData.loading()) return [];
     const nodes = this.graphData.nodes();
     return nodes.filter(n => n.kind === kind);
@@ -1465,7 +1465,7 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
 
   /** All radial layouts — one per kindNode. Used when there are multiple nodes to show. */
   readonly allRadialLayouts = computed<RadialLayoutView[]>(() => {
-    const kind = this.selectedKind();
+    const kind = this.selectedGraphKind();
     if (!kind || kind === 'Pod' || this.graphData.loading()) return [];
     const kn = this.kindNodes();
     if (kn.length <= 1) return [];
@@ -1522,13 +1522,13 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
   // Real-data example — uses live/snapshot cluster graph
   readonly multiExample = computed<MultiExampleView | null>(() => {
     // groupKind field selected: show static multi-example for the group kind
-    const field = this.selectedField();
+    const field = this.selectedFieldGlossary();
     if (field) {
       const groupKind = FIELD_GLOSSARY[field].groupKind;
       if (groupKind) return buildStaticMultiExample(groupKind);
     }
 
-    const kind = this.selectedKind();
+    const kind = this.selectedGraphKind();
     if (!kind) return null;
     if (this.graphData.loading()) return null;
     const nodes   = this.graphData.nodes();
@@ -1631,7 +1631,7 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
 
   // Static example — pure K8s knowledge, no cluster data needed
   readonly example = computed<ExampleView | null>(() => {
-    const field = this.selectedField();
+    const field = this.selectedFieldGlossary();
     if (!field) return null;
     if (FIELD_GLOSSARY[field].groupKind) return null;  // grouped fields use radial view
     const ex = STATIC_EXAMPLES[field];
@@ -1666,12 +1666,12 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
   ngAfterViewChecked(): void {
     if (this.needsPathUpdate) {
       this.needsPathUpdate = false;
-      const field = this.selectedField();
+      const field = this.selectedFieldGlossary();
       if (field && FIELD_GLOSSARY[field].groupKind) {
         this.updateRadialPaths();
       } else if (field || this.selectedCrdField()) {
         this.updatePath();
-      } else if (this.selectedKind()) {
+      } else if (this.selectedGraphKind()) {
         const mx = this.multiExample();
         if (mx?.podRows) {
           this.updatePodRowPaths();
@@ -1696,14 +1696,14 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
 
   selectNetworkType(type: NetworkType): void {
     this.selectedNetworkType.set(this.selectedNetworkType() === type ? null : type);
-    this.selectedField.set(null);
-    this.selectedKind.set(null);
+    this.selectedFieldGlossary.set(null);
+    this.selectedGraphKind.set(null);
     this.selectedCrdField.set(null);
   }
 
-  selectField(field: SourceField): void {
-    this.selectedField.set(this.selectedField() === field ? null : field);
-    this.selectedKind.set(null);
+  selectFieldGlossary(field: SourceField): void {
+    this.selectedFieldGlossary.set(this.selectedFieldGlossary() === field ? null : field);
+    this.selectedGraphKind.set(null);
     this.selectedCrdField.set(null);
     this.selectedNetworkType.set(null);
     this.connectorPath.set('');
@@ -1715,8 +1715,8 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
 
   selectCrdField(field: CrdField): void {
     this.selectedCrdField.set(this.selectedCrdField() === field ? null : field);
-    this.selectedField.set(null);
-    this.selectedKind.set(null);
+    this.selectedFieldGlossary.set(null);
+    this.selectedGraphKind.set(null);
     this.selectedNetworkType.set(null);
     this.connectorPath.set('');
     this.connectorMid.set(null);
@@ -1725,9 +1725,9 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     this.needsPathUpdate = true;
   }
 
-  selectKind(kind: NodeKind): void {
-    this.selectedKind.set(this.selectedKind() === kind ? null : kind);
-    this.selectedField.set(null);
+  selectGraphKind(kind: NodeKind): void {
+    this.selectedGraphKind.set(this.selectedGraphKind() === kind ? null : kind);
+    this.selectedFieldGlossary.set(null);
     this.selectedCrdField.set(null);
     this.selectedNetworkType.set(null);
     this.selectedNodeId.set(null);

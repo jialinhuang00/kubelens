@@ -46,7 +46,42 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--t-text-dim);
-  padding: 6px 14px 8px;
+  padding: 6px 10px 8px 12px;
+  margin-top: 6px;
+  border-left: 3px solid transparent;
+}
+
+// ── Section colour strips ───────────────────────────────────────────────────
+// Each section gets a distinct hue so the user immediately knows which
+// rendering mode they're about to enter.
+
+$c-snapshot: #6090c0;   // blue  — Snapshot Resources (radial / bipartite)
+$c-glossary: #e8b866;   // gold  — Field Glossary (two-card + connector)
+$c-crd:      #6dca82;   // green — CRD Pattern (two-card, CRD style)
+$c-network:  #b08cd0;   // purple — Network Patterns (SVG diagrams)
+
+.section-label--snapshot {
+  border-left-color: $c-snapshot;
+  color: mix(white, $c-snapshot, 20%);
+  background: color-mix(in srgb, #{$c-snapshot} 6%, transparent);
+}
+
+.section-label--glossary {
+  border-left-color: $c-glossary;
+  color: $c-glossary;
+  background: color-mix(in srgb, #{$c-glossary} 6%, transparent);
+}
+
+.section-label--crd {
+  border-left-color: $c-crd;
+  color: $c-crd;
+  background: color-mix(in srgb, #{$c-crd} 6%, transparent);
+}
+
+.section-label--network {
+  border-left-color: $c-network;
+  color: $c-network;
+  background: color-mix(in srgb, #{$c-network} 6%, transparent);
 }
 
 .direction-toggle {
@@ -127,6 +162,24 @@
   &.active {
     background: color-mix(in srgb, var(--t-accent) 8%, transparent);
     border-left-color: var(--edge-color, var(--t-accent));
+  }
+}
+
+// Snapshot Resources items — blue accent
+.field-item--snapshot {
+  &:hover { background: color-mix(in srgb, #{$c-snapshot} 7%, transparent); }
+  &.active {
+    background: color-mix(in srgb, #{$c-snapshot} 12%, transparent);
+    border-left-color: $c-snapshot;
+  }
+}
+
+// Field Glossary items — keep edge-color per item, already handled by --edge-color
+.field-item--glossary {
+  &:hover { background: color-mix(in srgb, #{$c-glossary} 5%, transparent); }
+  &.active {
+    background: color-mix(in srgb, #{$c-glossary} 10%, transparent);
+    // border-left-color set via --edge-color inline style
   }
 }
 
@@ -304,6 +357,15 @@
     opacity: 1;
     background: color-mix(in srgb, var(--t-accent) 8%, transparent);
     border-left-color: var(--t-accent);
+  }
+}
+
+// Snapshot Resources kind list uses blue
+.kind-item--snapshot {
+  &:hover { background: color-mix(in srgb, #{$c-snapshot} 7%, transparent); }
+  &.active {
+    background: color-mix(in srgb, #{$c-snapshot} 12%, transparent);
+    border-left-color: $c-snapshot;
   }
 }
 

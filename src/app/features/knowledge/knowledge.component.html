@@ -8,16 +8,16 @@
     </div>
 
     <div class="sidebar-content">
-      <div class="section-label">By Resource</div>
+      <div class="section-label section-label--snapshot">Snapshot Resources</div>
       <div class="kind-list">
         @for (kind of multiKinds; track kind) {
-          <button class="kind-item" [class.active]="selectedKind() === kind" (click)="selectKind(kind)">
+          <button class="kind-item kind-item--snapshot" [class.active]="selectedGraphKind() === kind" (click)="selectGraphKind(kind)">
             {{ kind }}
           </button>
         }
       </div>
 
-      @if (selectedKind()) {
+      @if (selectedGraphKind()) {
         <div class="direction-toggle">
           <button class="direction-btn" [class.active]="!reverseMode()" (click)="setReverseMode(false)">
             Outgoing
@@ -41,21 +41,21 @@
         </div>
       }
 
-      <div class="section-label">Field Glossary</div>
+      <div class="section-label section-label--glossary">Field Glossary</div>
       <div class="field-list">
         @for (field of sidebarFields; track field) {
           <button
-            class="field-item"
-            [class.active]="selectedField() === field"
+            class="field-item field-item--glossary"
+            [class.active]="selectedFieldGlossary() === field"
             [style.--edge-color]="getEdgeColor(fieldGlossary[field].edgeType)"
-            (click)="selectField(field)">
+            (click)="selectFieldGlossary(field)">
             <span class="field-short">{{ fieldGlossary[field].short }}</span>
             <code class="field-yaml">{{ fieldGlossary[field].yaml }}</code>
           </button>
         }
       </div>
 
-      <div class="section-label">CRD Pattern</div>
+      <div class="section-label section-label--crd">CRD Pattern</div>
       <div class="field-list">
         @for (field of crdFields; track field) {
           <button
@@ -68,7 +68,7 @@
         }
       </div>
 
-      <div class="section-label">Network Patterns</div>
+      <div class="section-label section-label--network">Network Patterns</div>
       @for (section of networkSections; track section.label) {
         <div class="net-section-group">
           <div class="net-section-sublabel">{{ section.label }}</div>
@@ -104,7 +104,7 @@
       <div class="overlay-msg error">{{ err }}</div>
     }
 
-    @if (!selectedField() && !selectedKind() && !selectedCrdField() && !selectedNetworkType() && !loading()) {
+    @if (!selectedFieldGlossary() && !selectedGraphKind() && !selectedCrdField() && !selectedNetworkType() && !loading()) {
       <div class="cheatsheet">
         <div class="cs-title">K8s Resource Relationships</div>
 
@@ -161,7 +161,7 @@
 
     <div class="drag-canvas"
          [style.transform]="'translate(' + dragOffset().x + 'px, ' + dragOffset().y + 'px) scale(' + scale() + ')'"
-         [style.display]="(!selectedField() && !selectedKind() && !selectedCrdField()) ? 'none' : 'flex'">
+         [style.display]="(!selectedFieldGlossary() && !selectedGraphKind() && !selectedCrdField()) ? 'none' : 'flex'">
 
 
     @if (allRadialLayouts().length > 0) {
@@ -219,7 +219,7 @@
       </div>
     } @else if (multiExamples(); as bv) {
       @if (bv.sources.length === 0) {
-        <div class="overlay-msg">No {{ selectedKind() }} found</div>
+        <div class="overlay-msg">No {{ selectedGraphKind() }} found</div>
       } @else {
         <div class="bipartite-layout" [style.height.px]="bv.svgH" [style.width.px]="bv.svgW">
           <svg class="bipartite-svg" [attr.width]="bv.svgW" [attr.height]="bv.svgH">
@@ -598,7 +598,7 @@
 
     </div><!-- /drag-canvas -->
 
-    @if (selectedField(); as sf) {
+    @if (selectedFieldGlossary(); as sf) {
       <div class="notes-panel" (mousedown)="$event.stopPropagation()">
         <div class="notes-text">{{ fieldGlossary[sf].notes }}</div>
         <div class="usage-lines">
