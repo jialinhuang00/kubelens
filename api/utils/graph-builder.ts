@@ -315,6 +315,20 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
       extractWorkloadEdges(ns, 'CronJob', name, templateSpec, addNode, addEdge);
     }
 
+    const jobs = getItemsFn(ns, 'jobs');
+    for (const j of jobs) {
+      const name = j.metadata?.name;
+      if (!name) continue;
+      const jobPodSpec = ((j.spec as Record<string, unknown>)?.template as Record<string, unknown>)?.spec as Record<string, unknown> | undefined;
+      const jobImages = getContainerImages(jobPodSpec);
+      addNode(ns, 'Job', name, 'workload', {
+        image: jobImages.full[0],
+        containers: jobImages.short,
+        registry: jobImages.registry,
+      });
+      extractWorkloadEdges(ns, 'Job', name, jobPodSpec, addNode, addEdge);
+    }
+
     const allWorkloads = [
       ...deployments.map(d => ({ kind: 'Deployment', item: d })),
       ...statefulsets.map(s => ({ kind: 'StatefulSet', item: s })),
@@ -426,6 +440,13 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
           if (backendName && nodeIds.has(`${ns}/Service/${backendName}`)) {
             addEdge(`${ns}/Ingress/${ingName}`, `${ns}/Service/${backendName}`, EdgeType.RoutesTo, SourceField.IngressBackend);
           }
+        }
+      }
+      for (const tls of (ingSpec?.tls || []) as Array<Record<string, unknown>>) {
+        const secretName = tls.secretName as string | undefined;
+        if (secretName) {
+          addNode(ns, 'Secret', secretName, 'abstract');
+          addEdge(`${ns}/Ingress/${ingName}`, `${ns}/Secret/${secretName}`, EdgeType.UsesSecret, SourceField.IngressTLS);
         }
       }
     }

@@ -73,6 +73,7 @@ export enum SourceField {
   ParentRefs         = 'spec.parentRefs',
   BackendRefs        = 'spec.rules.backendRefs',
   IngressBackend     = 'spec.rules.http.paths.backend',
+  IngressTLS         = 'spec.tls.secretName',
   ScaleTargetRef     = 'spec.scaleTargetRef',
   RoleRef            = 'roleRef',
   Subjects           = 'subjects',
