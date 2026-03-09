@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strings"
 )
 
 var ecrURLPattern = regexp.MustCompile(`^(\d+)\.dkr\.ecr\.([^.]+)\.amazonaws\.com/([^:]+)`)
@@ -38,7 +39,14 @@ func handleECRTags(w http.ResponseWriter, r *http.Request) {
 		var profileMap map[string]string
 		if json.Unmarshal([]byte(profileMapJSON), &profileMap) == nil {
 			if profile, ok := profileMap[accountID]; ok {
-				env = append(env, "AWS_PROFILE="+profile)
+				// Remove any existing AWS_PROFILE to avoid duplicates
+				filtered := make([]string, 0, len(env))
+				for _, e := range env {
+					if !strings.HasPrefix(e, "AWS_PROFILE=") {
+						filtered = append(filtered, e)
+					}
+				}
+				env = append(filtered, "AWS_PROFILE="+profile)
 			}
 		}
 	}

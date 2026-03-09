@@ -1,6 +1,7 @@
 const express = require('express');
 const { execFile, spawn } = require('child_process');
 const util = require('util');
+const { WebSocketServer } = require('ws');
 const snapshotK8s = require('../utils/snapshot-handler');
 
 const execFileAsync = util.promisify(execFile);
@@ -152,122 +153,124 @@ router.post('/execute', async (req, res) => {
   }
 });
 
-// POST /api/execute/stream — needs io passed in
-function mountStream(router, io) {
-  router.post('/execute/stream', (req, res) => {
-    const { command, streamId } = req.body;
+// POST /api/execute/stream/stop
+router.post('/execute/stream/stop', (req, res) => {
+  const { streamId } = req.body;
+  if (!streamId) {
+    return res.status(400).json({ error: 'streamId is required' });
+  }
+  const entry = global.runningProcesses?.get(streamId);
+  if (entry) {
+    entry.process.kill('SIGTERM');
+    global.runningProcesses.delete(streamId);
+    console.log(`Terminated stream: ${streamId}`);
+    res.json({ success: true, message: 'Stream terminated' });
+  } else {
+    res.status(404).json({ error: 'Stream not found' });
+  }
+});
 
-    if (req.query.snapshot === 'true') {
-      console.log(`[SNAPSHOT] Stream intercepting: ${command}`);
-      const result = snapshotK8s.handleCommand(command);
-      res.json({ success: true, message: 'Stream started (snapshot)', streamId });
-      setTimeout(() => {
-        io.emit('stream-data', { streamId, type: 'stdout', data: result.stdout || result.error || '', timestamp: Date.now() });
+// POST /api/execute/stream/clear
+router.post('/execute/stream/clear', (req, res) => {
+  const { streamId } = req.body;
+  const entry = global.runningProcesses?.get(streamId);
+  if (entry) entry.bufferRef.value = '';
+  res.json({ success: true });
+});
+
+// Attach WebSocket server to the HTTP server for /api/execute/stream/ws
+function mountWebSocket(httpServer) {
+  const wss = new WebSocketServer({ noServer: true });
+
+  httpServer.on('upgrade', (req, socket, head) => {
+    if (req.url === '/api/execute/stream/ws') {
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        wss.emit('connection', ws, req);
+      });
+    }
+    // Other paths (e.g. webpack HMR) are left alone
+  });
+
+  wss.on('connection', (ws) => {
+    // First message from client: { command, streamId, snapshot }
+    ws.once('message', (raw) => {
+      let init;
+      try {
+        init = JSON.parse(raw.toString());
+      } catch {
+        ws.close();
+        return;
+      }
+
+      const { command, streamId, snapshot } = init;
+      if (!command || !streamId) {
+        sendWs(ws, { type: 'stream-error', streamId: streamId || '', error: 'command and streamId are required' });
+        ws.close();
+        return;
+      }
+
+      console.log(`[stream] start ${command} (id=${streamId} snapshot=${!!snapshot})`);
+
+      // Snapshot mode — fake the stream
+      if (snapshot) {
+        const result = snapshotK8s.handleCommand(command);
+        const output = result.stdout || result.error || '';
         setTimeout(() => {
-          io.emit('stream-end', { streamId, exitCode: result.success ? 0 : 1, fullOutput: result.stdout || result.error || '', timestamp: Date.now() });
-        }, 500);
-      }, 300);
-      return;
-    }
+          sendWs(ws, { type: 'stream-data', streamId, dataType: 'stdout', data: output, timestamp: Date.now() });
+          setTimeout(() => {
+            sendWs(ws, { type: 'stream-end', streamId, exitCode: result.success ? 0 : 1, fullOutput: output, timestamp: Date.now() });
+            ws.close();
+          }, 500);
+        }, 300);
+        return;
+      }
 
-    if (!command || !command.startsWith('kubectl')) {
-      return res.status(400).json({
-        error: 'Only kubectl commands are allowed',
-        success: false
+      // Realtime mode — spawn kubectl
+      const args = parseArgs(command);
+      const proc = spawn('kubectl', args);
+      const bufferRef = { value: '' };
+      global.runningProcesses.set(streamId, { process: proc, bufferRef });
+
+      const cleanup = () => {
+        if (proc.exitCode === null) proc.kill('SIGTERM');
+        global.runningProcesses.delete(streamId);
+      };
+
+      ws.on('close', cleanup);
+
+      proc.stdout.on('data', (data) => {
+        const chunk = data.toString();
+        bufferRef.value += chunk;
+        sendWs(ws, { type: 'stream-data', streamId, dataType: 'stdout', data: chunk, timestamp: Date.now() });
       });
-    }
 
-    if (!streamId) {
-      return res.status(400).json({
-        error: 'streamId is required for streaming commands',
-        success: false
+      proc.stderr.on('data', (data) => {
+        const chunk = data.toString();
+        bufferRef.value += chunk;
+        sendWs(ws, { type: 'stream-data', streamId, dataType: 'stderr', data: chunk, timestamp: Date.now() });
       });
-    }
 
-    console.log(`Starting stream for: ${command} (ID: ${streamId})`);
-
-    res.json({
-      success: true,
-      message: 'Stream started',
-      streamId: streamId
-    });
-
-    const args = parseArgs(command);
-    const kubectlProcess = spawn('kubectl', args);
-
-    const bufferRef = { value: '' };
-    global.runningProcesses.set(streamId, { process: kubectlProcess, bufferRef });
-
-    kubectlProcess.stdout.on('data', (data) => {
-      const chunk = data.toString();
-      bufferRef.value += chunk;
-      io.emit('stream-data', {
-        streamId: streamId,
-        type: 'stdout',
-        data: chunk,
-        timestamp: Date.now()
+      proc.on('close', (code) => {
+        console.log(`[stream] end ${command} (id=${streamId} exit=${code})`);
+        sendWs(ws, { type: 'stream-end', streamId, exitCode: code, fullOutput: bufferRef.value, timestamp: Date.now() });
+        global.runningProcesses.delete(streamId);
+        ws.close();
       });
-    });
 
-    kubectlProcess.stderr.on('data', (data) => {
-      const chunk = data.toString();
-      bufferRef.value += chunk;
-      io.emit('stream-data', {
-        streamId: streamId,
-        type: 'stderr',
-        data: chunk,
-        timestamp: Date.now()
+      proc.on('error', (err) => {
+        console.error(`[stream] error ${streamId}:`, err);
+        sendWs(ws, { type: 'stream-error', streamId, error: err.message, timestamp: Date.now() });
+        global.runningProcesses.delete(streamId);
+        ws.close();
       });
     });
-
-    kubectlProcess.on('close', (code) => {
-      console.log(`Stream ${streamId} closed with code: ${code}`);
-      io.emit('stream-end', {
-        streamId: streamId,
-        exitCode: code,
-        fullOutput: bufferRef.value,
-        timestamp: Date.now()
-      });
-      global.runningProcesses.delete(streamId);
-    });
-
-    kubectlProcess.on('error', (error) => {
-      console.error(`Stream ${streamId} error:`, error);
-      io.emit('stream-error', {
-        streamId: streamId,
-        error: error.message,
-        timestamp: Date.now()
-      });
-      global.runningProcesses.delete(streamId);
-    });
-  });
-
-  // POST /api/execute/stream/stop
-  router.post('/execute/stream/stop', (req, res) => {
-    const { streamId } = req.body;
-
-    if (!streamId) {
-      return res.status(400).json({ error: 'streamId is required' });
-    }
-
-    const entry = global.runningProcesses?.get(streamId);
-    if (entry) {
-      entry.process.kill('SIGTERM');
-      global.runningProcesses.delete(streamId);
-      console.log(`Terminated stream: ${streamId}`);
-      res.json({ success: true, message: 'Stream terminated' });
-    } else {
-      res.status(404).json({ error: 'Stream not found' });
-    }
-  });
-
-  // POST /api/execute/stream/clear
-  router.post('/execute/stream/clear', (req, res) => {
-    const { streamId } = req.body;
-    const entry = global.runningProcesses?.get(streamId);
-    if (entry) entry.bufferRef.value = '';
-    res.json({ success: true });
   });
 }
 
-module.exports = { router, mountStream };
+function sendWs(ws, data) {
+  if (ws.readyState === 1) { // WebSocket.OPEN
+    ws.send(JSON.stringify(data));
+  }
+}
+
+module.exports = { router, mountWebSocket };

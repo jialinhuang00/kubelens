@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"kubecmds-viz/server/routes"
 )
@@ -17,6 +19,8 @@ func main() {
 			log.Fatalf("chdir to PROJECT_ROOT %q: %v", root, err)
 		}
 	}
+
+	loadDotEnv(".env")
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -31,6 +35,31 @@ func main() {
 	fmt.Printf("Graph endpoint: http://localhost:%s/api/graph\n", port)
 
 	log.Fatal(http.ListenAndServe(":"+port, corsMiddleware(mux)))
+}
+
+// loadDotEnv reads a .env file and sets any vars not already in the environment.
+func loadDotEnv(path string) {
+	f, err := os.Open(path)
+	if err != nil {
+		return // missing .env is fine
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		k, v, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		// Don't override existing env vars
+		if os.Getenv(k) == "" {
+			os.Setenv(k, v)
+		}
+	}
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
