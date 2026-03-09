@@ -39,6 +39,10 @@ const RESOURCE_KINDS: ResourceKindConfig[] = [
   { kind: 'RoleBinding', label: 'RoleBindings', color: '#a898b8', resourceType: 'rolebindings' },
 ];
 
+// Priority batch: most-used resources — one kubectl call, shows up first
+const PRIORITY_KINDS = new Set(['Deployment', 'Pod', 'Service']);
+const PRIORITY_TYPES = ['deployments', 'pods', 'services'];
+
 @Injectable({ providedIn: 'root' })
 export class ResourceTreeService {
   private kubectlService = inject(KubectlService);
@@ -61,10 +65,22 @@ export class ResourceTreeService {
       count: 0,
     })));
 
-    // Load each resource type individually (works in both realtime and snapshot)
     const group = ExecutionGroupGenerator.namespaceResourceLoading(namespace);
+    const rest = RESOURCE_KINDS.filter(cfg => !PRIORITY_KINDS.has(cfg.kind));
+
+    // Phase 1: one kubectl call for the 8 common resource types
+    const priorityNames = await this.executionContext.withGroup(group, () =>
+      this.kubectlService.getResourceNamesBatch(PRIORITY_TYPES, namespace)
+    );
+    this.tree.update(nodes => nodes.map(n =>
+      PRIORITY_KINDS.has(n.kind)
+        ? { ...n, items: priorityNames[n.kind] || [], isLoading: false, count: (priorityNames[n.kind] || []).length }
+        : n
+    ));
+
+    // Phase 2: remaining 9 types — individual calls in parallel, same group
     await this.executionContext.withGroup(group, () =>
-      Promise.all(RESOURCE_KINDS.map(async (cfg) => {
+      Promise.all(rest.map(async (cfg) => {
         const items = await this.kubectlService.getResourceNames(cfg.resourceType, namespace);
         this.tree.update(nodes => nodes.map(n =>
           n.kind === cfg.kind

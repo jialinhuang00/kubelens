@@ -256,20 +256,26 @@ export class KubectlService {
     }
   }
 
-  async getAllResourceNames(namespace: string): Promise<Record<string, string[]>> {
-    const types = 'deployments,pods,services,statefulsets,cronjobs,jobs,configmaps,secrets,persistentvolumeclaims,serviceaccounts,ingresses';
+  async getResourceNamesBatch(resourceTypes: string[], namespace: string): Promise<Record<string, string[]>> {
+    const types = resourceTypes.join(',');
     const kindMap: Record<string, string> = {
       'deployment.apps': 'Deployment',
       'pod': 'Pod',
       'service': 'Service',
       'statefulset.apps': 'StatefulSet',
+      'daemonset.apps': 'DaemonSet',
       'cronjob.batch': 'CronJob',
       'job.batch': 'Job',
+      'replicaset.apps': 'ReplicaSet',
       'configmap': 'ConfigMap',
       'secret': 'Secret',
       'persistentvolumeclaim': 'PersistentVolumeClaim',
       'serviceaccount': 'ServiceAccount',
       'ingress.networking.k8s.io': 'Ingress',
+      'networkpolicy.networking.k8s.io': 'NetworkPolicy',
+      'role.rbac.authorization.k8s.io': 'Role',
+      'rolebinding.rbac.authorization.k8s.io': 'RoleBinding',
+      'horizontalpodautoscaler.autoscaling': 'HorizontalPodAutoscaler',
     };
     try {
       const response = await this.executeCommand(
