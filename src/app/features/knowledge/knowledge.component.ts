@@ -15,6 +15,7 @@ import {
   EdgeType, SourceField, NodeKind,
   getThemedEdgeColors,
 } from '../universe/models/graph.models';
+import { FIELD_BASE } from '../../shared/models/field-base';
 
 // ── Field Glossary data ────────────────────────────────────────────────────
 
@@ -36,8 +37,7 @@ export interface FieldInfo {
 
 export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
   [SourceField.ServiceAccountName]: {
-    short: 'Runs as ServiceAccount',
-    yaml: 'spec.template.spec.serviceAccountName',
+    ...FIELD_BASE[SourceField.ServiceAccountName],
     edgeType: EdgeType.UsesServiceAccount,
     notes: 'Deployment tells K8s which ServiceAccount to use. At runtime, K8s mounts the SA token into every Pod at a well-known path. The container process reads that token to authenticate against the K8s API. Default SA has minimal permissions — create a dedicated SA and bind a Role to it.',
     usage: [
@@ -51,8 +51,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.EnvFromConfigMap]: {
-    short: 'Loads all keys from ConfigMap (env)',
-    yaml: 'containers[].envFrom[].configMapRef',
+    ...FIELD_BASE[SourceField.EnvFromConfigMap],
     edgeType: EdgeType.UsesConfigMap,
     notes: 'Bulk-imports every key from ConfigMap as env vars. Key name = env var name, cannot rename. Use when the ConfigMap is purpose-built for this app. If it is shared across apps, use configMapKeyRef instead.',
     usage: [
@@ -62,8 +61,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.EnvFromSecret]: {
-    short: 'Loads all keys from Secret (env)',
-    yaml: 'containers[].envFrom[].secretRef',
+    ...FIELD_BASE[SourceField.EnvFromSecret],
     edgeType: EdgeType.UsesSecret,
     notes: 'Bulk-imports every key from the Secret as env vars. Use when the Secret belongs exclusively to this app. If other apps share the same Secret, or you only need a subset of keys, use secretKeyRef instead.',
     usage: [
@@ -72,8 +70,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.EnvConfigMapKey]: {
-    short: 'Reads one key from ConfigMap',
-    yaml: 'containers[].env[].valueFrom.configMapKeyRef',
+    ...FIELD_BASE[SourceField.EnvConfigMapKey],
     edgeType: EdgeType.UsesConfigMap,
     notes: 'Picks a single key from ConfigMap. You control the env var name via the name field. Use when the ConfigMap is shared across apps, you need to rename the key, or only a subset of keys is relevant.',
     usage: [
@@ -82,8 +79,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.EnvSecretKey]: {
-    short: 'Reads one key from Secret',
-    yaml: 'containers[].env[].valueFrom.secretKeyRef',
+    ...FIELD_BASE[SourceField.EnvSecretKey],
     edgeType: EdgeType.UsesSecret,
     notes: 'Picks a single key from the Secret and lets you rename it. Use when the Secret is shared across apps, you only need a subset of keys, or the key name differs from what your app expects as an env var.',
     usage: [
@@ -93,8 +89,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.VolumePVC]: {
-    short: 'Mounts PVC as volume',
-    yaml: 'volumes[].persistentVolumeClaim.claimName',
+    ...FIELD_BASE[SourceField.VolumePVC],
     edgeType: EdgeType.UsesPVC,
     notes: 'Persistent block/file storage. Survives pod restarts and rescheduling. Use for databases, uploaded files, ML model storage. Data lives in the PVC, not the container image.',
     usage: [
@@ -103,8 +98,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.VolumeConfigMap]: {
-    short: 'Mounts ConfigMap as volume',
-    yaml: 'volumes[].configMap.name',
+    ...FIELD_BASE[SourceField.VolumeConfigMap],
     edgeType: EdgeType.UsesConfigMap,
     notes: 'Each key in the ConfigMap becomes a file. Use for config files (nginx.conf, app.json, prometheus.yml) instead of env vars — better for multi-line values or structured config.',
     usage: [
@@ -113,8 +107,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.VolumeSecret]: {
-    short: 'Mounts Secret as volume',
-    yaml: 'volumes[].secret.secretName',
+    ...FIELD_BASE[SourceField.VolumeSecret],
     edgeType: EdgeType.UsesSecret,
     notes: 'Same as VolumeConfigMap but for Secrets. Preferred for TLS certs, SSH keys, kubeconfig — binary or multi-line data that does not fit cleanly as env vars.',
     usage: [
@@ -123,8 +116,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.ProjectedConfigMap]: {
-    short: 'Projected ConfigMap volume',
-    yaml: 'volumes[].projected.sources[].configMap',
+    ...FIELD_BASE[SourceField.ProjectedConfigMap],
     edgeType: EdgeType.UsesConfigMap,
     notes: 'Projected volumes combine multiple ConfigMaps and/or Secrets into a single mount path. Use when you need config + certs in the same directory, or want to merge multiple ConfigMaps.',
     usage: [
@@ -133,8 +125,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.ProjectedSecret]: {
-    short: 'Projected Secret volume',
-    yaml: 'volumes[].projected.sources[].secret',
+    ...FIELD_BASE[SourceField.ProjectedSecret],
     edgeType: EdgeType.UsesSecret,
     notes: 'Same as ProjectedConfigMap but for Secrets. Often combined with ServiceAccount token projection for custom token audiences.',
     usage: [
@@ -142,8 +133,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.Selector]: {
-    short: 'Service selects Pods by label',
-    yaml: 'spec.selector',
+    ...FIELD_BASE[SourceField.Selector],
     edgeType: EdgeType.Exposes,
     notes: 'Service selector matches Pod labels directly — not the Deployment, not the ReplicaSet. The Deployment\'s spec.template.metadata.labels end up on every Pod it creates. Service finds those Pods at runtime. The graph draws Service → Deployment as a convenience, but the real target is the Pod. If the Deployment changes its pod template labels without updating the Service selector, the Service routes to zero pods — no error, just silent 503s.',
     usage: [
@@ -153,8 +143,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.ParentRefs]: {
-    short: 'Route attaches to Gateway',
-    yaml: 'spec.parentRefs[].name',
+    ...FIELD_BASE[SourceField.ParentRefs],
     edgeType: EdgeType.ParentGateway,
     notes: 'Gateway API (newer than Ingress). HTTPRoute attaches to a Gateway (like an ingress controller). Gateway handles TLS termination; HTTPRoute defines routing rules. Supports traffic splitting, header matching.',
     usage: [
@@ -162,8 +151,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.BackendRefs]: {
-    short: 'Route forwards traffic to Service',
-    yaml: 'spec.rules[].backendRefs[].name',
+    ...FIELD_BASE[SourceField.BackendRefs],
     edgeType: EdgeType.RoutesTo,
     notes: 'HTTPRoute forwards to a Service backend. Supports weighted routing for canary deploys — split traffic between two service versions by percentage.',
     usage: [
@@ -174,8 +162,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.IngressBackend]: {
-    short: 'Ingress forwards to Service backend',
-    yaml: 'spec.rules[].http.paths[].backend.service.name',
+    ...FIELD_BASE[SourceField.IngressBackend],
     edgeType: EdgeType.RoutesTo,
     notes: 'Classic Ingress (pre-Gateway API). Routes HTTP traffic to Services based on host and path. Widely supported but less flexible than Gateway API — no traffic splitting, limited header rules.',
     usage: [
@@ -184,8 +171,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.ScaleTargetRef]: {
-    short: 'HPA scales this workload',
-    yaml: 'spec.scaleTargetRef.name',
+    ...FIELD_BASE[SourceField.ScaleTargetRef],
     edgeType: EdgeType.Exposes,
     notes: 'HPA continuously monitors metrics (CPU, memory, custom) and adjusts replica count. Pod gets more replicas under load, scales down when idle. Works with Deployment and StatefulSet.',
     usage: [
@@ -195,8 +181,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.RoleRef]: {
-    short: 'RoleBinding binds this Role',
-    yaml: 'roleRef.name',
+    ...FIELD_BASE[SourceField.RoleRef],
     edgeType: EdgeType.BindsRole,
     groupKind: 'RoleBinding',
     notes: 'RoleBinding is the bridge: roleRef points to a Role (what is allowed), subjects points to a ServiceAccount (who gets it). Without a RoleBinding, a Role grants nothing — it is just a list of permissions with no owner. ClusterRole/ClusterRoleBinding for cluster-wide scope.',
@@ -207,8 +192,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.Subjects]: {
-    short: 'RoleBinding grants access to ServiceAccount',
-    yaml: 'subjects[].name',
+    ...FIELD_BASE[SourceField.Subjects],
     edgeType: EdgeType.BindsRole,
     groupKind: 'RoleBinding',
     notes: "The ServiceAccount name here must match the serviceAccountName on the workload pod spec. If they do not match, the pod runs but without the Role's permissions — silent failure.",
@@ -218,8 +202,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.OwnerReference]: {
-    short: 'Pod/ReplicaSet records its owner (set by K8s, not the user)',
-    yaml: 'metadata.ownerReferences[].name',
+    ...FIELD_BASE[SourceField.OwnerReference],
     edgeType: EdgeType.Owns,
     notes: 'Written by K8s automatically — not by users. Tracks parent-child ownership: Deployment → ReplicaSet → Pod. Enables cascading deletes: delete Deployment, K8s walks ownerReferences to clean up everything.',
     usage: [
@@ -229,8 +212,7 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.IngressTLS]: {
-    short: 'Ingress TLS terminates with a Secret',
-    yaml: 'spec.tls[].secretName',
+    ...FIELD_BASE[SourceField.IngressTLS],
     edgeType: EdgeType.UsesSecret,
     notes: 'The Secret must contain tls.crt and tls.key. Ingress controller reads the Secret at runtime and presents the certificate to clients. If the Secret is missing or malformed, TLS handshakes fail silently — always test with curl -v.',
     usage: [

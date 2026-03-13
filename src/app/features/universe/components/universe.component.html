@@ -102,6 +102,7 @@
       </div>
     }
 
+    <div class="graph-layers" [class.hidden]="viewMode() === 'table'">
     <!-- Perspective grid floor -->
     <div class="grid-floor"></div>
 
@@ -153,6 +154,72 @@
 
     <!-- Vignette overlay -->
     <div class="vignette"></div>
+    </div> <!-- end graph-layers -->
+
+    <!-- ============ LINKAGE TABLE VIEW ============ -->
+    @if (viewMode() === 'table') {
+      <div class="linkage-view">
+        <div class="linkage-controls">
+          <div class="linkage-kind-row">
+            @for (kind of linkageKinds; track kind) {
+              <button class="linkage-kind-btn" [class.active]="linkageKind() === kind" (click)="selectLinkageKind(kind)">
+                {{ kind }}
+              </button>
+            }
+          </div>
+
+          @if (linkageKind(); as gk) {
+            <div class="linkage-direction">
+              <button class="view-btn" [class.active]="!linkageReverse()" (click)="setLinkageReverse(false)">Outgoing</button>
+              <button class="view-btn" [class.active]="linkageReverse()" (click)="setLinkageReverse(true)">Incoming</button>
+              @if (kindDirectionHints[$any(gk)]; as hint) {
+                <span class="linkage-hint">{{ linkageReverse() ? hint.in : hint.out }}</span>
+              }
+            </div>
+          }
+        </div>
+
+        @if (linkageStatus(); as msg) {
+          <div class="linkage-status">{{ msg }}</div>
+        }
+
+        @if (linkageIsStatic() && linkageGroups().length > 0) {
+          <div class="linkage-static-badge">Static example — no data loaded</div>
+        }
+
+        @for (group of linkageGroups(); track group.node.id) {
+          <div class="linkage-group">
+            <div class="linkage-group-header">
+              <span class="linkage-group-kind">{{ group.node.kind }}</span>
+              <span class="linkage-group-name">{{ group.node.name }}</span>
+              @if (group.node.namespace) {
+                <span class="linkage-group-ns">{{ group.node.namespace }}</span>
+              }
+            </div>
+            <table class="linkage-table">
+              <thead>
+                <tr>
+                  <th>Field</th>
+                  <th>YAML Path</th>
+                  <th>{{ linkageReverse() ? 'Source Kind' : 'Target Kind' }}</th>
+                  <th>{{ linkageReverse() ? 'Source Name' : 'Target Name' }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (edge of group.edges; track $index) {
+                  <tr>
+                    <td class="linkage-field">{{ edge.fieldLabel }}</td>
+                    <td class="linkage-yaml">{{ edge.yamlPath }}</td>
+                    <td class="linkage-target-kind">{{ edge.targetKind }}</td>
+                    <td class="linkage-target-name">{{ edge.targetName }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    }
 
     <!-- Top bar: search hint (center) + actions (right) -->
     <div class="graph-topbar">
@@ -164,6 +231,10 @@
         }
       </div>
       <div class="graph-actions">
+        <div class="view-toggle">
+          <button class="view-btn" [class.active]="viewMode() === 'graph'" (click)="setViewMode('graph')">Graph</button>
+          <button class="view-btn" [class.active]="viewMode() === 'table'" (click)="setViewMode('table')">Table</button>
+        </div>
         <app-handbook />
         <app-theme-switcher />
         <app-mem-monitor />

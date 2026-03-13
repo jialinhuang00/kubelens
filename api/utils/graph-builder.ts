@@ -315,19 +315,8 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
       extractWorkloadEdges(ns, 'CronJob', name, templateSpec, addNode, addEdge);
     }
 
-    const jobs = getItemsFn(ns, 'jobs');
-    for (const j of jobs) {
-      const name = j.metadata?.name;
-      if (!name) continue;
-      const jobPodSpec = ((j.spec as Record<string, unknown>)?.template as Record<string, unknown>)?.spec as Record<string, unknown> | undefined;
-      const jobImages = getContainerImages(jobPodSpec);
-      addNode(ns, 'Job', name, 'workload', {
-        image: jobImages.full[0],
-        containers: jobImages.short,
-        registry: jobImages.registry,
-      });
-      extractWorkloadEdges(ns, 'Job', name, jobPodSpec, addNode, addEdge);
-    }
+    // Job nodes excluded from graph — CronJob already carries the same edges,
+    // and each CronJob run creates a new Job, flooding the graph with hundreds of nodes.
 
     const allWorkloads = [
       ...deployments.map(d => ({ kind: 'Deployment', item: d })),

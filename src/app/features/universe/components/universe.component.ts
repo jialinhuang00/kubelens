@@ -38,6 +38,10 @@ import {
   CATEGORY_ORDER,
   POD_STATUS_COLORS,
 } from '../models/graph.models';
+import {
+  LINKAGE_KINDS, KIND_DIRECTION_HINTS,
+  ResourceGroup, buildResourceGroups,
+} from '../utils/linkage.utils';
 
 @Component({
   selector: 'app-universe',
@@ -59,6 +63,53 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly loading = this.graphData.loading;
   readonly error = this.graphData.error;
   readonly stats = this.graphData.stats;
+
+  // ── Linkage table view ──────────────────────────────────────────────────
+  readonly viewMode = signal<'graph' | 'table'>('graph');
+  readonly linkageKind = signal<NodeKind | null>(null);
+  readonly linkageReverse = signal(false);
+  readonly linkageKinds = LINKAGE_KINDS;
+  readonly kindDirectionHints = KIND_DIRECTION_HINTS;
+
+  readonly linkageGroups = computed<ResourceGroup[]>(() => {
+    const kind = this.linkageKind();
+    if (!kind) return [];
+    return buildResourceGroups(
+      kind, this.linkageReverse(), this.focusedNamespace(),
+      this.graphData.nodes(), this.graphData.edges(), this.graphData.pods(),
+    );
+  });
+
+  readonly linkageStatus = computed<string | null>(() => {
+    if (this.error()) return this.error();
+    if (!this.linkageKind()) {
+      if (this.loading() && this.graphData.nodes().length === 0) return 'Loading graph...';
+      return 'Select a resource kind';
+    }
+    const groups = this.linkageGroups();
+    if (this.loading() && groups.length === 0) return 'Loading graph...';
+    if (groups.length === 0) {
+      return this.linkageReverse()
+        ? `No incoming edges found for ${this.linkageKind()}`
+        : `No outgoing edges found for ${this.linkageKind()}`;
+    }
+    return null;
+  });
+
+  readonly linkageIsStatic = computed<boolean>(() => this.graphData.nodes().length === 0);
+
+  setViewMode(mode: 'graph' | 'table'): void {
+    this.viewMode.set(mode);
+  }
+
+  selectLinkageKind(kind: NodeKind): void {
+    this.linkageKind.set(this.linkageKind() === kind ? null : kind);
+    this.linkageReverse.set(false);
+  }
+
+  setLinkageReverse(value: boolean): void {
+    this.linkageReverse.set(value);
+  }
 
   // Tooltip state
   readonly hoveredNode = signal<GraphNode | null>(null);
@@ -513,6 +564,7 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.kindColors.set(getThemedKindColors());
     this.graphLayout.destroy();
     this.graphData.fetchGraph();
+    this.namespaceService.loadNamespaces();
     this.clearDataCheck();
     this.dataCheckInterval = setInterval(() => {
       const data = this.graphData.data();
