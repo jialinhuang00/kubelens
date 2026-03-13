@@ -142,14 +142,14 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
     ],
   },
   [SourceField.Selector]: {
-    short: 'Service selects workload pods',
+    short: 'Service selects Pods by label',
     yaml: 'spec.selector',
     edgeType: EdgeType.Exposes,
-    notes: 'Service uses label selector to find pods. Labels on the pod template must match — if they do not, the service routes to 0 pods. ClusterIP, NodePort, and LoadBalancer all use this mechanism.',
+    notes: 'Service selector matches Pod labels directly — not the Deployment, not the ReplicaSet. The Deployment\'s spec.template.metadata.labels end up on every Pod it creates. Service finds those Pods at runtime. The graph draws Service → Deployment as a convenience, but the real target is the Pod. If the Deployment changes its pod template labels without updating the Service selector, the Service routes to zero pods — no error, just silent 503s.',
     usage: [
       '// in Node.js: call service by DNS name',
       "fetch('http://my-svc:80/api')  // K8s DNS resolves to ClusterIP",
-      '// load balanced across all matching pods',
+      '// load balanced across all matching Pods (not Deployment)',
     ],
   },
   [SourceField.ParentRefs]: {
@@ -464,7 +464,7 @@ function buildSnippet(
           s(`# ${src.kind}`),
           s('spec:'),
           s('  selector:'),
-          s(`    app: ${name}`, true),
+          s(`    app: ${name}`, true),  // matches Pod labels, not Deployment
         ];
       case SourceField.ParentRefs:
         return [
