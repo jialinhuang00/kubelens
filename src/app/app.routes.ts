@@ -36,4 +36,11 @@ export const routes: Routes = [
         (m) => m.KnowledgeComponent
       ),
   },
+  {
+    path: 'snapshot',
+    loadComponent: () =>
+      import('./features/snapshot/snapshot.component').then(
+        (m) => m.SnapshotComponent
+      ),
+  },
 ];

@@ -6,7 +6,7 @@ import { RouterLink } from '@angular/router';
   standalone: true,
   imports: [RouterLink],
   template: `
-    <a class="back-link" routerLink="/">
+    <a class="back-link" [routerLink]="backPath">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <polyline points="15 18 9 12 15 6"/>
       </svg>
@@ -39,4 +39,5 @@ import { RouterLink } from '@angular/router';
 })
 export class BackLinkComponent {
   @Input() label = '';
+  @Input() backPath: string | string[] = '/';
 }

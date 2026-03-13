@@ -40,6 +40,23 @@
   padding: 10px 0 20px;
 }
 
+.snapshot-nav-link {
+  display: block;
+  padding: 9px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--t-accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--t-border);
+  opacity: 0.75;
+  transition: opacity 0.1s, background 0.1s;
+
+  &:hover {
+    opacity: 1;
+    background: color-mix(in srgb, var(--t-accent) 6%, transparent);
+  }
+}
+
 .section-label {
   font-size: 11px;
   font-weight: 500;
