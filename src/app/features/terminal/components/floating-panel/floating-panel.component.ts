@@ -42,7 +42,9 @@ export class FloatingPanelComponent {
   rolloutTemplates = signal<CommandTemplate[]>([]);
 
   isDeployment = computed(() => this.panel().resourceKind === 'Deployment');
-  deploymentStatus = this.deploymentService.deploymentStatus;
+  deploymentStatus = computed(() =>
+    this.deploymentService.getStatusForDeployment(this.panel().resourceName)
+  );
   rolloutHistory = this.deploymentService.rolloutHistory;
   buttonStates = computed(() => this.deploymentService.getButtonStates(this.deploymentStatus()));
   deploymentImage = computed(() => this.deploymentStatus()?.containerImage || '');

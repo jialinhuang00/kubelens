@@ -58,6 +58,7 @@ export class DeploymentService {
   deployments = signal<string[]>([]);
   selectedDeployment = signal<string>('');
   deploymentStatus = signal<DeploymentStatus | null>(null);
+  private deploymentStatusMap = signal<Record<string, DeploymentStatus>>({});
   rolloutHistory = signal<RolloutHistoryItem[]>([]);
   templates = signal<CommandTemplate[]>([]);
   isLoading = signal<boolean>(false);
@@ -132,6 +133,7 @@ export class DeploymentService {
         };
 
         this.deploymentStatus.set(status);
+        this.deploymentStatusMap.update(map => ({ ...map, [deployment]: status }));
         return status;
       }
     } catch (error) {
@@ -219,6 +221,10 @@ export class DeploymentService {
     }
 
     return null;
+  }
+
+  getStatusForDeployment(deployment: string): DeploymentStatus | null {
+    return this.deploymentStatusMap()[deployment] || null;
   }
 
   async fetchRolloutStatus(deployment: string, namespace: string) {
