@@ -51,7 +51,11 @@
       "Bash(go build:*)",
       "Bash(./cmd/k8s-export/k8s-export:*)",
       "Bash(go:*)",
-      "Bash(stty:*)"
+      "Bash(stty:*)",
+      "Bash(bash:*)",
+      "Bash(brew info:*)",
+      "Bash(brew uninstall:*)",
+      "Bash(export:*)"
     ],
     "deny": [],
     "ask": []

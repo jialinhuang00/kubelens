@@ -41,7 +41,7 @@ app.use('/api', snapshotRouter);
 mountWebSocket(server);
 
 server.listen(PORT, () => {
-  console.log(`kubecmds-viz server running on http://localhost:${PORT}`);
+  console.log(`kubelens server running on http://localhost:${PORT}`);
   console.log(`Realtime ping: http://localhost:${PORT}/api/realtime/ping`);
   console.log(`Graph endpoint: http://localhost:${PORT}/api/graph`);
   console.log(`WebSocket streaming ready on /api/execute/stream/ws`);

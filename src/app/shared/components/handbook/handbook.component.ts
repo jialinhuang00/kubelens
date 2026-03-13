@@ -7,9 +7,9 @@ const SPREADS: Spread[] = [
   {
     en: {
       left: {
-        title: 'Welcome to kubecmds-viz',
+        title: 'Welcome to kubelens',
         lines: [
-          'kubecmds-viz is a visual interface for',
+          'kubelens is a visual interface for',
           'Kubernetes. Browse, query, and manage',
           'cluster resources without memorising',
           'every kubectl flag.',
@@ -44,9 +44,9 @@ const SPREADS: Spread[] = [
     },
     zh: {
       left: {
-        title: '歡迎使用 kubecmds-viz',
+        title: '歡迎使用 kubelens',
         lines: [
-          'kubecmds-viz 是一套視覺化 Kubernetes',
+          'kubelens 是一套視覺化 Kubernetes',
           '操作介面，讓你不需要熟記所有',
           'kubectl 指令，就能查詢、管理、',
           '觀察叢集裡的各種資源。',

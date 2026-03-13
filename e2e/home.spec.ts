@@ -6,7 +6,7 @@ test.describe('Home page', () => {
   });
 
   test('shows title', async ({ page }) => {
-    await expect(page.locator('h1.title')).toHaveText('kubecmds-viz');
+    await expect(page.locator('h1.title')).toHaveText('kubelens');
   });
 
   test('shows mode toggle buttons', async ({ page }) => {

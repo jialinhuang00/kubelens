@@ -1,4 +1,4 @@
-# kubecmds-viz
+# kubelens
 
 Browser-based Kubernetes visualization. GPU-accelerated resource graph + multi-window kubectl terminal. Runs against a live cluster or offline from exported snapshots.
 

@@ -1,4 +1,4 @@
-# kubecmds-viz Project Context
+# kubelens Project Context
 
 ## Architecture
 - Angular 20+ standalone components with signals

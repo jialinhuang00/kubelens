@@ -6,7 +6,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "kubecmds-viz": {
+    "kubelens": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -64,10 +64,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "kubecmds-viz:build:production"
+              "buildTarget": "kubelens:build:production"
             },
             "development": {
-              "buildTarget": "kubecmds-viz:build:development"
+              "buildTarget": "kubelens:build:development"
             }
           },
           "defaultConfiguration": "development",
