@@ -514,6 +514,66 @@ const STATIC_MULTI_EXAMPLES: Partial<Record<NodeKind, Array<{ field: SourceField
   ],
 };
 
+// Incoming (reverse) static examples: resources that point TO the selected kind
+const STATIC_MULTI_EXAMPLES_REVERSE: Partial<Record<NodeKind, { field: SourceField; srcKind: NodeKind; srcName: string }[]>> = {
+  Deployment: [
+    { field: SourceField.Selector,       srcKind: 'Service',                  srcName: 'my-svc'     },
+    { field: SourceField.ScaleTargetRef, srcKind: 'HorizontalPodAutoscaler',  srcName: 'my-app-hpa' },
+  ],
+  StatefulSet: [
+    { field: SourceField.Selector,       srcKind: 'Service',                  srcName: 'my-svc'     },
+    { field: SourceField.ScaleTargetRef, srcKind: 'HorizontalPodAutoscaler',  srcName: 'my-app-hpa' },
+  ],
+  DaemonSet: [
+    { field: SourceField.Selector, srcKind: 'Service', srcName: 'my-svc' },
+  ],
+  Service: [
+    { field: SourceField.IngressBackend, srcKind: 'Ingress',   srcName: 'my-ingress' },
+    { field: SourceField.BackendRefs,    srcKind: 'HTTPRoute',  srcName: 'my-route'   },
+  ],
+  Gateway: [
+    { field: SourceField.ParentRefs, srcKind: 'HTTPRoute', srcName: 'my-route' },
+    { field: SourceField.ParentRefs, srcKind: 'TCPRoute',  srcName: 'my-tcp'   },
+  ],
+  Role: [
+    { field: SourceField.RoleRef, srcKind: 'RoleBinding', srcName: 'my-binding' },
+  ],
+  ServiceAccount: [
+    { field: SourceField.Subjects, srcKind: 'RoleBinding', srcName: 'my-binding' },
+  ],
+};
+
+function buildStaticMultiExampleReverse(kind: NodeKind): MultiExampleView | null {
+  const defs = STATIC_MULTI_EXAMPLES_REVERSE[kind];
+  if (!defs) return null;
+
+  const tgtNode: GraphNode = {
+    id: `static/${kind}/my-app`, name: 'my-app', kind,
+    category: 'workload', namespace: 'default', metadata: {},
+  };
+
+  const targets = defs.map(def => {
+    const srcNode: GraphNode = {
+      id: `static/${def.srcKind}/${def.srcName}`, name: def.srcName, kind: def.srcKind,
+      category: 'abstract', namespace: 'default', metadata: {},
+    };
+    const edge: GraphEdge = {
+      source: srcNode.id, target: tgtNode.id,
+      type: FIELD_GLOSSARY[def.field].edgeType, sourceField: def.field,
+    };
+    // In reverse mode, targetLines = the SOURCE resource's YAML (showing how it refs the selected kind)
+    const { sourceLines } = buildSnippet(def.field, srcNode, tgtNode);
+    return { targetNode: srcNode, edge, targetLines: sourceLines };
+  });
+
+  const combinedLines = buildSnippet(defs[0].field,
+    { id: `static/${defs[0].srcKind}/${defs[0].srcName}`, name: defs[0].srcName, kind: defs[0].srcKind, category: 'abstract', namespace: 'default', metadata: {} },
+    tgtNode,
+  ).sourceLines;
+
+  return { sourceNode: tgtNode, combinedLines, targets };
+}
+
 function buildStaticMultiExample(kind: NodeKind): MultiExampleView | null {
   const defs = STATIC_MULTI_EXAMPLES[kind];
   if (!defs) return null;
@@ -912,7 +972,7 @@ export class SnapshotComponent implements OnInit, AfterViewChecked {
             : `No outgoing edges found for ${kind} "${srcNode.name}"`,
         };
       }
-      return buildStaticMultiExample(kind);
+      return reverse ? (buildStaticMultiExampleReverse(kind) ?? buildStaticMultiExample(kind)) : buildStaticMultiExample(kind);
     }
 
     const sorted = [...rawTargets].sort((a, b) => {
