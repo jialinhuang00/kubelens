@@ -5,6 +5,7 @@
 
 # Compiled output
 /dist
+cmd/k8s-export/k8s-export
 /tmp
 /out-tsc
 /bazel-out
