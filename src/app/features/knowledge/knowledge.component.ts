@@ -712,6 +712,339 @@ export const POD_CONFIG_KEYS: PodConfigEntry[] = [
   },
 ];
 
+// ── Pod Relation Cards ──────────────────────────────────────────────────────
+
+export interface PodRelationEntry {
+  key: string;
+  short: string;
+  role: string;
+  what: string;
+  yaml: string;
+  trap: string;
+}
+
+export const POD_RELATION_ENTRIES: PodRelationEntry[] = [
+  {
+    key: 'Deployment',
+    short: 'Declarative rollout of stateless Pods',
+    role: 'CREATES / MANAGES POD',
+    what: 'The most common workload. Owns a ReplicaSet which owns Pods. You declare desired state; Deployment handles rolling updates, rollbacks, and scaling. On update it creates a new ReplicaSet, gradually shifts traffic, then scales down the old one.',
+    yaml: `apiVersion: apps/v1
+kind: Deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # one extra Pod during update
+      maxUnavailable: 0  # never go below desired count
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: app
+          image: my-app:2.0`,
+    trap: 'kubectl apply with a new image tag does NOT wait for rollout to finish. Use kubectl rollout status deployment/my-app in CI to block until healthy, or a failed deploy silently leaves half the Pods on the old version.',
+  },
+  {
+    key: 'CronJob',
+    short: 'Scheduled Jobs on a cron expression',
+    role: 'CREATES / MANAGES POD',
+    what: 'Creates a Job on a schedule (cron syntax). Each Job creates one or more Pods. Old Jobs and their Pods are kept for history (controlled by successfulJobsHistoryLimit / failedJobsHistoryLimit). Use for backups, report generation, cache warming.',
+    yaml: `apiVersion: batch/v1
+kind: CronJob
+spec:
+  schedule: "0 2 * * *"          # 02:00 UTC every day
+  concurrencyPolicy: Forbid       # skip if previous run still going
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: my-app:1.0
+              command: ["./backup.sh"]`,
+    trap: 'concurrencyPolicy: Allow (default) means two runs overlap if the previous one is still running. A slow backup job can accumulate dozens of running Pods. Set Forbid or Replace.',
+  },
+  {
+    key: 'ReplicaSet',
+    short: 'Maintains N Pod replicas',
+    role: 'CREATES / MANAGES POD',
+    what: 'Keeps exactly N identical Pods running at all times. If a Pod crashes, ReplicaSet creates a replacement. In practice you never touch ReplicaSet directly — Deployment owns one and swaps it during rolling updates.',
+    yaml: `apiVersion: apps/v1
+kind: ReplicaSet
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app   # must match template labels
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: app
+          image: my-app:1.0`,
+    trap: 'Editing a ReplicaSet directly does not update running Pods — only newly created ones pick up the change. Use Deployment for rolling updates.',
+  },
+  {
+    key: 'StatefulSet',
+    short: 'Stable identity Pods, ordered startup',
+    role: 'CREATES / MANAGES POD',
+    what: 'Each Pod gets a persistent DNS name: pod-0, pod-1, pod-2. Pods start in order and are replaced with the same name. PVCs are pinned per-ordinal — pod-0 always gets the same storage. Use for databases, Kafka, Zookeeper.',
+    yaml: `apiVersion: apps/v1
+kind: StatefulSet
+spec:
+  serviceName: "mysql"   # headless Service required
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mysql
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi`,
+    trap: 'Forgetting the headless Service (clusterIP: None). Without it, the stable DNS names pod-0.mysql, pod-1.mysql do not resolve.',
+  },
+  {
+    key: 'DaemonSet',
+    short: 'One Pod per node, auto-scheduled',
+    role: 'CREATES / MANAGES POD',
+    what: 'Kubernetes places exactly one Pod on every node automatically. New nodes added to the cluster get the Pod immediately. Nodes removed — the Pod is garbage collected. Use for log collectors (Fluentd), node monitors (Prometheus node-exporter), CNI plugins.',
+    yaml: `apiVersion: apps/v1
+kind: DaemonSet
+spec:
+  selector:
+    matchLabels:
+      app: fluentd
+  template:
+    spec:
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule   # run on control-plane too
+      containers:
+        - name: fluentd
+          image: fluentd:v1.16`,
+    trap: 'Control-plane nodes have a NoSchedule taint by default. Without a toleration the DaemonSet skips them — logs from the control plane are silently missing.',
+  },
+  {
+    key: 'Job',
+    short: 'Pod that runs once and exits',
+    role: 'CREATES / MANAGES POD',
+    what: 'Runs one or more Pods to completion. Once all succeed, the Job is done. Failed Pods are retried up to backoffLimit. Use for DB migrations, batch processing, one-off scripts.',
+    yaml: `apiVersion: batch/v1
+kind: Job
+spec:
+  completions: 1
+  backoffLimit: 3   # retry up to 3 times on failure
+  template:
+    spec:
+      restartPolicy: Never   # OnFailure or Never — not Always
+      containers:
+        - name: migrate
+          image: my-app:1.0
+          command: ["./migrate.sh"]`,
+    trap: 'restartPolicy: Always is not allowed. Use Never (creates a new Pod on failure) or OnFailure (restarts the container in-place).',
+  },
+  {
+    key: 'ConfigMap',
+    short: 'Inject non-secret config into Pods',
+    role: 'ATTACHED TO POD',
+    what: 'Stores plain-text config: env vars, config files, command-line args. Mounted as env vars (envFrom / valueFrom) or as files in a volume. Changes to a ConfigMap are NOT automatically picked up by running Pods — you need to restart them.',
+    yaml: `apiVersion: v1
+kind: ConfigMap
+data:
+  APP_PORT: "8080"
+  config.yaml: |
+    log_level: info
+    db_host: postgres
+---
+# Consuming in a Pod:
+envFrom:
+  - configMapRef:
+      name: my-config   # all keys become env vars
+volumes:
+  - name: cfg
+    configMap:
+      name: my-config   # mount as files`,
+    trap: 'A volume-mounted ConfigMap updates in ~60s, but envFrom does not — env vars are baked at Pod start. Apps that need hot reload must use volume mounts and watch the file.',
+  },
+  {
+    key: 'Secret',
+    short: 'Inject sensitive data into Pods',
+    role: 'ATTACHED TO POD',
+    what: 'Same mechanics as ConfigMap but values are base64-encoded and access is controlled by RBAC. Stored in etcd — encrypt etcd at rest in production. Types: Opaque (generic), kubernetes.io/tls (cert+key), kubernetes.io/dockerconfigjson (registry auth).',
+    yaml: `apiVersion: v1
+kind: Secret
+type: Opaque
+data:
+  DB_PASSWORD: cGFzc3dvcmQ=   # base64
+---
+# Consuming in a Pod:
+envFrom:
+  - secretRef:
+      name: my-secret
+volumes:
+  - name: tls
+    secret:
+      secretName: my-tls-cert   # mounts tls.crt, tls.key`,
+    trap: 'base64 is encoding, not encryption. Anyone with kubectl get secret can decode it. Enable etcd encryption at rest and restrict access with RBAC.',
+  },
+  {
+    key: 'PersistentVolumeClaim',
+    short: 'Durable storage that survives Pod restarts',
+    role: 'ATTACHED TO POD',
+    what: 'A claim for storage from the cluster. The cluster binds it to a PersistentVolume (physical disk). The PVC outlives the Pod — delete the Pod and recreate it, the data is still there. Use for databases, uploaded files, ML model checkpoints.',
+    yaml: `apiVersion: v1
+kind: PersistentVolumeClaim
+spec:
+  accessModes: [ReadWriteOnce]   # one node at a time
+  storageClassName: gp2
+  resources:
+    requests:
+      storage: 20Gi
+---
+# Consuming in a Pod:
+volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: my-pvc
+containers:
+  - volumeMounts:
+      - mountPath: /data
+        name: data`,
+    trap: 'ReadWriteOnce means one NODE, not one Pod. Two Pods on the same node can both mount it. For truly shared storage across nodes use ReadWriteMany (requires NFS or cloud-specific driver).',
+  },
+  {
+    key: 'ServiceAccount',
+    short: 'Pod identity for K8s API calls',
+    role: 'ATTACHED TO POD',
+    what: 'Every Pod runs as a ServiceAccount. K8s auto-mounts a token at /var/run/secrets/kubernetes.io/serviceaccount/token. The Pod uses this token to authenticate with the K8s API. Bind a Role to the SA to grant specific permissions.',
+    yaml: `apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-app
+---
+# Bind a Role:
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+subjects:
+  - kind: ServiceAccount
+    name: my-app
+roleRef:
+  kind: Role
+  name: pod-reader
+---
+# Use in Deployment:
+spec:
+  template:
+    spec:
+      serviceAccountName: my-app`,
+    trap: 'The default ServiceAccount has no permissions — that is intentional. Create a dedicated SA per app and bind only the permissions it needs. Never share SAs across apps.',
+  },
+  {
+    key: 'Service',
+    short: 'Stable endpoint, load-balances to Pods',
+    role: 'SELECTS POD',
+    what: 'Watches for Pods matching its label selector and maintains an endpoint list. Traffic to the Service is round-robin distributed across healthy Pods. Gives Pods a stable DNS name and IP even as Pods are replaced. Types: ClusterIP (internal), NodePort (external via node), LoadBalancer (cloud LB).',
+    yaml: `apiVersion: v1
+kind: Service
+spec:
+  selector:
+    app: my-app   # matches Pod labels
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: ClusterIP
+---
+# DNS name inside cluster:
+# my-service.my-namespace.svc.cluster.local`,
+    trap: 'selector matches labels on the Pod template, not on the Deployment. If the Deployment label and Pod template label differ, the Service gets zero endpoints — no error, just silent 503s.',
+  },
+  {
+    key: 'HorizontalPodAutoscaler',
+    short: 'Auto-scales replicas on metrics',
+    role: 'SELECTS POD',
+    what: 'Polls Pod metrics (CPU, memory, custom) every 15s. Computes desired replicas = ceil(current × (current metric / target metric)). Scales up immediately, scales down conservatively (5-min window by default). Requires metrics-server to be installed.',
+    yaml: `apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-app
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70   # scale up above 70%`,
+    trap: 'HPA and manual replica edits conflict — the HPA will override your manual change on the next sync. Set minReplicas = maxReplicas to pin it, or remove the HPA entirely.',
+  },
+  {
+    key: 'NetworkPolicy',
+    short: 'Firewall rules for Pod traffic',
+    role: 'SELECTS POD',
+    what: 'Selects Pods via podSelector and defines which ingress and egress traffic is allowed. Default: all traffic allowed. Once any NetworkPolicy selects a Pod, all traffic not explicitly allowed is denied. Requires a CNI plugin that supports NetworkPolicy (Calico, Cilium — not Flannel).',
+    yaml: `apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+spec:
+  podSelector:
+    matchLabels:
+      app: my-app   # applies to these Pods
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              role: frontend   # only from frontend Pods
+      ports:
+        - port: 8080
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: database`,
+    trap: 'NetworkPolicy is additive — multiple policies are ORed together, not ANDed. A deny-all + allow-specific pattern requires the deny-all to select the same Pods. Missing podSelector: {} (empty = all Pods) is a common oversight.',
+  },
+  {
+    key: 'PodDisruptionBudget',
+    short: 'Limits voluntary Pod evictions',
+    role: 'SELECTS POD',
+    what: 'Sets a floor on how many Pods must stay available during voluntary disruptions: node drains, rolling updates, cluster upgrades. Does NOT protect against node crashes or OOM kills — only voluntary evictions. Use it to prevent a Deployment from going to zero during a kubectl drain.',
+    yaml: `apiVersion: policy/v1
+kind: PodDisruptionBudget
+spec:
+  # Choose one: minAvailable OR maxUnavailable
+  minAvailable: 2          # at least 2 Pods must stay up
+  # maxUnavailable: 1      # OR at most 1 Pod can be down
+  selector:
+    matchLabels:
+      app: my-app          # same labels as your Pod template
+---
+# Common pattern for a 3-replica Deployment:
+# minAvailable: 2  → drain evicts 1 Pod at a time
+# maxUnavailable: 1 → equivalent, pick whichever reads clearer`,
+    trap: 'minAvailable: 100% (or equal to replicas) blocks node drains entirely — the eviction API returns 429 and kubectl drain hangs forever. Always leave at least one Pod evictable.',
+  },
+];
+
 export const MULTI_KINDS: NodeKind[] = [
   'Deployment', 'StatefulSet', 'DaemonSet', 'CronJob', 'Job',
   'Service', 'Ingress', 'HTTPRoute', 'TCPRoute', 'RoleBinding', 'Pod',
@@ -1623,10 +1956,22 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
   readonly crdOpen             = signal(false);
   readonly networkOpen         = signal(false);
   readonly podConfigOpen       = signal(false);
+  readonly podRelationsOpen    = signal(false);
   readonly podConfigKeys       = POD_CONFIG_KEYS;
+  readonly podRelationGroups   = [
+    { label: 'CREATES / MANAGES POD', keys: ['Deployment', 'CronJob', 'ReplicaSet', 'StatefulSet', 'DaemonSet', 'Job'] },
+    { label: 'ATTACHED TO POD',       keys: ['ConfigMap', 'Secret', 'PersistentVolumeClaim', 'ServiceAccount'] },
+    { label: 'SELECTS POD',           keys: ['Service', 'HorizontalPodAutoscaler', 'NetworkPolicy', 'PodDisruptionBudget'] },
+  ];
+  readonly podRelationMap      = Object.fromEntries(POD_RELATION_ENTRIES.map(e => [e.key, e]));
   readonly selectedPodConfig   = signal<string | null>(null);
   readonly selectedPodConfigEntry = computed(() =>
     POD_CONFIG_KEYS.find(e => e.key === this.selectedPodConfig()) ?? null
+  );
+
+  readonly selectedPodRelation = signal<string | null>(null);
+  readonly selectedPodRelationEntry = computed(() =>
+    POD_RELATION_ENTRIES.find(e => e.key === this.selectedPodRelation()) ?? null
   );
 
   /** All unique namespaces in the graph (for top-level namespace selector). */
@@ -1891,12 +2236,22 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     this.selectedPodConfig.set(null);
   }
 
+  selectPodRelation(key: string): void {
+    this.selectedPodRelation.set(this.selectedPodRelation() === key ? null : key);
+    this.selectedFieldGlossary.set(null);
+    this.selectedGraphKind.set(null);
+    this.selectedCrdField.set(null);
+    this.selectedNetworkType.set(null);
+    this.selectedPodConfig.set(null);
+  }
+
   selectPodConfig(key: string): void {
     this.selectedPodConfig.set(this.selectedPodConfig() === key ? null : key);
     this.selectedFieldGlossary.set(null);
     this.selectedGraphKind.set(null);
     this.selectedCrdField.set(null);
     this.selectedNetworkType.set(null);
+    this.selectedPodRelation.set(null);
   }
 
   selectFieldGlossary(field: SourceField): void {
@@ -1945,8 +2300,15 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     this.needsPathUpdate = true;
   }
 
+  readonly isCheatsheetActive = computed(() =>
+    !this.selectedFieldGlossary() && !this.selectedGraphKind() &&
+    !this.selectedCrdField() && !this.selectedNetworkType() &&
+    !this.selectedPodConfig() && !this.selectedPodRelation()
+  );
+
   onDragStart(event: MouseEvent): void {
     if (this.selectedNetworkType()) return;
+    if (this.isCheatsheetActive()) return;
     this.isDragging.set(true);
     this.dragStart = { x: event.clientX - this.dragOffset().x, y: event.clientY - this.dragOffset().y };
     event.preventDefault();
@@ -1963,6 +2325,7 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
 
   onWheel(event: WheelEvent): void {
     if (this.selectedNetworkType()) return;
+    if (this.isCheatsheetActive()) return;
     event.preventDefault();
     const oldScale = this.scale();
     const factor = Math.exp(-event.deltaY * 0.0015);

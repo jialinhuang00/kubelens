@@ -95,6 +95,28 @@
         }
       }
 
+      <button class="section-label accordion-toggle" [class.open]="podRelationsOpen()" (click)="podRelationsOpen.set(!podRelationsOpen())">
+        Pod Relations <span class="accordion-chevron">{{ podRelationsOpen() ? '▾' : '▸' }}</span>
+      </button>
+      @if (podRelationsOpen()) {
+        @for (group of podRelationGroups; track group.label) {
+          <div class="net-section-group">
+            <div class="net-section-sublabel">{{ group.label }}</div>
+            <div class="field-list">
+              @for (key of group.keys; track key) {
+                <button
+                  class="field-item"
+                  [class.active]="selectedPodRelation() === key"
+                  (click)="selectPodRelation(key)">
+                  <span class="field-short">{{ podRelationMap[key].short }}</span>
+                  <code class="field-yaml">{{ key }}</code>
+                </button>
+              }
+            </div>
+          </div>
+        }
+      }
+
       <button class="section-label accordion-toggle" [class.open]="podConfigOpen()" (click)="podConfigOpen.set(!podConfigOpen())">
         Pod Config Keys <span class="accordion-chevron">{{ podConfigOpen() ? '▾' : '▸' }}</span>
       </button>
@@ -118,6 +140,7 @@
   <div class="main-area"
        #mainArea
        [class.dragging]="isDragging()"
+       [class.no-grab]="isCheatsheetActive"
        (mousedown)="onDragStart($event)"
        (mousemove)="onDragMove($event)"
        (mouseup)="onDragEnd()"
@@ -149,7 +172,20 @@
       <div class="overlay-msg">Select a namespace from the sidebar</div>
     }
 
-    @if (!selectedFieldGlossary() && !selectedGraphKind() && !selectedCrdField() && !selectedNetworkType() && !selectedPodConfig() && !loading()) {
+    @if (selectedPodRelationEntry(); as pr) {
+      <div class="pod-config-card">
+        <div class="pc-header">
+          <code class="pc-key">{{ pr.key }}</code>
+          <div class="pc-appears">{{ pr.role }}</div>
+        </div>
+        <p class="pc-what">{{ pr.what }}</p>
+        <pre class="pc-yaml">{{ pr.yaml }}</pre>
+        <div class="pc-trap"><span class="pc-trap-label">Trap</span>{{ pr.trap }}</div>
+        <button class="pr-back" (click)="selectedPodRelation.set(null)">← back</button>
+      </div>
+    }
+
+    @if (!selectedFieldGlossary() && !selectedGraphKind() && !selectedCrdField() && !selectedNetworkType() && !selectedPodConfig() && !selectedPodRelation() && !loading()) {
       <div class="cheatsheet">
         <div class="cs-title">K8s Resource Relationships</div>
 
@@ -192,6 +228,38 @@
           <div class="cs-rows">
             <div class="cs-row"><span class="cs-src">RoleBinding</span><span class="cs-arrow">──binds-role──►</span><span class="cs-tgt">Role</span></div>
             <div class="cs-row"><span class="cs-src">RoleBinding</span><span class="cs-arrow">──binds-role──►</span><span class="cs-tgt">ServiceAccount</span></div>
+          </div>
+        </div>
+
+        <div class="cs-section cs-section--interactive">
+          <div class="cs-label">CREATES / MANAGES POD</div>
+          <div class="cs-rows">
+            <button class="cs-row cs-row--btn" (click)="selectPodRelation('Deployment')"><span class="cs-src">Deployment</span><span class="cs-arrow"> — </span><span class="cs-note cs-note--inline">declarative rollout of stateless Pods</span></button>
+            <button class="cs-row cs-row--btn" (click)="selectPodRelation('CronJob')"><span class="cs-src">CronJob</span><span class="cs-arrow"> — </span><span class="cs-note cs-note--inline">scheduled Jobs on a cron expression</span></button>
+            <button class="cs-row cs-row--btn" (click)="selectPodRelation('ReplicaSet')"><span class="cs-src">ReplicaSet</span><span class="cs-arrow"> — </span><span class="cs-note cs-note--inline">maintains N Pod replicas</span></button>
+            <button class="cs-row cs-row--btn" (click)="selectPodRelation('StatefulSet')"><span class="cs-src">StatefulSet</span><span class="cs-arrow"> — </span><span class="cs-note cs-note--inline">stateful Pods with stable names &amp; ordering</span></button>
+            <button class="cs-row cs-row--btn" (click)="selectPodRelation('DaemonSet')"><span class="cs-src">DaemonSet</span><span class="cs-arrow"> — </span><span class="cs-note cs-note--inline">one Pod per node</span></button>
+            <button class="cs-row cs-row--btn" (click)="selectPodRelation('Job')"><span class="cs-src">Job</span><span class="cs-arrow"> — </span><span class="cs-note cs-note--inline">Pod that exits when done</span></button>
+          </div>
+        </div>
+
+        <div class="cs-section cs-section--interactive">
+          <div class="cs-label">ATTACHED TO POD</div>
+          <div class="cs-rows">
+            <button class="cs-row cs-row--btn" (click)="selectPodRelation('ConfigMap')"><span class="cs-src">ConfigMap</span><span class="cs-arrow"> — </span><span class="cs-note cs-note--inline">inject env vars or mount config files</span></button>
+            <button class="cs-row cs-row--btn" (click)="selectPodRelation('Secret')"><span class="cs-src">Secret</span><span class="cs-arrow"> — </span><span class="cs-note cs-note--inline">inject sensitive data (passwords, tokens, TLS certs)</span></button>
+            <button class="cs-row cs-row--btn" (click)="selectPodRelation('PersistentVolumeClaim')"><span class="cs-src">PersistentVolumeClaim</span><span class="cs-arrow"> — </span><span class="cs-note cs-note--inline">durable storage</span></button>
+            <button class="cs-row cs-row--btn" (click)="selectPodRelation('ServiceAccount')"><span class="cs-src">ServiceAccount</span><span class="cs-arrow"> — </span><span class="cs-note cs-note--inline">Pod identity (API permissions)</span></button>
+          </div>
+        </div>
+
+        <div class="cs-section cs-section--interactive">
+          <div class="cs-label">SELECTS POD</div>
+          <div class="cs-rows">
+            <button class="cs-row cs-row--btn" (click)="selectPodRelation('Service')"><span class="cs-src">Service</span><span class="cs-arrow"> — </span><span class="cs-note cs-note--inline">finds a set of Pods via label selector, load-balances</span></button>
+            <button class="cs-row cs-row--btn" (click)="selectPodRelation('HorizontalPodAutoscaler')"><span class="cs-src">HorizontalPodAutoscaler</span><span class="cs-arrow"> — </span><span class="cs-note cs-note--inline">watches Pod metrics, adjusts replica count</span></button>
+            <button class="cs-row cs-row--btn" (click)="selectPodRelation('NetworkPolicy')"><span class="cs-src">NetworkPolicy</span><span class="cs-arrow"> — </span><span class="cs-note cs-note--inline">controls Pod ingress / egress traffic</span></button>
+            <button class="cs-row cs-row--btn" (click)="selectPodRelation('PodDisruptionBudget')"><span class="cs-src">PodDisruptionBudget</span><span class="cs-arrow"> — </span><span class="cs-note cs-note--inline">limits voluntary Pod evictions during drains</span></button>
           </div>
         </div>
       </div>
