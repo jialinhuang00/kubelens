@@ -1,10 +1,12 @@
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3042;
 
 // Always load snapshot handler — per-request snapshot mode via ?snapshot=true
 require('./utils/snapshot-handler');
@@ -40,7 +42,18 @@ app.use('/api', snapshotRouter);
 // WebSocket streaming for kubectl long-running commands
 mountWebSocket(server);
 
-server.listen(PORT, () => {
+// Production: serve Angular build output (skipped in dev — dist/ doesn't exist)
+const distPath = path.join(__dirname, '..', 'dist', 'kubelens', 'browser');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.get('/{*splat}', (req, res) => {
+    if (!req.path.startsWith('/api/')) {
+      res.sendFile(path.join(distPath, 'index.html'));
+    }
+  });
+}
+
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`kubelens server running on http://localhost:${PORT}`);
   console.log(`Realtime ping: http://localhost:${PORT}/api/realtime/ping`);
   console.log(`Graph endpoint: http://localhost:${PORT}/api/graph`);
