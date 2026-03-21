@@ -91,12 +91,30 @@ Frontend → `websocket.service.ts` → `ws://host/api/execute/stream/ws` → se
 pushes `stream-data` chunks → `stream-end` on completion.
 Control: `POST /api/execute/stream/stop` (kill process), `POST /api/execute/stream/clear` (clear buffer).
 
-## Development Commands
-- `npm run dev` — Start frontend (4200) + backend (3000)
+## Development
+- `npm run dev` — frontend (4200) + backend (3042), proxy forwards `/api`
 - `bash scripts/snapshot-bash.sh` — CLI export (independent of server)
-- `bash scripts/snapshot-bash.sh --resume` — Resume interrupted export
-- `ng build` — Production build
 - `ng test` — Unit tests
+
+## Deploy (EC2)
+
+```bash
+git push                          # local
+ssh kubelens                      # ~/.ssh/config alias
+cd /home/ec2-user/kubelens
+git pull
+npm run build                     # only if frontend changed
+pm2 restart kubelens
+```
+
+| Item | Value |
+|------|-------|
+| Path | `/home/ec2-user/kubelens/` |
+| Port | 8080 (`PORT=8080` in pm2 env) |
+| Start | `PORT=8080 pm2 start "npx tsx api/index.js" --name kubelens` |
+
+Frontend: `npm run build` → `dist/kubelens/browser/` (static files). Backend: no build, tsx runs directly.
+Production mode: Express serves `dist/` + API on one port. Dev mode: `dist/` absent → static serve skipped.
 
 ## Important Constraints
 - bash scripts must work on macOS bash 3.2 (no `declare -A`, empty arrays + `set -u` crash)
