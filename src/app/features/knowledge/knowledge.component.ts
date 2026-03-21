@@ -4,7 +4,6 @@ import {
   signal, computed, inject, effect,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { GraphDataService } from '../universe/services/graph-data.service';
 import { DataModeService } from '../../core/services/data-mode.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { BackLinkComponent } from '../../shared/components/back-link/back-link.component';
@@ -1206,7 +1205,6 @@ export const CRD_GLOSSARY: Record<CrdField, CrdInfo> = {
   styleUrls: ['./knowledge.component.scss'],
 })
 export class KnowledgeComponent implements OnInit, AfterViewChecked {
-  protected readonly graphData  = inject(GraphDataService);
   private readonly router       = inject(Router);
   protected readonly dataModeService = inject(DataModeService);
   private readonly themeService = inject(ThemeService);
@@ -1216,8 +1214,6 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
   @ViewChild('cardsContainer')  cardsContainerRef?: ElementRef<HTMLElement>;
 
 
-  readonly loading = this.graphData.loading;
-  readonly error   = this.graphData.error;
 
   readonly fieldGlossary  = FIELD_GLOSSARY;
   readonly crdGlossary    = CRD_GLOSSARY;
@@ -1313,7 +1309,6 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
   private needsPathUpdate = false;
 
   ngOnInit(): void {
-    this.graphData.fetchGraph(true);
     effect(() => {
       this.themeService.activeTheme(); // track theme changes
       this.edgeColors.set(getThemedEdgeColors());

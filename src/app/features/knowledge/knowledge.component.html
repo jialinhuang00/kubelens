@@ -111,7 +111,7 @@
   <div class="main-area"
        #mainArea
        [class.dragging]="isDragging()"
-       [class.no-grab]="isCheatsheetActive"
+       [class.no-grab]="isCheatsheetActive()"
        (mousedown)="onDragStart($event)"
        (mousemove)="onDragMove($event)"
        (mouseup)="onDragEnd()"
@@ -130,12 +130,6 @@
       </div>
     }
 
-    @if (loading() && !selectedNetworkType()) {
-      <div class="overlay-msg">Loading graph…</div>
-    }
-    @if (error() && !selectedNetworkType(); as err) {
-      <div class="overlay-msg error">{{ err }}</div>
-    }
     @if (selectedPodRelationEntry(); as pr) {
       <div class="pod-config-card">
         <div class="pc-header">
@@ -149,7 +143,7 @@
       </div>
     }
 
-    @if (!selectedFieldGlossary() && !selectedCrdField() && !selectedNetworkType() && !selectedPodConfig() && !selectedPodRelation() && !loading()) {
+    @if (!selectedFieldGlossary() && !selectedCrdField() && !selectedNetworkType() && !selectedPodConfig() && !selectedPodRelation()) {
       <div class="cheatsheet">
         <div class="cs-title">K8s Resource Relationships</div>
 
