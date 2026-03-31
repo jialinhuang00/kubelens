@@ -358,3 +358,21 @@ select.cyber-button option {
   background: var(--t-bg-surface);
   color: var(--t-text-primary);
 }
+
+// Mutation snackbar
+.mutation-snackbar .mdc-snackbar__surface {
+  background: var(--t-bg-panel) !important;
+  color: var(--t-text-primary) !important;
+  border: 1px solid var(--t-border-glow);
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  box-shadow: var(--t-shadow-panel);
+}
+
+.mutation-snackbar .mdc-snackbar__label {
+  color: var(--t-text-primary) !important;
+  text-align: center;
+}
+
+.mutation-snackbar .mat-mdc-snack-bar-action .mdc-button__label {
+  color: var(--t-accent) !important;
+}

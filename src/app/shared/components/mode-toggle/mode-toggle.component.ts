@@ -1,4 +1,5 @@
 import { Component, inject, output } from '@angular/core';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { DataModeService } from '../../../core/services/data-mode.service';
 
 @Component({
@@ -56,10 +57,21 @@ import { DataModeService } from '../../../core/services/data-mode.service';
 })
 export class ModeToggleComponent {
   protected readonly dataModeService = inject(DataModeService);
+  private snackBar = inject(MatSnackBar);
   readonly modeChanged = output<boolean>();
 
   select(snapshot: boolean): void {
+    const prev = this.dataModeService.isSnapshotMode();
     this.dataModeService.setSnapshotMode(snapshot);
+    if (this.dataModeService.isSnapshotMode() !== prev) {
+      const mode = snapshot ? 'Snapshot' : 'Realtime';
+      this.snackBar.open(`Switched to ${mode} mode`, '', {
+        duration: 2000,
+        panelClass: 'mutation-snackbar',
+        horizontalPosition: 'center',
+        verticalPosition: 'bottom',
+      });
+    }
     this.modeChanged.emit(snapshot);
   }
 }

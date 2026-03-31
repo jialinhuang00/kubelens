@@ -120,6 +120,13 @@ export class TerminalSidebarComponent implements OnInit {
     }
   }
 
+  onRefetchResources(): void {
+    const ns = this.selectedNamespace();
+    if (ns) {
+      this.resourceTree.loadForNamespace(ns);
+    }
+  }
+
   private getTemplatesForKind(kind: string, name: string): CommandTemplate[] {
     switch (kind) {
       case 'Deployment': return this.templateService.generateDeploymentTemplates(name);

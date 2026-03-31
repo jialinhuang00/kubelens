@@ -11,11 +11,14 @@
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  padding: 2px 0;
+  padding: 3px 6px;
+  margin: 0 -6px;
+  border-radius: 4px;
   user-select: none;
+  transition: background 0.15s ease;
 
   &:hover {
-    opacity: 1;
+    background: rgba(128, 128, 128, 0.1);
   }
 }
 
@@ -55,8 +58,8 @@
 }
 
 .toggle-arrow {
-  font-size: 9px;
-  color: var(--text-secondary);
+  font-size: 11px;
+  color: var(--t-accent);
   transition: transform 0.2s ease;
 
   &.expanded {

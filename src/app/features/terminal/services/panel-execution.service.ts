@@ -1,11 +1,31 @@
 import { Injectable, inject } from '@angular/core';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { KubectlService } from '../../../core/services/kubectl.service';
 import { OutputParserService } from '../../dashboard/services/output-parser.service';
 import { TemplateService } from '../../dashboard/services/template.service';
 import { PanelManagerService } from './panel-manager.service';
+import { ResourceTreeService } from './resource-tree.service';
+import { NamespaceService } from '../../k8s/services/namespace.service';
 import { EMPTY_OUTPUT_DATA } from '../models/panel.models';
 import { ExecutionGroupGenerator } from '../../../shared/constants/execution-groups.constants';
 import { ExecutionContextService } from '../../../core/services/execution-context.service';
+
+const MUTATION_PATTERNS = [
+  /kubectl\s+set\s+/,
+  /kubectl\s+scale\s+/,
+  /kubectl\s+rollout\s+(restart|undo|pause|resume)/,
+  /kubectl\s+apply\s+/,
+  /kubectl\s+create\s+/,
+  /kubectl\s+delete\s+/,
+  /kubectl\s+patch\s+/,
+  /kubectl\s+label\s+/,
+  /kubectl\s+annotate\s+/,
+  /kubectl\s+edit\s+/,
+  /kubectl\s+cordon\s+/,
+  /kubectl\s+uncordon\s+/,
+  /kubectl\s+drain\s+/,
+  /kubectl\s+taint\s+/,
+];
 
 @Injectable({ providedIn: 'root' })
 export class PanelExecutionService {
@@ -14,6 +34,9 @@ export class PanelExecutionService {
   private templateService = inject(TemplateService);
   private panelManager = inject(PanelManagerService);
   private executionContext = inject(ExecutionContextService);
+  private snackBar = inject(MatSnackBar);
+  private resourceTree = inject(ResourceTreeService);
+  private namespaceService = inject(NamespaceService);
 
   async execute(panelId: string, command: string): Promise<void> {
     const panel = this.panelManager.getPanel(panelId);
@@ -101,6 +124,7 @@ export class PanelExecutionService {
             streamClear: null,
             outputData: { ...parsed, customCommand: command },
           });
+          this.notifyIfMutation(command);
         },
         error: (error) => {
           this.panelManager.updatePanelOutput(panelId, {
@@ -136,6 +160,7 @@ export class PanelExecutionService {
           isLoading: false,
           outputData: { ...parsed, customCommand: command },
         });
+        this.notifyIfMutation(command);
       } else {
         this.panelManager.updatePanelOutput(panelId, {
           isLoading: false,
@@ -190,5 +215,23 @@ export class PanelExecutionService {
     }
 
     return out;
+  }
+
+  private notifyIfMutation(command: string): void {
+    if (!MUTATION_PATTERNS.some(p => p.test(command))) return;
+
+    const ref = this.snackBar.open('Cluster state changed', 'Reload', {
+      duration: 6000,
+      panelClass: 'mutation-snackbar',
+      horizontalPosition: 'center',
+      verticalPosition: 'bottom',
+    });
+
+    ref.onAction().subscribe(() => {
+      const ns = this.namespaceService.currentNamespace();
+      if (ns) {
+        this.resourceTree.loadForNamespace(ns);
+      }
+    });
   }
 }
