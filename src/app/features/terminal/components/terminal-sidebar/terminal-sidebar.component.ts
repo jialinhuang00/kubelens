@@ -120,10 +120,10 @@ export class TerminalSidebarComponent implements OnInit {
     }
   }
 
-  onRefetchResources(): void {
+  onRefetchKind(kind: string): void {
     const ns = this.selectedNamespace();
     if (ns) {
-      this.resourceTree.loadForNamespace(ns);
+      this.resourceTree.reloadKind(kind, ns);
     }
   }
 

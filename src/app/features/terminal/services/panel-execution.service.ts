@@ -27,6 +27,10 @@ const MUTATION_PATTERNS = [
   /kubectl\s+taint\s+/,
 ];
 
+const CONTROLLER_KINDS = new Set([
+  'deployment', 'statefulset', 'daemonset', 'replicaset', 'job', 'cronjob',
+]);
+
 @Injectable({ providedIn: 'root' })
 export class PanelExecutionService {
   private kubectlService = inject(KubectlService);
@@ -220,7 +224,12 @@ export class PanelExecutionService {
   private notifyIfMutation(command: string): void {
     if (!MUTATION_PATTERNS.some(p => p.test(command))) return;
 
-    const ref = this.snackBar.open('Cluster state changed', 'Reload', {
+    const target = this.parseMutationTarget(command);
+    const message = target
+      ? `${target.kind}/${target.name} updated`
+      : 'Cluster state changed';
+
+    const ref = this.snackBar.open(message, 'Reload', {
       duration: 6000,
       panelClass: 'mutation-snackbar',
       horizontalPosition: 'center',
@@ -229,9 +238,47 @@ export class PanelExecutionService {
 
     ref.onAction().subscribe(() => {
       const ns = this.namespaceService.currentNamespace();
-      if (ns) {
+      if (!ns) return;
+
+      if (target) {
+        const isController = CONTROLLER_KINDS.has(target.kind.toLowerCase());
+        const isLifecycle = /kubectl\s+(delete|create)\s+/.test(command);
+
+        if (isController && isLifecycle) {
+          // delete/create controller → refresh both the controller kind and Pod
+          this.resourceTree.reloadKind(target.kind, ns);
+          this.resourceTree.reloadKind('Pod', ns);
+        } else if (isController) {
+          // other controller mutations (scale, set image, rollout) → only pods change
+          this.resourceTree.reloadKind('Pod', ns);
+        } else {
+          this.resourceTree.reloadKind(target.kind, ns);
+        }
+      } else {
         this.resourceTree.loadForNamespace(ns);
       }
     });
+  }
+
+  private parseMutationTarget(command: string): { kind: string; name: string } | null {
+    // "kubectl rollout restart deployment/foo -n ns"
+    const rolloutMatch = command.match(
+      /kubectl\s+rollout\s+\S+\s+(\S+?)[/\s]+(\S+)/i
+    );
+    if (rolloutMatch) return { kind: rolloutMatch[1], name: rolloutMatch[2] };
+
+    // "kubectl set image deployment/foo ..."
+    const setMatch = command.match(
+      /kubectl\s+set\s+\S+\s+(\S+?)[/\s]+(\S+)/i
+    );
+    if (setMatch) return { kind: setMatch[1], name: setMatch[2] };
+
+    // "kubectl <verb> <kind>/<name>" or "kubectl <verb> <kind> <name>"
+    const genericMatch = command.match(
+      /kubectl\s+(?:scale|delete|patch|label|annotate|edit|cordon|uncordon|drain|taint|create)\s+(\S+?)[/\s]+(\S+)/i
+    );
+    if (genericMatch) return { kind: genericMatch[1], name: genericMatch[2] };
+
+    return null;
   }
 }

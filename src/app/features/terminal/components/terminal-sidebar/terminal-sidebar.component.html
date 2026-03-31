@@ -20,29 +20,31 @@
           <span class="section-spinner"></span>
           <span class="section-loading-text">loading...</span>
         }
-        <button class="refetch-btn" title="Refetch resources" (click)="onRefetchResources()">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
-            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"/>
-          </svg>
-        </button>
       </div>
       <div class="resource-tree">
         @for (node of resourceTree.tree(); track node.kind) {
           <div class="tree-group">
-            <button class="tree-group-header" (click)="onToggleKind(node.kind)">
-              <svg class="expand-icon" [class.expanded]="node.isExpanded" width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M8 5l8 7-8 7z"/>
-              </svg>
-              <span class="tree-kind-dot" [style.backgroundColor]="node.color"></span>
-              <span class="tree-kind-label">{{ node.label }}</span>
-              @if (node.count > 0) {
-                <span class="tree-count">{{ node.count }}</span>
-              }
-              @if (node.isLoading) {
-                <span class="tree-spinner"></span>
-              }
-            </button>
+            <div class="tree-group-row">
+              <button class="tree-group-header" (click)="onToggleKind(node.kind)">
+                <svg class="expand-icon" [class.expanded]="node.isExpanded" width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5l8 7-8 7z"/>
+                </svg>
+                <span class="tree-kind-dot" [style.backgroundColor]="node.color"></span>
+                <span class="tree-kind-label">{{ node.label }}</span>
+                @if (node.count > 0) {
+                  <span class="tree-count">{{ node.count }}</span>
+                }
+                @if (node.isLoading) {
+                  <span class="tree-spinner"></span>
+                }
+              </button>
+              <button class="kind-refetch-btn" title="Refetch {{ node.label }}" (click)="onRefetchKind(node.kind)">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
+                  <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                </svg>
+              </button>
+            </div>
             @if (node.isExpanded) {
               <div class="tree-items">
                 @if (node.isLoading) {

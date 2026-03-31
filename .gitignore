@@ -82,6 +82,9 @@ kubeconfig*
 *.kubeconfig
 k8s-snapshot*/
 
+# Claude Code
+.claude/worktrees/
+
 # Git specific
 .git/
 .gitattributes

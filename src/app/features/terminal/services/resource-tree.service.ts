@@ -93,6 +93,20 @@ export class ResourceTreeService {
     this.isLoading.set(false);
   }
 
+  async reloadKind(kind: string, namespace: string): Promise<void> {
+    const cfg = RESOURCE_KINDS.find(c => c.kind.toLowerCase() === kind.toLowerCase());
+    if (!cfg) return;
+
+    this.tree.update(nodes => nodes.map(n =>
+      n.kind === cfg.kind ? { ...n, isLoading: true } : n
+    ));
+
+    const items = await this.kubectlService.getResourceNames(cfg.resourceType, namespace);
+    this.tree.update(nodes => nodes.map(n =>
+      n.kind === cfg.kind ? { ...n, items, isLoading: false, count: items.length } : n
+    ));
+  }
+
   toggleKind(kind: string, _namespace: string): void {
     const node = this.tree().find(n => n.kind === kind);
     if (!node) return;
