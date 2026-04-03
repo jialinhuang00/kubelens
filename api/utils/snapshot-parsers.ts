@@ -96,7 +96,7 @@ export function getDuration(start: string, end: string): string {
  * @returns Multi-line string:
  * ```
  * NAME                                  READY   UP-TO-DATE   AVAILABLE   AGE
- * api-server                 2/2     2            2           5d
+ * api-server                             2/2     2            2           5d
  * web                                   3/3     3            3           10d
  * ```
  */
@@ -173,7 +173,7 @@ export function generateCronjobTable(items: K8sItem[]): string {
  * @returns Multi-line string:
  * ```
  * NAME                  READY   AGE
- * scanner-worker          2/2     30d
+ * scanner-worker         2/2     30d
  * ```
  */
 export function generateStatefulsetTable(items: K8sItem[]): string {

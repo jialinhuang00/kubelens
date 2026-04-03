@@ -355,11 +355,11 @@ func handleGetNodes(p *ParsedCommand) CommandResult {
 func handleGetEvents(_ *ParsedCommand) CommandResult {
 	return CommandResult{Success: true, Stdout: strings.Join([]string{
 		"LAST SEEN   TYPE      REASON              OBJECT                                        MESSAGE",
-		"3m          Normal    Scheduled           pod/web-app-7449d97884-j7bt5                    Successfully assigned demo/web-app-7449d97884-j7bt5 to ip-10-0-2-80.ec2.internal",
-		"3m          Normal    Pulled              pod/web-app-7449d97884-j7bt5                    Container image already present on machine",
-		"3m          Normal    Started             pod/web-app-7449d97884-j7bt5                    Started container web-app",
-		"10h         Normal    ScalingReplicaSet   deployment/web-app                              Scaled up replica set web-app-7449d97884 to 1",
-		"23h         Warning   BackOff             pod/converter-86565f7d48-2v46j            Back-off restarting failed container",
+		"3m          Normal    Scheduled           pod/web-app-7449d97884-j7bt5                  Successfully assigned demo/web-app-7449d97884-j7bt5 to ip-10-0-1-50.ec2.internal",
+		"3m          Normal    Pulled              pod/web-app-7449d97884-j7bt5                  Container image already present on machine",
+		"3m          Normal    Started             pod/web-app-7449d97884-j7bt5                  Started container web-app",
+		"10h         Normal    ScalingReplicaSet   deployment/web-app                            Scaled up replica set web-app-7449d97884 to 1",
+		"23h         Warning   BackOff             pod/worker-86565f7d48-2v46j                   Back-off restarting failed container",
 	}, "\n")}
 }
 

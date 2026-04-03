@@ -94,7 +94,7 @@ test.describe('Documentation screenshots — Ossyria', () => {
     // Position panels: override Angular ngStyle left/top with !important
     //   [0] backend-api:    stays at top-left (anchor)
     //   [1] edge-proxy:     +440px right
-    //   [2] log-agent: +200px right, +250px down
+    //   [2] log-agent:      +200px right, +250px down
     //   [3] edge-proxy-pod: +460px right, +330px down
     await page.evaluate(() => {
       const els = document.querySelectorAll<HTMLElement>('.floating-panel');
