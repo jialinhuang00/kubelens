@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, HostListener } from '@angular/core';
 import { TerminalSidebarComponent } from './terminal-sidebar/terminal-sidebar.component';
 import { PanelAreaComponent } from './panel-area/panel-area.component';
 import { ModeToggleComponent } from '../../../shared/components/mode-toggle/mode-toggle.component';
@@ -15,6 +15,14 @@ import { MemMonitorComponent } from '../../../shared/components/mem-monitor/mem-
 })
 export class TerminalComponent {
   readonly sidebarCollapsed = signal(false);
+
+  @HostListener('window:keydown.s', ['$event'])
+  onSKey(event: Event): void {
+    const tag = (event.target as HTMLElement)?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    event.preventDefault();
+    this.toggleSidebar();
+  }
 
   toggleSidebar(): void {
     this.sidebarCollapsed.update(v => !v);

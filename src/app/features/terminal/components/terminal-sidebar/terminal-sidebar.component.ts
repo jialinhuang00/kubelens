@@ -51,6 +51,8 @@ export class TerminalSidebarComponent implements OnInit {
     if (this.selectedNamespace() === ns) return;
     this.selectedNamespace.set(ns);
     this.namespaceService.setCurrentNamespace(ns);
+    this.panelManager.setNamespaceContext(ns);
+    this.panelManager.restoreState(ns, (kind, name) => this.getTemplatesForKind(kind, name));
     await this.resourceTree.loadForNamespace(ns);
   }
 
@@ -107,6 +109,15 @@ export class TerminalSidebarComponent implements OnInit {
       case 'nodes':
         command = 'kubectl get nodes -o wide';
         break;
+      case 'images':
+        command = ns ? `kubectl get pods -n '${ns}' -o custom-columns="POD:.metadata.name,IMAGE:.spec.containers[*].image" --no-headers` : '';
+        break;
+      case 'top-pods':
+        command = ns ? `kubectl top pods -n '${ns}' --sort-by=memory` : '';
+        break;
+      case 'endpoints':
+        command = ns ? `kubectl get endpoints -n '${ns}'` : '';
+        break;
     }
     if (!command) return;
     const panelId = this.panelManager.openGeneralPanel();
@@ -146,6 +157,7 @@ export class TerminalSidebarComponent implements OnInit {
       case 'NetworkPolicy': return this.templateService.generateNetworkPolicyTemplates(name);
       case 'Role': return this.templateService.generateRoleTemplates(name);
       case 'RoleBinding': return this.templateService.generateRoleBindingTemplates(name);
+      case 'Application': return this.templateService.generateApplicationTemplates(name);
       default: return [];
     }
   }

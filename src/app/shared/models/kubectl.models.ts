@@ -17,7 +17,8 @@ export type ResourceType =
   | 'horizontalpodautoscalers'
   | 'networkpolicies'
   | 'roles'
-  | 'rolebindings';
+  | 'rolebindings'
+  | 'applications.argoproj.io';
 
 export interface KubeResource {
   [key: string]: string;

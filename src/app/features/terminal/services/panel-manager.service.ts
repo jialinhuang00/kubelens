@@ -11,10 +11,30 @@ import {
 import { OutputData } from '../../../shared/interfaces/output-data.interface';
 import { CommandTemplate } from '../../../shared/models/kubectl.models';
 
+interface SavedPanel {
+  id: string;
+  type: 'resource' | 'general';
+  resourceKind: string;
+  resourceName: string;
+  namespace: string;
+  workspace: number;
+  position: PanelPosition;
+  size: PanelSize;
+  isMaximized: boolean;
+  activeCommand: string;
+}
+
+interface SavedWorkspace {
+  activeWorkspace: number;
+  workspaceCount: number;
+  panels: SavedPanel[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class PanelManagerService {
   private panels = signal<Map<string, PanelState>>(new Map());
   private nextZIndex = 1;
+  private currentNamespace = '';
 
   // Workspace state
   activeWorkspace = signal(0);
@@ -94,6 +114,7 @@ export class PanelManagerService {
     const next = new Map(this.panels());
     next.set(id, panel);
     this.panels.set(next);
+    this.persistState();
     return id;
   }
 
@@ -125,6 +146,7 @@ export class PanelManagerService {
     const next = new Map(this.panels());
     next.set(id, panel);
     this.panels.set(next);
+    this.persistState();
     return id;
   }
 
@@ -132,6 +154,7 @@ export class PanelManagerService {
     const next = new Map(this.panels());
     next.delete(id);
     this.panels.set(next);
+    this.persistState();
   }
 
   bringToFront(id: string): void {
@@ -144,20 +167,24 @@ export class PanelManagerService {
 
   updatePosition(id: string, position: PanelPosition): void {
     this.updatePanel(id, { position });
+    this.persistState();
   }
 
   updateSize(id: string, size: PanelSize): void {
     this.updatePanel(id, { size });
+    this.persistState();
   }
 
   toggleMaximize(id: string): void {
     const panel = this.panels().get(id);
     if (!panel) return;
     this.updatePanel(id, { isMaximized: !panel.isMaximized });
+    this.persistState();
   }
 
   updatePanelOutput(id: string, partial: Partial<PanelState>): void {
     this.updatePanel(id, partial);
+    if (partial.activeCommand !== undefined) this.persistState();
   }
 
   clearPanelOutput(id: string): void {
@@ -173,6 +200,7 @@ export class PanelManagerService {
   switchWorkspace(index: number): void {
     if (index >= 0 && index < this.workspaceCount()) {
       this.activeWorkspace.set(index);
+      this.persistState();
     }
   }
 
@@ -180,6 +208,7 @@ export class PanelManagerService {
     const newIndex = this.workspaceCount();
     this.workspaceCount.update(c => c + 1);
     this.activeWorkspace.set(newIndex);
+    this.persistState();
   }
 
   removeWorkspace(index: number): void {
@@ -205,10 +234,12 @@ export class PanelManagerService {
     } else if (this.activeWorkspace() > index) {
       this.activeWorkspace.update(w => w - 1);
     }
+    this.persistState();
   }
 
   movePanelToWorkspace(id: string, workspace: number): void {
     this.updatePanel(id, { workspace });
+    this.persistState();
   }
 
   private updatePanel(id: string, partial: Partial<PanelState>): void {
@@ -224,5 +255,68 @@ export class PanelManagerService {
     this.nextZIndex = 1;
     this.activeWorkspace.set(0);
     this.workspaceCount.set(1);
+    this.persistState();
+  }
+
+  // Persistence
+
+  private storageKey(): string {
+    return `kubelens.ws.${this.currentNamespace}`;
+  }
+
+  setNamespaceContext(namespace: string): void {
+    this.currentNamespace = namespace;
+  }
+
+  persistState(): void {
+    if (!this.currentNamespace) return;
+    const saved: SavedWorkspace = {
+      activeWorkspace: this.activeWorkspace(),
+      workspaceCount: this.workspaceCount(),
+      panels: [...this.panels().values()].map(p => ({
+        id: p.id,
+        type: p.type,
+        resourceKind: p.resourceKind,
+        resourceName: p.resourceName,
+        namespace: p.namespace,
+        workspace: p.workspace,
+        position: p.position,
+        size: p.size,
+        isMaximized: p.isMaximized,
+        activeCommand: p.activeCommand,
+      })),
+    };
+    localStorage.setItem(this.storageKey(), JSON.stringify(saved));
+  }
+
+  restoreState(namespace: string, getTemplates: (kind: string, name: string) => CommandTemplate[]): boolean {
+    this.currentNamespace = namespace;
+    const raw = localStorage.getItem(this.storageKey());
+    if (!raw) return false;
+
+    try {
+      const saved: SavedWorkspace = JSON.parse(raw);
+      if (!saved.panels?.length) return false;
+
+      const next = new Map<string, PanelState>();
+      for (const sp of saved.panels) {
+        next.set(sp.id, {
+          ...sp,
+          zIndex: this.nextZIndex++,
+          isLoading: false,
+          isStreaming: false,
+          outputData: { ...EMPTY_OUTPUT_DATA },
+          streamStop: null,
+          streamClear: null,
+          templates: sp.type === 'resource' ? getTemplates(sp.resourceKind, sp.resourceName) : [],
+        });
+      }
+      this.panels.set(next);
+      this.workspaceCount.set(saved.workspaceCount || 1);
+      this.activeWorkspace.set(saved.activeWorkspace || 0);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

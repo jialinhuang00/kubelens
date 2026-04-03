@@ -10,14 +10,42 @@ const router = express.Router();
 
 global.runningProcesses = global.runningProcesses || new Map();
 
-// Strip shell quotes from a single arg token: 'foo' → foo, "foo" → foo
-function stripQuotes(arg) {
-  return arg.replace(/^(['"])(.*)\1$/, '$2');
-}
-
-// Split command string into args array, stripping shell quotes from each token
+// Split command string into args array, respecting quoted substrings.
+// "kubectl get pods -o custom-columns="A:.a,B:.b" -n ns"
+//  → ['get', 'pods', '-o', 'custom-columns=A:.a,B:.b', '-n', 'ns']
 function parseArgs(command) {
-  return command.split(/\s+/).slice(1).map(stripQuotes);
+  const args = [];
+  // Skip "kubectl " prefix
+  let i = command.indexOf(' ');
+  if (i < 0) return args;
+  i++; // skip the space after kubectl
+
+  let current = '';
+  let inQuote = null; // null, '"', or "'"
+
+  for (; i < command.length; i++) {
+    const ch = command[i];
+
+    if (inQuote) {
+      if (ch === inQuote) {
+        inQuote = null; // close quote, don't include the quote char
+      } else {
+        current += ch;
+      }
+    } else if (ch === '"' || ch === "'") {
+      inQuote = ch; // open quote, don't include the quote char
+    } else if (/\s/.test(ch)) {
+      if (current) {
+        args.push(current);
+        current = '';
+      }
+    } else {
+      current += ch;
+    }
+  }
+  if (current) args.push(current);
+
+  return args;
 }
 
 // Split kubectl get all output into separate tables
@@ -127,6 +155,7 @@ router.post('/execute', async (req, res) => {
   const args = parseArgs(command);
 
   console.log(`Executing: ${command}`);
+  console.log(`Args: ${JSON.stringify(args)}`);
 
   try {
     const { stdout } = await execFileAsync('kubectl', args, { timeout: 30000 });

@@ -4,6 +4,7 @@
       <tr>
         @for (header of headers; track header) {
         <th class="text-left glow-text compact-spacing"
+          [style.width]="getColumnWidth(header, headers.length)"
           style="color: var(--accent-purple); border-bottom: 1px solid var(--border-subtle);">
           {{ header }}
         </th>
@@ -22,7 +23,7 @@
       @for (item of results; track $index) {
       <tr style="border-bottom: 1px solid var(--border-subtle);" class="hover:bg-opacity-50">
         @for (header of headers; track header) {
-        <td class="compact-spacing">
+        <td class="compact-spacing" [class.wrap-cell]="header.toLowerCase().includes('image') || header.toLowerCase().includes('sha')">
           @if (header.toLowerCase() === 'status') {
           <span class="inline-flex px-1 py-0.5 text-xs font-medium rounded-sm"
             [style]="item[header.toLowerCase()] === PodPhase.Running ?

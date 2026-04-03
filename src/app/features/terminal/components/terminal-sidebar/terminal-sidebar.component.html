@@ -90,6 +90,11 @@
       <button class="quick-btn" (click)="onQuickAction('get-all')">Get All</button>
       <button class="quick-btn" (click)="onQuickAction('events')">Events</button>
       <button class="quick-btn" (click)="onQuickAction('nodes')">Nodes</button>
+      @if (selectedNamespace()) {
+        <button class="quick-btn" (click)="onQuickAction('images')">Images</button>
+        <button class="quick-btn" (click)="onQuickAction('top-pods')">Top Pods</button>
+        <button class="quick-btn" (click)="onQuickAction('endpoints')">Endpoints</button>
+      }
     </div>
     <div class="command-input-area">
       <input

@@ -37,6 +37,8 @@ const RESOURCE_KINDS: ResourceKindConfig[] = [
   { kind: 'ServiceAccount', label: 'ServiceAccounts', color: '#a8a0c0', resourceType: 'serviceaccounts' },
   { kind: 'Role', label: 'Roles', color: '#b0a0c8', resourceType: 'roles' },
   { kind: 'RoleBinding', label: 'RoleBindings', color: '#a898b8', resourceType: 'rolebindings' },
+  // CRDs
+  { kind: 'Application', label: 'Applications', color: '#e07850', resourceType: 'applications.argoproj.io' },
 ];
 
 // Priority batch: most-used resources — one kubectl call, shows up first

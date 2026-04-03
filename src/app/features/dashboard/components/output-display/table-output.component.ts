@@ -21,4 +21,12 @@ export class TableOutputComponent {
   async onCopyToClipboard(text: string, event?: Event): Promise<void> {
     await this.clipboardService.copyToClipboard(text, event);
   }
+
+  getColumnWidth(header: string, totalColumns: number): string | null {
+    if (totalColumns !== 2) return null;
+    const h = header.toLowerCase();
+    if (h.includes('image') || h.includes('sha')) return '70%';
+    if (h.includes('pod') || h.includes('name')) return '30%';
+    return null;
+  }
 }

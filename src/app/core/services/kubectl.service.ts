@@ -276,6 +276,7 @@ export class KubectlService {
       'role.rbac.authorization.k8s.io': 'Role',
       'rolebinding.rbac.authorization.k8s.io': 'RoleBinding',
       'horizontalpodautoscaler.autoscaling': 'HorizontalPodAutoscaler',
+      'application.argoproj.io': 'Application',
     };
     try {
       const response = await this.executeCommand(

@@ -334,6 +334,16 @@ export class TemplateService {
     ];
   }
 
+  generateApplicationTemplates(selected: string): CommandTemplate[] {
+    if (!selected) return [];
+    return [
+      { id: `app-${selected}-summary`, name: 'Summary', command: `kubectl get applications.argoproj.io ${selected} -n {namespace} -o custom-columns="SYNC:.status.sync.status,HEALTH:.status.health.status,REPO:.spec.source.repoURL,PATH:.spec.source.path,REVISION:.spec.source.targetRevision,DEST_NS:.spec.destination.namespace"` },
+      { id: `app-${selected}-resources`, name: 'Resources', command: `kubectl get applications.argoproj.io ${selected} -n {namespace} -o jsonpath="{range .status.resources[*]}{.kind}/{.name} {.status} {.health.status}{'\\n'}{end}"` },
+      { id: `app-${selected}-describe`, name: 'Details', command: `kubectl describe applications.argoproj.io ${selected} -n {namespace}` },
+      { id: `app-${selected}-yaml`, name: 'YAML', command: `kubectl get applications.argoproj.io ${selected} -n {namespace} -o yaml` },
+    ];
+  }
+
   substituteTemplate(
     command: string,
     namespace: string,

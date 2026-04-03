@@ -26,6 +26,11 @@
     white-space: nowrap;
     padding: 6px 12px;
     vertical-align: top;
+
+    &.wrap-cell {
+      white-space: normal;
+      word-break: break-all;
+    }
   }
 
   // Special handling for long content columns (like names)
