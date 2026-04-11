@@ -825,21 +825,22 @@ function handleRollout(parsed: ParsedCommand): CommandResult {
     }
     case 'history': {
       const revision = parsed.flags.revision as string | undefined;
+      const item = data ? findItem(data, deploymentName) : null;
+      const spec = (item?.spec || {}) as Record<string, unknown>;
+      const template = (spec.template || {}) as Record<string, unknown>;
+      const templateSpec = (template.spec || {}) as Record<string, unknown>;
+      const containers = (templateSpec.containers || []) as Array<Record<string, unknown>>;
+      const containerName = (containers[0]?.name as string) || deploymentName;
+      const image = (containers[0]?.image as string) || 'unknown:latest';
       if (revision) {
-        const item = data ? findItem(data, deploymentName) : null;
-        const spec = (item?.spec || {}) as Record<string, unknown>;
-        const template = (spec.template || {}) as Record<string, unknown>;
-        const templateSpec = (template.spec || {}) as Record<string, unknown>;
-        const containers = (templateSpec.containers || []) as Array<Record<string, unknown>>;
-        const image = (containers[0]?.image as string) || 'unknown:latest';
         return {
           success: true,
-          stdout: `deployment.apps/${deploymentName} with revision #${revision}\nPod Template:\n  Labels:  app=${deploymentName}\n  Containers:\n   ${deploymentName}:\n    Image: ${image}\n    Port:  <none>\n    Host Port: <none>\n    Environment: <none>\n    Mounts: <none>\n  Volumes: <none>`
+          stdout: `deployment.apps/${deploymentName} with revision #${revision}\nPod Template:\n  Labels:  app=${deploymentName}\n  Containers:\n   ${containerName}:\n    Image: ${image}\n    Port:  <none>\n    Host Port: <none>\n    Environment: <none>\n    Mounts: <none>\n  Volumes: <none>`
         };
       }
       return {
         success: true,
-        stdout: `deployment.apps/${deploymentName}\nREVISION  CHANGE-CAUSE\n1         <none>\n2         <none>\n3         kubectl set image deployment/${deploymentName} ${deploymentName}=image:v2\n4         kubectl set image deployment/${deploymentName} ${deploymentName}=image:v3`
+        stdout: `deployment.apps/${deploymentName}\nREVISION  CHANGE-CAUSE\n1         <none>\n2         <none>\n3         kubectl set image deployment/${deploymentName} ${containerName}=image:v2\n4         kubectl set image deployment/${deploymentName} ${containerName}=image:v3`
       };
     }
     case 'undo':

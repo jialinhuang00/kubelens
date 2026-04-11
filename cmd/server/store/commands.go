@@ -741,7 +741,19 @@ func handleRollout(p *ParsedCommand) CommandResult {
 		}
 		return CommandResult{Success: true, Stdout: fmt.Sprintf("Waiting for deployment %q rollout to finish: %d of %d updated replicas are available...", deployName, ready, desired)}
 	case "history":
-		return CommandResult{Success: true, Stdout: fmt.Sprintf("deployment.apps/%s\nREVISION  CHANGE-CAUSE\n1         <none>\n2         <none>\n3         kubectl set image deployment/%s %s=image:v2", deployName, deployName, deployName)}
+		spec := ItemSpec(FindItem(data, deployName))
+		template, _ := spec["template"].(map[string]any)
+		tspec, _ := template["spec"].(map[string]any)
+		containers, _ := tspec["containers"].([]any)
+		var first map[string]any
+		if len(containers) > 0 {
+			first, _ = containers[0].(map[string]any)
+		}
+		containerName := deployName
+		if n, _ := first["name"].(string); n != "" {
+			containerName = n
+		}
+		return CommandResult{Success: true, Stdout: fmt.Sprintf("deployment.apps/%s\nREVISION  CHANGE-CAUSE\n1         <none>\n2         <none>\n3         kubectl set image deployment/%s %s=image:v2", deployName, deployName, containerName)}
 	case "undo":
 		return CommandResult{Success: true, Stdout: fmt.Sprintf("deployment.apps/%s rolled back", deployName)}
 	case "pause":
