@@ -19,6 +19,7 @@ export interface DeploymentStatus {
   isPaused: boolean;
   progressingReason?: string; // DeploymentPaused, ReplicaSetUpdated, NewReplicaSetAvailable, etc.
   containerImage?: string; // first container image URL
+  containerName?: string; // first container name (NOT always equal to deployment name)
 }
 
 export interface RolloutStatus {
@@ -129,7 +130,8 @@ export class DeploymentService {
           conditions: data.status.conditions || [],
           isPaused: data.spec.paused === true,
           progressingReason: progressingCondition?.reason,
-          containerImage: data.spec?.template?.spec?.containers?.[0]?.image || ''
+          containerImage: data.spec?.template?.spec?.containers?.[0]?.image || '',
+          containerName: data.spec?.template?.spec?.containers?.[0]?.name || ''
         };
 
         this.deploymentStatus.set(status);

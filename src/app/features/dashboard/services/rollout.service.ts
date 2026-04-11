@@ -12,8 +12,8 @@ export class RolloutService {
     return this.kubectlService.executeCommand(command);
   }
 
-  generateSetImageCommand(deployment: string, namespace: string, image: string): string {
-    return `kubectl set image deployment/${deployment} ${deployment}=${image} -n ${namespace}`;
+  generateSetImageCommand(deployment: string, container: string, namespace: string, image: string): string {
+    return `kubectl set image deployment/${deployment} ${container}=${image} -n ${namespace}`;
   }
 
 }

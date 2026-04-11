@@ -48,6 +48,7 @@ export class FloatingPanelComponent {
   rolloutHistory = this.deploymentService.rolloutHistory;
   buttonStates = computed(() => this.deploymentService.getButtonStates(this.deploymentStatus()));
   deploymentImage = computed(() => this.deploymentStatus()?.containerImage || '');
+  deploymentContainerName = computed(() => this.deploymentStatus()?.containerName || '');
 
   // ECR state
   ecrTags = this.ecrService.tags;
@@ -222,7 +223,9 @@ export class FloatingPanelComponent {
 
   onImageUpgrade(event: { deployment: string; image: string }): void {
     const p = this.panel();
-    const command = this.rolloutService.generateSetImageCommand(event.deployment, p.namespace, event.image);
+    const container = this.deploymentContainerName();
+    if (!container) return;
+    const command = this.rolloutService.generateSetImageCommand(event.deployment, container, p.namespace, event.image);
     this.panelExecution.execute(p.id, command);
     this.rolloutStateService.triggerRolloutAction('image-upgrade');
   }
@@ -237,11 +240,11 @@ export class FloatingPanelComponent {
   onEcrTagSelect(tag: string): void {
     const p = this.panel();
     const image = this.deploymentImage();
-    if (!image || !tag) return;
-    // Replace the tag portion of the image URL
+    const container = this.deploymentContainerName();
+    if (!image || !tag || !container) return;
     const baseImage = image.replace(/:.*$/, '');
     const fullImage = `${baseImage}:${tag}`;
-    const command = this.rolloutService.generateSetImageCommand(p.resourceName, p.namespace, fullImage);
+    const command = this.rolloutService.generateSetImageCommand(p.resourceName, container, p.namespace, fullImage);
     this.panelExecution.execute(p.id, command);
     this.rolloutStateService.triggerRolloutAction('ecr-tag-select');
   }
