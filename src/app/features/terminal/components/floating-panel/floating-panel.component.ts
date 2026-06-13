@@ -19,7 +19,7 @@ import { TemplateService } from '../../../dashboard/services/template.service';
   selector: 'app-floating-panel',
   standalone: true,
   imports: [CommonModule, FormsModule, CdkDrag, CdkDragHandle, OutputDisplayComponent, RolloutConsoleComponent],
-  providers: [UiStateService],
+  providers: [UiStateService, EcrService],
   templateUrl: './floating-panel.component.html',
   styleUrl: './floating-panel.component.scss',
 })
