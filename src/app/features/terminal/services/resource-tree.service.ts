@@ -53,7 +53,10 @@ export class ResourceTreeService {
   tree = signal<ResourceTreeNode[]>([]);
   isLoading = signal(false);
 
+  private loadGeneration = 0;
+
   async loadForNamespace(namespace: string): Promise<void> {
+    const myGen = ++this.loadGeneration;
     this.isLoading.set(true);
 
     // Show loading state on all nodes
@@ -74,6 +77,7 @@ export class ResourceTreeService {
     const priorityNames = await this.executionContext.withGroup(group, () =>
       this.kubectlService.getResourceNamesBatch(PRIORITY_TYPES, namespace)
     );
+    if (myGen !== this.loadGeneration) return;
     this.tree.update(nodes => nodes.map(n =>
       PRIORITY_KINDS.has(n.kind)
         ? { ...n, items: priorityNames[n.kind] || [], isLoading: false, count: (priorityNames[n.kind] || []).length }
@@ -84,6 +88,7 @@ export class ResourceTreeService {
     await this.executionContext.withGroup(group, () =>
       Promise.all(rest.map(async (cfg) => {
         const items = await this.kubectlService.getResourceNames(cfg.resourceType, namespace);
+        if (myGen !== this.loadGeneration) return;
         this.tree.update(nodes => nodes.map(n =>
           n.kind === cfg.kind
             ? { ...n, items, isLoading: false, count: items.length }
@@ -92,6 +97,7 @@ export class ResourceTreeService {
       }))
     );
 
+    if (myGen !== this.loadGeneration) return;
     this.isLoading.set(false);
   }
 
