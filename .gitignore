@@ -89,3 +89,6 @@ k8s-snapshot*/
 .git/
 .gitattributes
 *hidden
+
+# Internal planning / scratch docs (not for the repo)
+plan-*.md
