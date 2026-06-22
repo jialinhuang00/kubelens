@@ -177,16 +177,6 @@ export class TemplateService {
         id: `rollout-${deploymentName}-restart`,
         name: 'Restart',
         command: `kubectl rollout restart deployment/${deploymentName} -n {namespace}`,
-      },
-      {
-        id: `rollout-${deploymentName}-set-image-v2`,
-        name: 'Set Image (v2)',
-        command: `kubectl set image deployment/${deploymentName} ${deploymentName}=jia0/${deploymentName}:v2 -n {namespace}`,
-      },
-      {
-        id: `rollout-${deploymentName}-set-image-v3`,
-        name: 'Set Image (v3)',
-        command: `kubectl set image deployment/${deploymentName} ${deploymentName}=jia0/${deploymentName}:v3 -n {namespace}`,
       }
     ];
   }

@@ -49,28 +49,28 @@
       </button>
     </div>
 
-    <!-- ECR Tags -->
-    @if (isEcrImage()) {
-      <div class="ecr-row">
-        <div class="ecr-label">
-          ECR
-          <span class="ecr-image-url">{{ deploymentImage }}</span>
+    <!-- Registry Tags -->
+    @if (isKnownRegistry()) {
+      <div class="registry-row">
+        <div class="registry-label">
+          Registry
+          <span class="registry-image-url">{{ deploymentImage }}</span>
         </div>
-        <div class="ecr-tags">
-          <button class="ecr-btn" (click)="onLoadTags()" [disabled]="ecrIsLoading">
-            {{ ecrIsLoading ? 'Loading...' : 'Load Tags' }}
+        <div class="registry-tags">
+          <button class="tag-btn" (click)="onLoadTags()" [disabled]="tagsLoading">
+            {{ tagsLoading ? 'Loading...' : 'Load Tags' }}
           </button>
-          @if (ecrError) {
-            <span class="ecr-error" [title]="ecrError">Error</span>
+          @if (tagsError) {
+            <span class="tag-error" [title]="tagsError">Error</span>
           }
-          @if (ecrTags.length > 0) {
-            <select class="ecr-select" [value]="selectedEcrTag()" (change)="selectedEcrTag.set($any($event.target).value)">
+          @if (registryTags.length > 0) {
+            <select class="tag-select" [value]="selectedTag()" (change)="selectedTag.set($any($event.target).value)">
               <option value="" disabled>Select tag...</option>
-              @for (tag of ecrTags; track tag) {
+              @for (tag of registryTags; track tag) {
                 <option [value]="tag">{{ tag }}</option>
               }
             </select>
-            <button class="ecr-btn" [disabled]="!selectedEcrTag()" (click)="onSelectTag(selectedEcrTag())">Set Image</button>
+            <button class="tag-btn" [disabled]="!selectedTag()" (click)="onSelectTag(selectedTag())">Set Image</button>
           }
         </div>
       </div>

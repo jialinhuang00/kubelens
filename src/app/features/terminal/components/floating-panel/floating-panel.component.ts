@@ -10,7 +10,7 @@ import { OutputDisplayComponent } from '../../../dashboard/components/output-dis
 import { RolloutConsoleComponent } from '../../../dashboard/components/sidebar/rollout-console.component';
 import { CommandTemplate } from '../../../../shared/models/kubectl.models';
 import { DeploymentService } from '../../../k8s/services/deployment.service';
-import { EcrService } from '../../../k8s/services/ecr.service';
+import { RegistryService } from '../../../k8s/services/registry.service';
 import { RolloutStateService } from '../../../dashboard/services/rollout-state.service';
 import { RolloutService } from '../../../dashboard/services/rollout.service';
 import { TemplateService } from '../../../dashboard/services/template.service';
@@ -19,7 +19,7 @@ import { TemplateService } from '../../../dashboard/services/template.service';
   selector: 'app-floating-panel',
   standalone: true,
   imports: [CommonModule, FormsModule, CdkDrag, CdkDragHandle, OutputDisplayComponent, RolloutConsoleComponent],
-  providers: [UiStateService, EcrService],
+  providers: [UiStateService, RegistryService],
   templateUrl: './floating-panel.component.html',
   styleUrl: './floating-panel.component.scss',
 })
@@ -30,7 +30,7 @@ export class FloatingPanelComponent {
   private panelManager = inject(PanelManagerService);
   private panelExecution = inject(PanelExecutionService);
   private deploymentService = inject(DeploymentService);
-  private ecrService = inject(EcrService);
+  private registryService = inject(RegistryService);
   private rolloutStateService = inject(RolloutStateService);
   private rolloutService = inject(RolloutService);
   private templateService = inject(TemplateService);
@@ -45,15 +45,14 @@ export class FloatingPanelComponent {
   deploymentStatus = computed(() =>
     this.deploymentService.getStatusForDeployment(this.panel().resourceName)
   );
-  rolloutHistory = this.deploymentService.rolloutHistory;
   buttonStates = computed(() => this.deploymentService.getButtonStates(this.deploymentStatus()));
   deploymentImage = computed(() => this.deploymentStatus()?.containerImage || '');
   deploymentContainerName = computed(() => this.deploymentStatus()?.containerName || '');
 
-  // ECR state
-  ecrTags = this.ecrService.tags;
-  ecrIsLoading = this.ecrService.isLoading;
-  ecrError = this.ecrService.error;
+  // Registry tag-picker state
+  registryTags = this.registryService.tags;
+  tagsLoading = this.registryService.isLoading;
+  tagsError = this.registryService.error;
 
   private lastInitDeployment = '';
 
@@ -64,7 +63,7 @@ export class FloatingPanelComponent {
     if (p.resourceKind === 'Deployment' && p.resourceName && key !== this.lastInitDeployment) {
       this.lastInitDeployment = key;
       this.rolloutTemplates.set(this.templateService.generateRolloutTemplates(p.resourceName));
-      this.ecrService.clear();
+      this.registryService.clear();
     }
   });
 
@@ -221,23 +220,14 @@ export class FloatingPanelComponent {
     this.panelExecution.execute(p.id, command);
   }
 
-  onImageUpgrade(event: { deployment: string; image: string }): void {
-    const p = this.panel();
-    const container = this.deploymentContainerName();
-    if (!container) return;
-    const command = this.rolloutService.generateSetImageCommand(event.deployment, container, p.namespace, event.image);
-    this.panelExecution.execute(p.id, command);
-    this.rolloutStateService.triggerRolloutAction('image-upgrade');
-  }
-
-  onLoadEcrTags(): void {
+  onLoadTags(): void {
     const image = this.deploymentImage();
     if (image) {
-      this.ecrService.fetchTags(image);
+      this.registryService.fetchTags(image);
     }
   }
 
-  onEcrTagSelect(tag: string): void {
+  onTagSelect(tag: string): void {
     const p = this.panel();
     const image = this.deploymentImage();
     const container = this.deploymentContainerName();
@@ -246,7 +236,7 @@ export class FloatingPanelComponent {
     const fullImage = `${baseImage}:${tag}`;
     const command = this.rolloutService.generateSetImageCommand(p.resourceName, container, p.namespace, fullImage);
     this.panelExecution.execute(p.id, command);
-    this.rolloutStateService.triggerRolloutAction('ecr-tag-select');
+    this.rolloutStateService.triggerRolloutAction('tag-select');
   }
 
   onRefetchRolloutStatus(): void {

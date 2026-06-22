@@ -2,8 +2,7 @@ import { Component, Input, Output, EventEmitter, signal, inject } from '@angular
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { CommandTemplate } from '../../../../shared/models/kubectl.models';
-import { DeploymentStatus, RolloutButtonStates, RolloutHistoryItem } from '../../../k8s/services/deployment.service';
-import { ClipboardService } from '../../../../shared/services/clipboard.service';
+import { DeploymentStatus, RolloutButtonStates } from '../../../k8s/services/deployment.service';
 import { RolloutStateService } from '../../services/rollout-state.service';
 
 @Component({
@@ -13,34 +12,28 @@ import { RolloutStateService } from '../../services/rollout-state.service';
   styleUrl: './rollout-console.component.scss'
 })
 export class RolloutConsoleComponent {
-  private clipboardService = inject(ClipboardService);
   private rolloutStateService = inject(RolloutStateService);
 
   @Input() deploymentName: string = '';
   @Input() isExpanded: boolean = false;
   @Input() rolloutTemplates: CommandTemplate[] = [];
-  @Input() rolloutHistory: RolloutHistoryItem[] = [];
-  @Input() currentStatus: string = '';
   @Input() deploymentStatus: DeploymentStatus | null = null;
   @Input() buttonStates: RolloutButtonStates | null = null;
 
-  // ECR tag picker
-  @Input() ecrTags: string[] = [];
-  @Input() ecrIsLoading = false;
-  @Input() ecrError = '';
+  // Registry tag picker
+  @Input() registryTags: string[] = [];
+  @Input() tagsLoading = false;
+  @Input() tagsError = '';
   @Input() deploymentImage = '';
 
   @Output() toggleExpanded = new EventEmitter<void>();
   @Output() templateExecute = new EventEmitter<CommandTemplate>();
-  @Output() imageUpgrade = new EventEmitter<{ deployment: string, image: string }>();
-  @Output() loadEcrTags = new EventEmitter<void>();
-  @Output() ecrTagSelect = new EventEmitter<string>();
+  @Output() loadTags = new EventEmitter<void>();
+  @Output() tagSelect = new EventEmitter<string>();
   @Output() refetchStatus = new EventEmitter<void>();
 
   // UI State
-  showHistoryTable = signal<boolean>(false);
-  selectedVersion = signal<string>('');
-  selectedEcrTag = signal<string>('');
+  selectedTag = signal<string>('');
 
   onToggleExpanded() {
     this.toggleExpanded.emit();
@@ -48,20 +41,6 @@ export class RolloutConsoleComponent {
 
   onTemplateExecute(template: CommandTemplate) {
     this.templateExecute.emit(template);
-  }
-
-  onToggleHistory() {
-    this.showHistoryTable.update(show => !show);
-  }
-
-  onUpgradeToVersion(version: string) {
-    if (this.deploymentName && version) {
-      this.imageUpgrade.emit({
-        deployment: this.deploymentName,
-        image: `jia0/${this.deploymentName}:${version}`
-      });
-      this.rolloutStateService.triggerRolloutAction(`upgrade-${version}`);
-    }
   }
 
   // Player controls
@@ -231,19 +210,15 @@ export class RolloutConsoleComponent {
     }
   }
 
-  isEcrImage(): boolean {
-    return /\.dkr\.ecr\.[^.]+\.amazonaws\.com\//.test(this.deploymentImage);
+  isKnownRegistry(): boolean {
+    return /\.dkr\.ecr\.[^.]+\.amazonaws\.com\/|[a-z0-9-]+-docker\.pkg\.dev\/|(^|\/)gcr\.io\/|\.azurecr\.io\//.test(this.deploymentImage);
   }
 
   onLoadTags() {
-    this.loadEcrTags.emit();
+    this.loadTags.emit();
   }
 
   onSelectTag(tag: string) {
-    this.ecrTagSelect.emit(tag);
-  }
-
-  async onCopyToClipboard(text: string, event?: Event): Promise<void> {
-    await this.clipboardService.copyToClipboard(text, event);
+    this.tagSelect.emit(tag);
   }
 }

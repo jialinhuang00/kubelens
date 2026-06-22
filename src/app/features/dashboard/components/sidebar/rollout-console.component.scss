@@ -158,12 +158,12 @@
   }
 }
 
-// ECR section
-.ecr-row {
+// Registry tag section
+.registry-row {
   padding: 4px 0;
 }
 
-.ecr-label {
+.registry-label {
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
@@ -172,7 +172,7 @@
   margin-bottom: 4px;
 }
 
-.ecr-image-url {
+.registry-image-url {
   font-weight: 400;
   text-transform: none;
   letter-spacing: 0;
@@ -181,13 +181,13 @@
   margin-left: 4px;
 }
 
-.ecr-tags {
+.registry-tags {
   display: flex;
   gap: 4px;
   align-items: center;
 }
 
-.ecr-btn {
+.tag-btn {
   padding: 2px 8px;
   font-size: 10px;
   font-weight: 600;
@@ -209,7 +209,7 @@
   }
 }
 
-.ecr-select {
+.tag-select {
   flex: 1;
   min-width: 0;
   padding: 2px 4px;
@@ -227,7 +227,7 @@
   }
 }
 
-.ecr-error {
+.tag-error {
   font-size: 10px;
   color: #e07070;
   cursor: help;

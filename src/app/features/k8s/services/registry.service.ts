@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE } from '../../../core/constants/api';
 
-interface EcrTagsResponse {
+interface RegistryTagsResponse {
   tags: string[];
   repository: string;
   error?: string;
@@ -12,7 +12,7 @@ interface EcrTagsResponse {
 @Injectable({
   providedIn: 'root'
 })
-export class EcrService {
+export class RegistryService {
   private http = inject(HttpClient);
   private readonly API_BASE = API_BASE;
 
@@ -27,7 +27,7 @@ export class EcrService {
 
     try {
       const response = await firstValueFrom(
-        this.http.get<EcrTagsResponse>(`${this.API_BASE}/ecr/tags`, {
+        this.http.get<RegistryTagsResponse>(`${this.API_BASE}/registry/tags`, {
           params: { image }
         })
       );
@@ -39,7 +39,7 @@ export class EcrService {
       }
       return response.tags;
     } catch (err: any) {
-      const message = err?.message || 'Failed to fetch ECR tags';
+      const message = err?.message || 'Failed to fetch image tags';
       this.error.set(message);
       this.tags.set([]);
       return [];
