@@ -9,6 +9,7 @@ import { PanelManagerService } from '../../services/panel-manager.service';
 import { PanelExecutionService } from '../../services/panel-execution.service';
 import { TemplateService } from '../../../dashboard/services/template.service';
 import { DataModeService } from '../../../../core/services/data-mode.service';
+import { isOfficialGroup } from '../../../../core/services/config.service';
 import { CommandTemplate } from '../../../../shared/models/kubectl.models';
 
 @Component({
@@ -28,6 +29,11 @@ export class TerminalSidebarComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
 
   namespaces = this.namespaceService.namespaces;
+
+  /** Show the API group on a tree node only for third-party CRDs (official groups stay clean). */
+  protected showDomain(group: string): boolean {
+    return !isOfficialGroup(group);
+  }
   selectedNamespace = signal('');
   customCommand = signal('');
 

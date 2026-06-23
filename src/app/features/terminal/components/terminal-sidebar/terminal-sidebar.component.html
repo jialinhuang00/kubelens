@@ -31,7 +31,7 @@
                 </svg>
                 <span class="tree-kind-dot" [style.backgroundColor]="node.color"></span>
                 <span class="tree-kind-label">{{ node.label }}</span>
-                @if (node.group.includes('.')) {
+                @if (showDomain(node.group)) {
                   <span class="tree-kind-group">{{ node.group }}</span>
                 }
                 @if (node.count > 0) {

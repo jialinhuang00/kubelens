@@ -28,6 +28,13 @@ export function kindId(group: string, kind: string): string {
   return `${group}/${kind}`;
 }
 
+/** Official Kubernetes API groups: core (empty), a few simple names, and everything
+ *  under *.k8s.io. Third-party CRDs use their own domain (argoproj.io, *.istio.io, ...). */
+const SIMPLE_OFFICIAL_GROUPS = new Set(['apps', 'batch', 'autoscaling', 'policy', 'extensions']);
+export function isOfficialGroup(group: string): boolean {
+  return group === '' || group.endsWith('.k8s.io') || SIMPLE_OFFICIAL_GROUPS.has(group);
+}
+
 /**
  * Loads the resource-kind list from /api/config once at startup. Replaces the
  * RESOURCE_KINDS array and kind maps that were hardcoded in the frontend.
