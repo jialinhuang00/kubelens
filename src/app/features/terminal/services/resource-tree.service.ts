@@ -37,39 +37,42 @@ export class ResourceTreeService {
   private loadedIds = new Set<string>();
 
   constructor() {
-    // When the user enables a discovered (non-config) kind that isn't loaded yet,
-    // fetch it on demand and add it to the tree.
+    // Fetch any tree-visible kind that isn't loaded yet (e.g. the user just enabled
+    // a discovered or graph-only kind). Hiding needs no fetch (visibleTree filters).
     effect(() => {
       this.visibility.overrides(); // dependency: re-run on any toggle
       const ns = this.currentNamespace;
       if (!ns) return;
-      for (const d of this.config.discovered()) {
-        const id = kindId(d.group, d.kind);
-        if (this.loadedIds.has(id) || this.isConfigKind(id)) continue;
-        if (this.visibility.isVisible(id, 'tree')) {
-          this.fetchKind(
-            { kind: d.kind, group: d.group, label: d.kind, color: DISCOVERED_COLOR, resourceType: d.resourceType, priority: false },
-            ns,
-          );
+      for (const k of this.allKinds()) {
+        const id = kindId(k.group, k.kind);
+        if (!this.loadedIds.has(id) && this.visibility.isVisible(id, 'tree')) {
+          this.fetchKind(k, ns);
         }
       }
     });
   }
 
-  private isConfigKind(id: string): boolean {
-    return this.config.resources().some(r => kindId(r.group, r.kind) === id);
+  /** Every kind we could show: config (authoritative label/colour) merged with
+   *  discovered (fallback), keyed by group/Kind. Config always wins on overlap. */
+  private allKinds(): TreeKind[] {
+    const byId = new Map<string, TreeKind>();
+    for (const c of this.config.resources()) {
+      byId.set(kindId(c.group, c.kind), {
+        kind: c.kind, group: c.group, label: c.label, color: c.color, resourceType: c.resourceType, priority: !!c.priority,
+      });
+    }
+    for (const d of this.config.discovered()) {
+      const id = kindId(d.group, d.kind);
+      if (!byId.has(id)) {
+        byId.set(id, { kind: d.kind, group: d.group, label: d.kind, color: DISCOVERED_COLOR, resourceType: d.resourceType, priority: false });
+      }
+    }
+    return [...byId.values()];
   }
 
-  /** Kinds to load: all config tree-kinds (so re-show is instant) + enabled discovered kinds. */
-  private treeKinds(): TreeKind[] {
-    const fromConfig: TreeKind[] = this.config.treeKinds().map(c => ({
-      kind: c.kind, group: c.group, label: c.label, color: c.color, resourceType: c.resourceType, priority: !!c.priority,
-    }));
-    const seen = new Set(fromConfig.map(k => kindId(k.group, k.kind)));
-    const fromDiscovered: TreeKind[] = this.config.discovered()
-      .filter(d => !seen.has(kindId(d.group, d.kind)) && this.visibility.isVisible(kindId(d.group, d.kind), 'tree'))
-      .map(d => ({ kind: d.kind, group: d.group, label: d.kind, color: DISCOVERED_COLOR, resourceType: d.resourceType, priority: false }));
-    return [...fromConfig, ...fromDiscovered];
+  /** Is this a config kind that defaults to showing in the tree? (fetched eagerly so re-show is instant) */
+  private isConfigTreeDefault(id: string): boolean {
+    return this.config.resources().some(r => kindId(r.group, r.kind) === id && r.show?.includes('tree'));
   }
 
   private makeNode(k: TreeKind): ResourceTreeNode {
@@ -85,14 +88,18 @@ export class ResourceTreeService {
     this.isLoading.set(true);
     this.loadedIds.clear();
 
-    // Kind list is config-driven; namespace selection itself does not wait on it,
-    // but building the tree does.
     await this.config.ensureLoaded();
     await this.config.ensureDiscovered();
     if (myGen !== this.loadGeneration) return;
 
-    const kinds = this.treeKinds();
+    // Fetch: config tree-default kinds (always, so hide/re-show is instant) +
+    // anything the user has toggled visible (graph-only config kinds, discovered kinds).
+    const kinds = this.allKinds().filter(k => {
+      const id = kindId(k.group, k.kind);
+      return this.isConfigTreeDefault(id) || this.visibility.isVisible(id, 'tree');
+    });
     for (const k of kinds) this.loadedIds.add(kindId(k.group, k.kind));
+
     const priorityKinds = new Set(kinds.filter(k => k.priority).map(k => k.kind));
     const priorityTypes = kinds.filter(k => k.priority).map(k => k.resourceType);
 
@@ -127,7 +134,7 @@ export class ResourceTreeService {
     this.isLoading.set(false);
   }
 
-  /** Fetch one kind on demand (a discovered kind the user just enabled) and add it to the tree. */
+  /** Fetch one kind on demand (just enabled) and add it to the tree. */
   private async fetchKind(k: TreeKind, namespace: string): Promise<void> {
     const id = kindId(k.group, k.kind);
     if (this.loadedIds.has(id)) return;
