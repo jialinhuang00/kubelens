@@ -12,9 +12,9 @@ Browser-based Kubernetes visualization. GPU-accelerated resource graph + multi-w
 - `kubectl` configured with a valid kubeconfig (required for Realtime mode)
 - Snapshot mode works offline — no cluster needed
 
-Optional:
-- `aws` CLI — only needed for ECR image tag lookups
-- `ECR_PROFILE_MAP` in `.env` — maps AWS account IDs to SSO profile names. Copy `.env.example` to get started.
+Optional (only for image tag lookups in the rollout panel):
+- `aws` CLI for ECR, `gcloud` for Artifact Registry / GCR, `az` for ACR — the registry is detected from the image URL
+- `ECR_PROFILE_MAP` in `.env` — maps AWS account IDs to SSO profile names (ECR only). Copy `.env.example` to get started.
 
 ## Quick Start
 
@@ -23,7 +23,7 @@ npm install
 npm run dev
 ```
 
-Frontend at `http://localhost:4200`. Backend at port 3000.
+Frontend at `http://localhost:4200`. Backend (Node) at port 3042.
 
 ## Modes
 
