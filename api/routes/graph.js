@@ -46,16 +46,19 @@ async function fetchLiveData(signal) {
     ...crds.map(r => r.resourceType),
   ];
 
-  // item.kind → internal key (e.g. Deployment → deployments)
-  const kindToKey = {};
-  for (const r of graphResources) kindToKey[r.kind] = r.key;
+  // "group/kind" → internal key, so kinds sharing a Kind name across API groups
+  // (e.g. Gateway in gateway.networking.k8s.io vs networking.istio.io) don't collide.
+  const groupKindToKey = {};
+  for (const r of graphResources) groupKindToKey[`${r.group}/${r.kind}`] = r.key;
 
   const nsData = new Map();
   const allNamespaces = new Set();
 
   function ingest(data) {
     for (const item of data?.items || []) {
-      const key = kindToKey[item.kind];
+      const av = item.apiVersion || '';
+      const group = av.includes('/') ? av.slice(0, av.indexOf('/')) : '';
+      const key = groupKindToKey[`${group}/${item.kind}`];
       if (!key) continue;
       const ns = item.metadata?.namespace || '_cluster';
       allNamespaces.add(ns);

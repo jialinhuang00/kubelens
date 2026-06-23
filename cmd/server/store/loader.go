@@ -33,13 +33,8 @@ var BackupPath = func() string {
 const DefaultNamespace = "demo"
 
 // fileAliases maps resource names to candidate YAML filenames.
-var fileAliases = map[string][]string{
-	"httproutes":      {"httproutes.gateway.networking.k8s.io.yaml", "httproutes.yaml"},
-	"tcproutes":       {"tcproutes.gateway.networking.k8s.io.yaml", "tcproutes.yaml"},
-	"gateways":        {"gateways.gateway.networking.k8s.io.yaml", "gateways.yaml"},
-	"virtualservices": {"virtualservices.networking.istio.io.yaml", "virtualservices.yaml"},
-	"applications":    {"applications.argoproj.io.yaml", "applications.yaml"},
-}
+// Derived from kubelens.config.yaml (CRDs whose files are group-qualified).
+var fileAliases = FileAliases()
 
 // cache stores parsed YAML lists and text file contents.
 // Key: "ns:filename" for YAML, "text:ns:filename" for text.
