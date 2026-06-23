@@ -15,6 +15,19 @@ export interface ResourceKind {
   show: ('tree' | 'graph')[];
 }
 
+/** A kind discovered from the cluster via kubectl api-resources. */
+export interface DiscoveredKind {
+  name: string;          // bare resource name, e.g. "virtualservices"
+  kind: string;          // Kind, e.g. "VirtualService"
+  group: string;         // API group ('' = core)
+  resourceType: string;  // kubectl target, e.g. "virtualservices.networking.istio.io"
+}
+
+/** Canonical identity for a kind: group + Kind. Unique even when two CRDs share a Kind name. */
+export function kindId(group: string, kind: string): string {
+  return `${group}/${kind}`;
+}
+
 /**
  * Loads the resource-kind list from /api/config once at startup. Replaces the
  * RESOURCE_KINDS array and kind maps that were hardcoded in the frontend.
@@ -23,11 +36,30 @@ export interface ResourceKind {
 export class ConfigService {
   private http = inject(HttpClient);
   resources = signal<ResourceKind[]>([]);
+  discovered = signal<DiscoveredKind[]>([]);
   private loaded?: Promise<ResourceKind[]>;
+  private discoveredLoaded?: Promise<DiscoveredKind[]>;
 
   constructor() {
     // Warm the cache at startup; callers still await ensureLoaded() before use.
     this.ensureLoaded();
+  }
+
+  /** Lazily fetch the cluster's actual namespaced kinds (for the visibility panel). */
+  ensureDiscovered(): Promise<DiscoveredKind[]> {
+    if (!this.discoveredLoaded) {
+      this.discoveredLoaded = firstValueFrom(
+        this.http.get<{ resources: DiscoveredKind[] }>(`${API_BASE}/api-resources`)
+      ).then(r => {
+        this.discovered.set(r.resources ?? []);
+        return r.resources ?? [];
+      }).catch(err => {
+        console.error('Failed to load /api/api-resources:', err);
+        this.discoveredLoaded = undefined;
+        return [];
+      });
+    }
+    return this.discoveredLoaded;
   }
 
   ensureLoaded(): Promise<ResourceKind[]> {
