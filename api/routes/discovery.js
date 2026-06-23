@@ -1,6 +1,7 @@
 const express = require('express');
 const { execFile } = require('child_process');
 const util = require('util');
+const { getDiscoveryExclude } = require('../utils/config-loader');
 
 const execFileAsync = util.promisify(execFile);
 
@@ -23,7 +24,10 @@ function parseApiResources(stdout) {
     const resourceType = group ? `${name}.${group}` : name;
     out.push({ name, kind, group, resourceType });
   }
-  return out;
+  const { groups, resources } = getDiscoveryExclude();
+  const exGroups = new Set(groups);
+  const exResources = new Set(resources);
+  return out.filter(r => !exGroups.has(r.group) && !exResources.has(r.name));
 }
 
 // GET /api/api-resources — namespaced kinds the cluster actually has, for the
