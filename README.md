@@ -30,6 +30,19 @@ Frontend at `http://localhost:4200`. Backend (Node) at port 3042.
 - **Realtime** — runs kubectl against a live cluster
 - **Snapshot** — reads from `k8s-snapshot/` (export via home page or `bash scripts/k8s-export.sh`)
 
+## Configuration
+
+Which Kubernetes kinds show up in the resource tree and topology graph is driven by `kubelens.config.yaml` (read at startup via `/api/config`), not hardcoded. Add your own CRDs there:
+
+```yaml
+resources:
+  - { kind: VirtualService, key: virtualservices, resourceType: virtualservices.networking.istio.io,
+      namePrefix: virtualservice.networking.istio.io, group: networking.istio.io,
+      label: VirtualServices, color: '#7a9eaa', show: [tree, graph] }
+```
+
+`show` controls which views list the kind (`tree`, `graph`, or both).
+
 ## Dev
 
 ```bash

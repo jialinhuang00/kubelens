@@ -13,6 +13,8 @@
 - `execFile` instead of `exec` to prevent shell injection
 - `fs.promises` (async) for all file I/O in polled endpoints
 - Snapshot mode: per-request `?snapshot=true` via HTTP interceptor
+- Resource kinds (which kinds appear in tree + graph) come from `kubelens.config.yaml` via `GET /api/config` (frontend `ConfigService`, backend `config-loader`). Add a kind there, not in code.
+- Image tag lookups are registry-agnostic: `/api/registry/tags` detects ECR/GCR/ACR from the image URL and shells out to `aws`/`gcloud`/`az`.
 
 ## File Structure
 ```
@@ -24,8 +26,10 @@
 │   │   ├── snapshot.js        #   POST/GET /api/snapshot — export control + progress
 │   │   ├── resource-counts.js #   GET  /api/resource-counts
 │   │   ├── status.js          #   GET  /api/realtime/ping, /api/snapshot/ping
-│   │   └── ecr.js             #   ECR image endpoints
+│   │   ├── registry.js        #   GET  /api/registry/tags — image tags (ECR/GCR/ACR by URL)
+│   │   └── config.js          #   GET  /api/config — resource kinds from kubelens.config.yaml
 │   └── utils/
+│       ├── config-loader.ts    #   Loads + caches kubelens.config.yaml (resources, aliases)
 │       ├── snapshot-handler.ts #   Re-export shim + getResourceCounts
 │       ├── snapshot-loader.ts  #   Constants, cache, YAML/text file loading
 │       ├── snapshot-parsers.ts #   Table generators, describe generators, helpers
@@ -39,7 +43,8 @@
 │       ├── k8s_export.go      #   export control + progress
 │       ├── resource_counts.go #   GET  /api/resource-counts
 │       ├── status.go          #   ping endpoints
-│       └── ecr.go             #   ECR image endpoints
+│       ├── registry.go        #   GET  /api/registry/tags — image tags (ECR/GCR/ACR by URL)
+│       └── config.go          #   GET  /api/config — resource kinds (store/config.go loads it)
 ├── scripts/                   # CLI tools (bash 3.2 compatible)
 │   ├── snapshot-bash.sh       #   Parallel batched cluster export
 │   ├── snapshot-node.js       #   Node.js sequential export
@@ -48,7 +53,7 @@
 │   ├── split-resources.js     #   Splits kubectl JSON into per-kind YAML files
 │   └── kind-map.json          #   Kind → filename mapping
 ├── src/app/
-│   ├── core/services/         #   kubectl, data-mode, snapshot, websocket, execution-context, theme
+│   ├── core/services/         #   kubectl, config, data-mode, snapshot, websocket, execution-context, theme
 │   └── features/
 │       ├── home/              #   Landing page — mode toggle, export UI
 │       ├── dashboard/         #   Command execution terminal (executor service extracted)
@@ -57,6 +62,7 @@
 │       ├── knowledge/         #   K8s field relationship viewer
 │       ├── benchmark/         #   Export optimization story
 │       └── k8s/               #   K8s resource views
+├── kubelens.config.yaml       # Source of truth for resource kinds (tree + graph)
 └── k8s-snapshot/              # Exported cluster data (gitignored)
 ```
 
@@ -121,4 +127,4 @@ Production mode: Express serves `dist/` + API on one port. Dev mode: `dist/` abs
 - `snapshot-loader.ts` uses in-memory cache — only blocks on first call per resource
 - Snapshot dependencies: `parsers` → `loader`, `commands` → `loader` + `parsers`, `handler` → `loader` + `commands`
 - Build warnings for regl/seedrandom CommonJS modules are expected (cosmos dependency)
-- Graph endpoint runs 9 parallel kubectl calls in realtime mode
+- Graph endpoint (realtime) batches kubectl calls from `kubelens.config.yaml`: one combined call for built-in kinds + one per CRD; ingest keys on `group/kind` (not kind alone) to avoid Kind-name collisions across API groups
