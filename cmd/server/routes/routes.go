@@ -12,6 +12,7 @@ func Register(mux *http.ServeMux) {
 	registerExecute(mux)
 	registerK8sExport(mux)
 	registerGraph(mux)
+	registerConfig(mux)
 	registerStream(mux)
 	mux.HandleFunc("GET /explainer", func(w http.ResponseWriter, r *http.Request) {
 		data, err := os.ReadFile("explainer.html")
