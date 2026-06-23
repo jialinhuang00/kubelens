@@ -33,6 +33,8 @@ export interface PanelState {
 
 export interface ResourceTreeNode {
   kind: string;
+  group: string;
+  resourceType: string;
   label: string;
   color: string;
   items: string[];
