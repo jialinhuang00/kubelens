@@ -6,6 +6,7 @@ import { KubectlResponse, ResourceType } from '../../shared/models/kubectl.model
 import { WebSocketService } from './websocket.service';
 import { ExecutionContextService } from './execution-context.service';
 import { DataModeService } from './data-mode.service';
+import { ConfigService } from './config.service';
 import { ExecutionGroupUtils } from '../../shared/constants/execution-groups.constants';
 import { ExecutionDialogService } from './execution-dialog.service';
 import { API_BASE } from '../constants/api';
@@ -36,6 +37,7 @@ export class KubectlService {
   private executionContext = inject(ExecutionContextService);
   private executionDialog = inject(ExecutionDialogService);
   private dataMode = inject(DataModeService);
+  private config = inject(ConfigService);
   private readonly API_BASE = API_BASE;
   
   // Request cancellation and tracking
@@ -247,26 +249,8 @@ export class KubectlService {
 
   async getResourceNamesBatch(resourceTypes: string[], namespace: string): Promise<Record<string, string[]>> {
     const types = resourceTypes.join(',');
-    const kindMap: Record<string, string> = {
-      'deployment.apps': 'Deployment',
-      'pod': 'Pod',
-      'service': 'Service',
-      'statefulset.apps': 'StatefulSet',
-      'daemonset.apps': 'DaemonSet',
-      'cronjob.batch': 'CronJob',
-      'job.batch': 'Job',
-      'replicaset.apps': 'ReplicaSet',
-      'configmap': 'ConfigMap',
-      'secret': 'Secret',
-      'persistentvolumeclaim': 'PersistentVolumeClaim',
-      'serviceaccount': 'ServiceAccount',
-      'ingress.networking.k8s.io': 'Ingress',
-      'networkpolicy.networking.k8s.io': 'NetworkPolicy',
-      'role.rbac.authorization.k8s.io': 'Role',
-      'rolebinding.rbac.authorization.k8s.io': 'RoleBinding',
-      'horizontalpodautoscaler.autoscaling': 'HorizontalPodAutoscaler',
-      'application.argoproj.io': 'Application',
-    };
+    const kindMap: Record<string, string> = {};
+    for (const r of this.config.resources()) kindMap[r.namePrefix] = r.kind;
     try {
       const response = await this.executeCommand(
         `kubectl get ${types} -n ${namespace} -o name`

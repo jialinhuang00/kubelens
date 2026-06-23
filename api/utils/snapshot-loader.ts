@@ -6,6 +6,7 @@
 import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
+import { getFileAliases } from './config-loader';
 
 /** Standard K8s object metadata. */
 export interface K8sMetadata {
@@ -50,16 +51,8 @@ export const BACKUP_PATH: string = process.env.K8S_SNAPSHOT_PATH || path.join(__
 /** Fallback namespace when none is specified. */
 export const DEFAULT_NAMESPACE = 'demo';
 
-/** Filename aliases for resources whose YAML filenames vary (e.g. gateway API CRDs). */
-export const FILE_ALIASES: Record<string, string[]> = {
-  'httproutes': ['httproutes.gateway.networking.k8s.io.yaml', 'httproutes.yaml'],
-  'tcproutes': ['tcproutes.gateway.networking.k8s.io.yaml', 'tcproutes.yaml'],
-  'gateways': ['gateways.gateway.networking.k8s.io.yaml', 'gateways.yaml'],
-  'virtualservices': ['virtualservices.networking.istio.io.yaml', 'virtualservices.yaml'],
-  'destinationrules': ['destinationrules.networking.istio.io.yaml', 'destinationrules.yaml'],
-  'serviceentries': ['serviceentries.networking.istio.io.yaml', 'serviceentries.yaml'],
-  'applications': ['applications.argoproj.io.yaml', 'applications.yaml'],
-};
+/** Filename aliases for CRDs whose YAML files are group-qualified. Derived from kubelens.config.yaml. */
+export const FILE_ALIASES: Record<string, string[]> = getFileAliases();
 
 /** In-memory cache. Key format: `${namespace}:${filename}` for YAML, `text:${namespace}:${filename}` for text. */
 export const cache: Record<string, unknown> = {};

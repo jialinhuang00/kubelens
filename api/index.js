@@ -31,6 +31,7 @@ const statusRouter = require('./routes/status');
 const resourceCountsRouter = require('./routes/resource-counts');
 const registryRouter = require('./routes/registry');
 const snapshotRouter = require('./routes/snapshot');
+const configRouter = require('./routes/config');
 
 app.use('/api', executeRouter);
 app.use('/api', graphRouter);
@@ -38,6 +39,7 @@ app.use('/api', statusRouter);
 app.use('/api', resourceCountsRouter);
 app.use('/api', registryRouter);
 app.use('/api', snapshotRouter);
+app.use('/api', configRouter);
 
 // WebSocket streaming for kubectl long-running commands
 mountWebSocket(server);

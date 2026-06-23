@@ -6,6 +6,7 @@ const util = require('util');
 const execFileAsync = util.promisify(execFile);
 
 const { discoverNamespaces, getItemsFromSnapshot, buildGraph } = require('../utils/graph-builder');
+const { getGraphResources, isCrd } = require('../utils/config-loader');
 
 const router = express.Router();
 
@@ -34,54 +35,29 @@ async function execKubectl(args, signal) {
 }
 
 async function fetchLiveData(signal) {
+  const graphResources = getGraphResources();
+  const builtins = graphResources.filter(r => !isCrd(r));
+  const crds = graphResources.filter(r => isCrd(r));
+
+  // One batch for all built-in types; individual calls for CRDs so a missing
+  // CRD doesn't fail the core fetch.
   const batches = [
-    { resources: 'deployments,statefulsets,daemonsets,cronjobs', keys: ['deployments', 'statefulsets', 'daemonsets', 'cronjobs'] },
-    { resources: 'services,configmaps,ingresses', keys: ['services', 'configmaps', 'ingresses'] },
-    { resources: 'secrets,serviceaccounts,rolebindings', keys: ['secrets', 'serviceaccounts', 'rolebindings'] },
-    { resources: 'pods', keys: ['pods'] },
-    { resources: 'hpa', keys: ['horizontalpodautoscalers'] },
-    { resources: 'pvc', keys: ['persistentvolumeclaims'] },
+    builtins.map(r => r.resourceType).join(','),
+    ...crds.map(r => r.resourceType),
   ];
 
-  const optionalBatches = [
-    { resources: 'gateways.gateway.networking.k8s.io', keys: ['gateways'] },
-    { resources: 'httproutes.gateway.networking.k8s.io', keys: ['httproutes'] },
-    { resources: 'tcproutes.gateway.networking.k8s.io', keys: ['tcproutes'] },
-  ];
+  // item.kind → internal key (e.g. Deployment → deployments)
+  const kindToKey = {};
+  for (const r of graphResources) kindToKey[r.kind] = r.key;
 
   const nsData = new Map();
   const allNamespaces = new Set();
 
-  function ingest(data, keys) {
-    const items = data?.items || [];
-    const kindToKey = {};
-    for (const key of keys) {
-      const kindMap = {
-        'deployments': 'Deployment',
-        'statefulsets': 'StatefulSet',
-        'daemonsets': 'DaemonSet',
-        'cronjobs': 'CronJob',
-        'services': 'Service',
-        'configmaps': 'ConfigMap',
-        'ingresses': 'Ingress',
-        'secrets': 'Secret',
-        'serviceaccounts': 'ServiceAccount',
-        'rolebindings': 'RoleBinding',
-        'pods': 'Pod',
-        'horizontalpodautoscalers': 'HorizontalPodAutoscaler',
-        'persistentvolumeclaims': 'PersistentVolumeClaim',
-        'gateways': 'Gateway',
-        'httproutes': 'HTTPRoute',
-        'tcproutes': 'TCPRoute',
-      };
-      if (kindMap[key]) kindToKey[kindMap[key]] = key;
-    }
-
-    for (const item of items) {
+  function ingest(data) {
+    for (const item of data?.items || []) {
+      const key = kindToKey[item.kind];
+      if (!key) continue;
       const ns = item.metadata?.namespace || '_cluster';
-      const kind = item.kind;
-      const key = kindToKey[kind] || keys[0];
-
       allNamespaces.add(ns);
       if (!nsData.has(ns)) nsData.set(ns, new Map());
       const nsMap = nsData.get(ns);
@@ -90,22 +66,14 @@ async function fetchLiveData(signal) {
     }
   }
 
-  const allBatches = [...batches, ...optionalBatches];
   const results = await Promise.all(
-    allBatches.map(batch => execKubectl(`get ${batch.resources} -A -o json`, signal))
+    batches.map(resources => execKubectl(`get ${resources} -A -o json`, signal))
   );
 
-  const errors = [];
-  for (let i = 0; i < allBatches.length; i++) {
-    if (results[i].error) errors.push(results[i].error);
-    ingest(results[i].data, allBatches[i].keys);
-  }
+  for (const r of results) ingest(r.data);
 
-  // All core batches failed → kubectl is broken
-  const coreErrors = results.slice(0, batches.length).filter(r => r.error);
-  if (coreErrors.length === batches.length) {
-    throw new Error(coreErrors[0].error);
-  }
+  // Core batch (index 0) failing means kubectl itself is broken.
+  if (results[0]?.error) throw new Error(results[0].error);
 
   return { nsData, namespaces: [...allNamespaces] };
 }
