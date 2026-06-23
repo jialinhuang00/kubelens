@@ -1,0 +1,50 @@
+# kubelens resource configuration.
+# Single source of truth for "which Kubernetes kinds the app knows about".
+# Replaces the kind lists that were hardcoded across the frontend resource
+# tree, the kubectl name-prefix map, and the graph endpoint.
+#
+# Per-kind fields:
+#   kind         k8s Kind, as it appears in `item.kind` (e.g. Deployment)
+#   key          short plural id, used as the internal map key (e.g. deployments)
+#   resourceType `kubectl get` target. Bare plural for built-ins; <plural>.<group> for CRDs
+#   namePrefix   prefix in `kubectl get -o name` output (e.g. deployment.apps), reverse-mapped to kind
+#   group        API group ('' = core). Used for snapshot filenames and CRD detection
+#   label        display label
+#   color        node/tree colour
+#   priority     true = fetched in the first batch (frontend tree)
+#   show         which views include this kind: tree | graph
+#
+# `show` mirrors the current per-view behaviour 1:1. Divergences (e.g. Gateway
+# not in tree) are preserved here as explicit decisions, not silently changed.
+
+version: '1'
+
+resources:
+  # --- Workloads ---
+  - { kind: Deployment, key: deployments, resourceType: deployments, namePrefix: deployment.apps, group: apps, label: Deployments, color: '#e8b866', priority: true, show: [tree, graph] }
+  - { kind: StatefulSet, key: statefulsets, resourceType: statefulsets, namePrefix: statefulset.apps, group: apps, label: StatefulSets, color: '#e0a050', show: [tree, graph] }
+  - { kind: DaemonSet, key: daemonsets, resourceType: daemonsets, namePrefix: daemonset.apps, group: apps, label: DaemonSets, color: '#d4956a', show: [tree, graph] }
+  - { kind: CronJob, key: cronjobs, resourceType: cronjobs, namePrefix: cronjob.batch, group: batch, label: CronJobs, color: '#c8a060', show: [tree, graph] }
+  - { kind: Job, key: jobs, resourceType: jobs, namePrefix: job.batch, group: batch, label: Jobs, color: '#b89860', show: [tree] }
+  - { kind: Pod, key: pods, resourceType: pods, namePrefix: pod, group: '', label: Pods, color: '#f0d080', priority: true, show: [tree, graph] }
+  - { kind: ReplicaSet, key: replicasets, resourceType: replicasets, namePrefix: replicaset.apps, group: apps, label: ReplicaSets, color: '#c0b880', show: [tree] }
+  # --- Networking ---
+  - { kind: Service, key: services, resourceType: services, namePrefix: service, group: '', label: Services, color: '#80c0b0', priority: true, show: [tree, graph] }
+  - { kind: Ingress, key: ingresses, resourceType: ingresses, namePrefix: ingress.networking.k8s.io, group: networking.k8s.io, label: Ingresses, color: '#70b8a8', show: [tree, graph] }
+  - { kind: NetworkPolicy, key: networkpolicies, resourceType: networkpolicies, namePrefix: networkpolicy.networking.k8s.io, group: networking.k8s.io, label: NetworkPolicies, color: '#90a8b8', show: [tree] }
+  # --- Config ---
+  - { kind: ConfigMap, key: configmaps, resourceType: configmaps, namePrefix: configmap, group: '', label: ConfigMaps, color: '#a0b880', show: [tree, graph] }
+  - { kind: Secret, key: secrets, resourceType: secrets, namePrefix: secret, group: '', label: Secrets, color: '#c0a8a0', show: [tree, graph] }
+  # --- Storage ---
+  - { kind: PersistentVolumeClaim, key: persistentvolumeclaims, resourceType: persistentvolumeclaims, namePrefix: persistentvolumeclaim, group: '', label: PVCs, color: '#90b0c8', show: [tree, graph] }
+  # --- Scaling ---
+  - { kind: HorizontalPodAutoscaler, key: horizontalpodautoscalers, resourceType: horizontalpodautoscalers, namePrefix: horizontalpodautoscaler.autoscaling, group: autoscaling, label: HPAs, color: '#b8a080', show: [tree, graph] }
+  # --- RBAC ---
+  - { kind: ServiceAccount, key: serviceaccounts, resourceType: serviceaccounts, namePrefix: serviceaccount, group: '', label: ServiceAccounts, color: '#a8a0c0', show: [tree, graph] }
+  - { kind: Role, key: roles, resourceType: roles, namePrefix: role.rbac.authorization.k8s.io, group: rbac.authorization.k8s.io, label: Roles, color: '#b0a0c8', show: [tree] }
+  - { kind: RoleBinding, key: rolebindings, resourceType: rolebindings, namePrefix: rolebinding.rbac.authorization.k8s.io, group: rbac.authorization.k8s.io, label: RoleBindings, color: '#a898b8', show: [tree, graph] }
+  # --- CRDs ---
+  - { kind: Application, key: applications, resourceType: applications.argoproj.io, namePrefix: application.argoproj.io, group: argoproj.io, label: Applications, color: '#e07850', show: [tree] }
+  - { kind: Gateway, key: gateways, resourceType: gateways.gateway.networking.k8s.io, namePrefix: gateway.gateway.networking.k8s.io, group: gateway.networking.k8s.io, label: Gateways, color: '#6ab0a0', show: [graph] }
+  - { kind: HTTPRoute, key: httproutes, resourceType: httproutes.gateway.networking.k8s.io, namePrefix: httproute.gateway.networking.k8s.io, group: gateway.networking.k8s.io, label: HTTPRoutes, color: '#7ab8b8', show: [graph] }
+  - { kind: TCPRoute, key: tcproutes, resourceType: tcproutes.gateway.networking.k8s.io, namePrefix: tcproute.gateway.networking.k8s.io, group: gateway.networking.k8s.io, label: TCPRoutes, color: '#8ac0c0', show: [graph] }
