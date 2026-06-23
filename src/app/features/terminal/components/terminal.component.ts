@@ -5,11 +5,12 @@ import { ModeToggleComponent } from '../../../shared/components/mode-toggle/mode
 import { ThemeSwitcherComponent } from '../../../shared/components/theme-switcher/theme-switcher.component';
 import { HandbookComponent } from '../../../shared/components/handbook/handbook.component';
 import { MemMonitorComponent } from '../../../shared/components/mem-monitor/mem-monitor.component';
+import { VisibilityPanelComponent } from '../../../shared/components/visibility-panel/visibility-panel.component';
 
 @Component({
   selector: 'app-terminal',
   standalone: true,
-  imports: [TerminalSidebarComponent, PanelAreaComponent, ModeToggleComponent, ThemeSwitcherComponent, HandbookComponent, MemMonitorComponent],
+  imports: [TerminalSidebarComponent, PanelAreaComponent, ModeToggleComponent, ThemeSwitcherComponent, HandbookComponent, MemMonitorComponent, VisibilityPanelComponent],
   templateUrl: './terminal.component.html',
   styleUrl: './terminal.component.scss',
 })
