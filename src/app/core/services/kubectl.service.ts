@@ -244,17 +244,6 @@ export class KubectlService {
     return false;
   }
 
-  async getResourceCounts(namespace: string): Promise<Record<string, number>> {
-    try {
-      const response = await firstValueFrom(this.http.get<{ success: boolean; counts: Record<string, number> }>(
-        `${this.API_BASE}/resource-counts`, { params: { namespace } }
-      ));
-      return response.counts || {};
-    } catch (error) {
-      console.error('Failed to load resource counts:', error);
-      return {};
-    }
-  }
 
   async getResourceNamesBatch(resourceTypes: string[], namespace: string): Promise<Record<string, string[]>> {
     const types = resourceTypes.join(',');

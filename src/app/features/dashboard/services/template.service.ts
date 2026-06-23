@@ -6,47 +6,6 @@ import { CommandTemplate } from '../../../shared/models/kubectl.models';
 })
 export class TemplateService {
 
-  // Global commands (no namespace dependency)
-  getGlobalTemplates(): CommandTemplate[] {
-    return [
-      { id: 'config-5', name: 'All Resources All Namespaces', command: 'kubectl get all --all-namespaces' },
-      { id: 'config-4', name: 'All Namespaces Pods', command: 'kubectl get pods --all-namespaces' },
-      { id: 'config-3', name: 'Node Status', command: 'kubectl get nodes -o wide' },
-    ];
-  }
-
-  // Namespace-scoped general commands (includes "list all" commands for each resource type)
-  getNamespaceTemplates(): CommandTemplate[] {
-    return [
-      { id: 'view-1', name: 'Pod Details + SHA',
-        command: 'kubectl get pods -n {namespace} -o "custom-columns=POD_NAME:.metadata.name,DEPLOYMENT:.metadata.ownerReferences[0].name,CONTAINER_NAME:.spec.containers[*].name,IMAGE_SHA:.status.containerStatuses[*].imageID"' },
-      { id: 'view-3', name: 'ReplicaSets Details',
-        command: 'kubectl get replicasets -n {namespace} -o "custom-columns=REPLICASET:.metadata.name,DEPLOYMENT:.metadata.ownerReferences[0].name,DESIRED:.spec.replicas,CURRENT:.status.replicas,READY:.status.readyReplicas"' },
-      { id: 'view-6', name: 'Events Timeline',
-        command: 'kubectl get events -n {namespace} --sort-by=.metadata.creationTimestamp' },
-      { id: 'deployment overall', name: 'Deployments', command: 'kubectl get deployments -n {namespace}' },
-      { id: 'pods image', name: 'Pod Images',
-        command: 'kubectl get pods -n {namespace} -o custom-columns="POD_NAME:.metadata.name,IMAGE:.spec.containers[*].image" --no-headers' },
-      { id: 'service overall', name: 'Services', command: 'kubectl get services -n {namespace}' },
-      { id: 'sts-list', name: 'StatefulSets', command: 'kubectl get statefulsets -n {namespace}' },
-      { id: 'cronjob-list', name: 'CronJobs', command: 'kubectl get cronjobs -n {namespace}' },
-      { id: 'job-list', name: 'Jobs', command: 'kubectl get jobs -n {namespace}' },
-      { id: 'cm-list', name: 'ConfigMaps', command: 'kubectl get configmaps -n {namespace}' },
-      { id: 'secret-list', name: 'Secrets', command: 'kubectl get secrets -n {namespace}' },
-      { id: 'pvc-list', name: 'PVCs', command: 'kubectl get pvc -n {namespace}' },
-      { id: 'sa-list', name: 'ServiceAccounts', command: 'kubectl get serviceaccounts -n {namespace}' },
-      { id: 'ing-list', name: 'Ingresses', command: 'kubectl get ingress -n {namespace}' },
-      { id: 'gw-list', name: 'Gateways', command: 'kubectl get gateways -n {namespace}' },
-      { id: 'hr-list', name: 'HTTPRoutes', command: 'kubectl get httproutes -n {namespace}' },
-      { id: 'ds-list', name: 'DaemonSets', command: 'kubectl get daemonsets -n {namespace}' },
-      { id: 'rs-list', name: 'ReplicaSets', command: 'kubectl get replicasets -n {namespace}' },
-      { id: 'hpa-list', name: 'HPAs', command: 'kubectl get hpa -n {namespace}' },
-      { id: 'np-list', name: 'NetworkPolicies', command: 'kubectl get networkpolicies -n {namespace}' },
-      { id: 'role-list', name: 'Roles', command: 'kubectl get roles -n {namespace}' },
-      { id: 'rb-list', name: 'RoleBindings', command: 'kubectl get rolebindings -n {namespace}' },
-    ];
-  }
-
   generateDeploymentTemplates(selectedDeployment: string): CommandTemplate[] {
     if (!selectedDeployment) return [];
 
@@ -253,22 +212,6 @@ export class TemplateService {
       { id: `ing-${selected}-describe`, name: 'Details', command: `kubectl describe ingress ${selected} -n {namespace}` },
       { id: `ing-${selected}-yaml`, name: 'YAML', command: `kubectl get ingress ${selected} -n {namespace} -o yaml` },
       { id: `ing-${selected}-endpoints`, name: 'Endpoints', command: `kubectl get endpoints -n {namespace}` },
-    ];
-  }
-
-  generateGatewayTemplates(selected: string): CommandTemplate[] {
-    if (!selected) return [];
-    return [
-      { id: `gw-${selected}-describe`, name: 'Details', command: `kubectl describe gateway ${selected} -n {namespace}` },
-      { id: `gw-${selected}-yaml`, name: 'YAML', command: `kubectl get gateway ${selected} -n {namespace} -o yaml` },
-    ];
-  }
-
-  generateHTTPRouteTemplates(selected: string): CommandTemplate[] {
-    if (!selected) return [];
-    return [
-      { id: `hr-${selected}-describe`, name: 'Details', command: `kubectl describe httproute ${selected} -n {namespace}` },
-      { id: `hr-${selected}-yaml`, name: 'YAML', command: `kubectl get httproute ${selected} -n {namespace} -o yaml` },
     ];
   }
 
