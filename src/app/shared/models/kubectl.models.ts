@@ -1,25 +1,3 @@
-export type ResourceType =
-  | 'deployments'
-  | 'pods'
-  | 'services'
-  | 'cronjobs'
-  | 'statefulsets'
-  | 'jobs'
-  | 'configmaps'
-  | 'secrets'
-  | 'persistentvolumeclaims'
-  | 'serviceaccounts'
-  | 'ingresses'
-  | 'gateways'
-  | 'httproutes'
-  | 'daemonsets'
-  | 'replicasets'
-  | 'horizontalpodautoscalers'
-  | 'networkpolicies'
-  | 'roles'
-  | 'rolebindings'
-  | 'applications.argoproj.io';
-
 export interface KubeResource {
   [key: string]: string;
 }

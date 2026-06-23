@@ -4,7 +4,6 @@ import { ConfigService } from '../../../core/services/config.service';
 import { ExecutionContextService } from '../../../core/services/execution-context.service';
 import { ExecutionGroupGenerator } from '../../../shared/constants/execution-groups.constants';
 import { ResourceTreeNode } from '../models/panel.models';
-import { ResourceType } from '../../../shared/models/kubectl.models';
 
 @Injectable({ providedIn: 'root' })
 export class ResourceTreeService {
@@ -58,7 +57,7 @@ export class ResourceTreeService {
     // Phase 2: remaining types, individual calls in parallel, same group
     await this.executionContext.withGroup(group, () =>
       Promise.all(rest.map(async (cfg) => {
-        const items = await this.kubectlService.getResourceNames(cfg.resourceType as ResourceType, namespace);
+        const items = await this.kubectlService.getResourceNames(cfg.resourceType, namespace);
         if (myGen !== this.loadGeneration) return;
         this.tree.update(nodes => nodes.map(n =>
           n.kind === cfg.kind
@@ -81,7 +80,7 @@ export class ResourceTreeService {
       n.kind === cfg.kind ? { ...n, isLoading: true } : n
     ));
 
-    const items = await this.kubectlService.getResourceNames(cfg.resourceType as ResourceType, namespace);
+    const items = await this.kubectlService.getResourceNames(cfg.resourceType, namespace);
     this.tree.update(nodes => nodes.map(n =>
       n.kind === cfg.kind ? { ...n, items, isLoading: false, count: items.length } : n
     ));
