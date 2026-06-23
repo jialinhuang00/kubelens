@@ -16,20 +16,33 @@ export interface ResourceConfig {
 
 const CONFIG_PATH = path.join(__dirname, '../..', 'kubelens.config.yaml');
 
-let cached: ResourceConfig[] | null = null;
+interface ConfigDoc {
+  resources?: ResourceConfig[];
+  discovery?: { exclude?: { groups?: string[]; resources?: string[] } };
+}
 
-/** Load and cache the resource list from kubelens.config.yaml. */
-export function loadResources(): ResourceConfig[] {
-  if (cached) return cached;
+let docCache: ConfigDoc | null = null;
+
+/** Read and cache the whole kubelens.config.yaml. */
+function loadDoc(): ConfigDoc {
+  if (docCache) return docCache;
   try {
-    const raw = fs.readFileSync(CONFIG_PATH, 'utf8');
-    const parsed = yaml.load(raw) as { resources?: ResourceConfig[] };
-    cached = parsed?.resources ?? [];
+    docCache = (yaml.load(fs.readFileSync(CONFIG_PATH, 'utf8')) as ConfigDoc) ?? {};
   } catch (e) {
     console.error('Failed to load kubelens.config.yaml:', (e as Error).message);
-    cached = [];
+    docCache = {};
   }
-  return cached;
+  return docCache;
+}
+
+export function loadResources(): ResourceConfig[] {
+  return loadDoc().resources ?? [];
+}
+
+/** Groups/resources to hide from cluster discovery (pure plumbing). */
+export function getDiscoveryExclude(): { groups: string[]; resources: string[] } {
+  const ex = loadDoc().discovery?.exclude ?? {};
+  return { groups: ex.groups ?? [], resources: ex.resources ?? [] };
 }
 
 /** A CRD's `kubectl get` target is group-qualified, so it differs from its key. */

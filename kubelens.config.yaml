@@ -48,3 +48,22 @@ resources:
   - { kind: Gateway, key: gateways, resourceType: gateways.gateway.networking.k8s.io, namePrefix: gateway.gateway.networking.k8s.io, group: gateway.networking.k8s.io, label: Gateways, color: '#6ab0a0', show: [graph] }
   - { kind: HTTPRoute, key: httproutes, resourceType: httproutes.gateway.networking.k8s.io, namePrefix: httproute.gateway.networking.k8s.io, group: gateway.networking.k8s.io, label: HTTPRoutes, color: '#7ab8b8', show: [graph] }
   - { kind: TCPRoute, key: tcproutes, resourceType: tcproutes.gateway.networking.k8s.io, namePrefix: tcproute.gateway.networking.k8s.io, group: gateway.networking.k8s.io, label: TCPRoutes, color: '#8ac0c0', show: [graph] }
+
+# Discovery (Step 3): the visibility panel lists kinds the cluster actually has
+# (kubectl api-resources). These groups/resources are pure cluster plumbing that
+# nobody browses — excluded from the panel by default. Edit to taste.
+discovery:
+  exclude:
+    groups:
+      - coordination.k8s.io      # leases (leader election)
+      - discovery.k8s.io         # endpointslices
+      - events.k8s.io            # events
+      - resource.k8s.io          # dynamic resource allocation (alpha)
+      - vpcresources.k8s.aws      # EKS networking internals
+      - crd.k8s.amazonaws.com     # EKS internals
+      - networking.k8s.aws        # EKS network policy internals
+      - elbv2.k8s.aws             # AWS load balancer controller internals
+    resources:
+      - events
+      - endpoints
+      - controllerrevisions
