@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject, merge, Subject, firstValueFrom, of } from 'rxjs';
 import { takeUntil, catchError } from 'rxjs/operators';
-import { KubectlResponse, ResourceType } from '../../shared/models/kubectl.models';
+import { KubectlResponse } from '../../shared/models/kubectl.models';
 import { WebSocketService } from './websocket.service';
 import { ExecutionContextService } from './execution-context.service';
 import { DataModeService } from './data-mode.service';
@@ -278,7 +278,7 @@ export class KubectlService {
     }
   }
 
-  async getResourceNames(resourceType: ResourceType, namespace: string): Promise<string[]> {
+  async getResourceNames(resourceType: string, namespace: string): Promise<string[]> {
     try {
       const response = await this.executeCommand(
         `kubectl get ${resourceType} -n ${namespace} -o jsonpath={.items[*].metadata.name}`
