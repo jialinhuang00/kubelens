@@ -22,7 +22,7 @@
         }
       </div>
       <div class="resource-tree">
-        @for (node of resourceTree.tree(); track node.kind) {
+        @for (node of resourceTree.visibleTree(); track node.kind) {
           <div class="tree-group">
             <div class="tree-group-row">
               <button class="tree-group-header" (click)="onToggleKind(node.kind)">

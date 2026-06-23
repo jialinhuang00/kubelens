@@ -1,6 +1,7 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject, signal, computed } from '@angular/core';
 import { KubectlService } from '../../../core/services/kubectl.service';
 import { ConfigService } from '../../../core/services/config.service';
+import { VisibilityService } from '../../../core/services/visibility.service';
 import { ExecutionContextService } from '../../../core/services/execution-context.service';
 import { ExecutionGroupGenerator } from '../../../shared/constants/execution-groups.constants';
 import { ResourceTreeNode } from '../models/panel.models';
@@ -9,10 +10,14 @@ import { ResourceTreeNode } from '../models/panel.models';
 export class ResourceTreeService {
   private kubectlService = inject(KubectlService);
   private config = inject(ConfigService);
+  private visibility = inject(VisibilityService);
   private executionContext = inject(ExecutionContextService);
 
   tree = signal<ResourceTreeNode[]>([]);
   isLoading = signal(false);
+
+  /** Tree filtered by per-user visibility — client-side filter of already-loaded data, no refetch. */
+  visibleTree = computed(() => this.tree().filter(n => this.visibility.isVisible(n.kind, 'tree')));
 
   private loadGeneration = 0;
 
