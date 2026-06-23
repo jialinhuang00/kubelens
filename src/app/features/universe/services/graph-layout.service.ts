@@ -437,18 +437,6 @@ export class GraphLayoutService {
     this.graph.fitView(500);
   }
 
-  /** Hide WebGL dots (DOM orbs take over) */
-  setNodesTransparent(): void {
-    if (!this.graph) return;
-    this.graph.setConfig({ nodeColor: () => 'rgba(0,0,0,0)' });
-  }
-
-  /** Show WebGL dots (overview mode) */
-  setNodesVisible(): void {
-    if (!this.graph) return;
-    this.graph.setConfig({ nodeColor: (n) => this.currentKindColors[n.data.kind] ?? '#888' });
-  }
-
   spaceToScreen(pos: [number, number]): [number, number] {
     return this.graph?.spaceToScreenPosition(pos) ?? pos;
   }
@@ -525,20 +513,6 @@ export class GraphLayoutService {
     if (this.graph) {
       this.graph.setData(this.cosmosNodes, this.cosmosLinks);
     }
-  }
-
-  /** Check if a node is a temporary pod */
-  isTemporaryNode(nodeId: string): boolean {
-    return this.temporaryNodeIds.has(nodeId);
-  }
-
-  /** Filter visible edges by EdgeType. Pass null to show all. */
-  setEdgeTypeFilter(activeTypes: Set<EdgeType> | null): void {
-    if (!this.graph) return;
-    const filtered = activeTypes
-      ? this.cosmosLinks.filter(l => activeTypes.has(l.data.type))
-      : this.cosmosLinks;
-    this.graph.setData(this.cosmosNodes, filtered);
   }
 
   destroy(): void {

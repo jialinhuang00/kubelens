@@ -1,7 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { KubectlService } from '../../../core/services/kubectl.service';
-import { TemplateService } from '../../dashboard/services/template.service';
-import { CommandTemplate, K8sCondition } from '../../../shared/models/kubectl.models';
+import { K8sCondition } from '../../../shared/models/kubectl.models';
 import { ExecutionContextService } from '../../../core/services/execution-context.service';
 import { ExecutionGroupGenerator } from '../../../shared/constants/execution-groups.constants';
 
@@ -22,15 +21,6 @@ export interface DeploymentStatus {
   containerName?: string; // first container name (NOT always equal to deployment name)
 }
 
-export interface RolloutStatus {
-  deployment: string;
-  namespace: string;
-  revision: number;
-  status: 'InProgress' | 'Complete' | 'Failed' | 'Paused';
-  progress: number; // 0-100
-  message: string;
-}
-
 export interface RolloutButtonStates {
   pauseEnabled: boolean;
   resumeEnabled: boolean;
@@ -40,73 +30,28 @@ export interface RolloutButtonStates {
   statusMessage: string;
 }
 
-export interface RolloutHistoryItem {
-  revision: number;
-  changeCause: string;
-  image: string; // trying
-  created: string;
-}
-
 @Injectable({
   providedIn: 'root'
 })
 export class DeploymentService {
   private kubectlService = inject(KubectlService);
-  private templateService = inject(TemplateService);
   private executionContext = inject(ExecutionContextService);
 
   // State
-  deployments = signal<string[]>([]);
   selectedDeployment = signal<string>('');
   deploymentStatus = signal<DeploymentStatus | null>(null);
   private deploymentStatusMap = signal<Record<string, DeploymentStatus>>({});
-  rolloutHistory = signal<RolloutHistoryItem[]>([]);
-  templates = signal<CommandTemplate[]>([]);
-  isLoading = signal<boolean>(false);
 
   // Rollout monitoring
-  rolloutStatus = signal<RolloutStatus | null>(null);
-  isMonitoringRollout = signal<boolean>(false);
-  private lastHistoryUpdate: number = 0;
   private currentMonitoredDeployment: string = '';
   private currentMonitoredNamespace: string = '';
 
-  async loadDeployments(namespace: string) {
-    if (!namespace) return;
-
-    this.isLoading.set(true);
-    try {
-      const deployments = await this.kubectlService.getResourceNames('deployments', namespace);
-      this.deployments.set(deployments);
-
-      // Clear selection if current deployment is not in new list
-      if (this.selectedDeployment() && !deployments.includes(this.selectedDeployment())) {
-        this.setSelectedDeployment('');
-      }
-    } catch (error) {
-      console.error('Failed to load deployments:', error);
-      this.deployments.set([]);
-    } finally {
-      this.isLoading.set(false);
-    }
-  }
-
   setSelectedDeployment(deployment: string) {
     this.selectedDeployment.set(deployment);
-
-    if (deployment) {
-      // Update templates
-      const templates = this.templateService.generateDeploymentTemplates(deployment);
-      this.templates.set(templates);
-
-      // Stop any existing rollout monitoring
-      this.clearRolloutMonitoring();
-    } else {
-      this.templates.set([]);
+    if (!deployment) {
       this.deploymentStatus.set(null);
-      this.rolloutHistory.set([]);
-      this.clearRolloutMonitoring();
     }
+    this.clearRolloutMonitoring();
   }
 
   async getDeploymentStatus(deployment: string, namespace: string): Promise<DeploymentStatus | null> {
@@ -145,86 +90,6 @@ export class DeploymentService {
     return null;
   }
 
-  async getRolloutHistory(deployment: string, namespace: string): Promise<RolloutHistoryItem[]> {
-    try {
-      const response = await this.kubectlService.executeCommand(
-        `kubectl rollout history deployment/${deployment} -n ${namespace}`
-      );
-
-      if (response.success) {
-        return this.parseRolloutHistory(response.stdout, deployment, namespace);
-      }
-    } catch (error) {
-      console.error('Failed to get rollout history:', error);
-    }
-
-    return [];
-  }
-
-  private async parseRolloutHistory(output: string, deployment: string, namespace: string): Promise<RolloutHistoryItem[]> {
-    const lines = output.split('\n');
-    const historyItems: RolloutHistoryItem[] = [];
-
-    // skip title, find REVISION
-    let dataStartIndex = -1;
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].includes('REVISION') && lines[i].includes('CHANGE-CAUSE')) {
-        dataStartIndex = i + 1;
-        break;
-      }
-    }
-
-    if (dataStartIndex === -1) return historyItems;
-
-    // parse REVISION
-    for (let i = dataStartIndex; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-      const parts = line.split(/\s+/);
-      if (parts.length >= 2) {
-        const revision = parseInt(parts[0]);
-        const changeCause = parts.slice(1).join(' ') || '<none>';
-
-        // get image
-        const image = await this.getImageForRevision(deployment, namespace, revision);
-
-        historyItems.push({
-          revision,
-          changeCause,
-          image: image || 'Unknown',
-          created: 'Unknown' // kubectl rollout history doesn't provider createdAt
-        });
-      }
-    }
-
-    this.rolloutHistory.set(historyItems);
-    return historyItems;
-  }
-
-  private async getImageForRevision(deployment: string, namespace: string, revision: number): Promise<string | null> {
-    try {
-      const response = await this.kubectlService.executeCommand(
-        `kubectl rollout history deployment/${deployment} -n ${namespace} --revision=${revision}`
-      );
-
-      if (response.success) {
-        const lines = response.stdout.split('\n');
-        for (const line of lines) {
-          if (line.includes('Image:')) {
-            const match = line.match(/Image:\s*(.+)/);
-            if (match) {
-              return match[1].trim();
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error(`Failed to get image for revision ${revision}:`, error);
-    }
-
-    return null;
-  }
-
   getStatusForDeployment(deployment: string): DeploymentStatus | null {
     return this.deploymentStatusMap()[deployment] || null;
   }
@@ -232,7 +97,6 @@ export class DeploymentService {
   async fetchRolloutStatus(deployment: string, namespace: string) {
     this.currentMonitoredDeployment = deployment;
     this.currentMonitoredNamespace = namespace;
-    this.isMonitoringRollout.set(true);
 
     const rolloutGroup = ExecutionGroupGenerator.deploymentOperations(deployment, namespace);
     await this.executionContext.withGroup(rolloutGroup, async () => {
@@ -240,15 +104,9 @@ export class DeploymentService {
     });
   }
 
-  async refetchRolloutStatus() {
-    if (!this.currentMonitoredDeployment || !this.currentMonitoredNamespace) return;
-    await this.fetchRolloutStatus(this.currentMonitoredDeployment, this.currentMonitoredNamespace);
-  }
-
   clearRolloutMonitoring() {
     this.currentMonitoredDeployment = '';
     this.currentMonitoredNamespace = '';
-    this.isMonitoringRollout.set(false);
   }
 
   private findProgressingCondition(conditions: K8sCondition[]): K8sCondition | null {
@@ -341,63 +199,6 @@ export class DeploymentService {
       upgradeEnabled,
       statusMessage
     };
-  }
-
-  // Rollout control methods
-  async pauseRollout(deployment: string, namespace: string): Promise<boolean> {
-    try {
-      const response = await this.kubectlService.executeCommand(
-        `kubectl rollout pause deployment/${deployment} -n ${namespace}`
-      );
-      return response.success;
-    } catch (error) {
-      console.error('Failed to pause rollout:', error);
-      return false;
-    }
-  }
-
-  async resumeRollout(deployment: string, namespace: string): Promise<boolean> {
-    try {
-      const response = await this.kubectlService.executeCommand(
-        `kubectl rollout resume deployment/${deployment} -n ${namespace}`
-      );
-      return response.success;
-    } catch (error) {
-      console.error('Failed to resume rollout:', error);
-      return false;
-    }
-  }
-
-  async restartRollout(deployment: string, namespace: string): Promise<boolean> {
-    try {
-      const response = await this.kubectlService.executeCommand(
-        `kubectl rollout restart deployment/${deployment} -n ${namespace}`
-      );
-      if (response.success) {
-        // Start monitoring the new rollout
-        this.fetchRolloutStatus(deployment, namespace);
-      }
-      return response.success;
-    } catch (error) {
-      console.error('Failed to restart rollout:', error);
-      return false;
-    }
-  }
-
-  async undoRollout(deployment: string, namespace: string): Promise<boolean> {
-    try {
-      const response = await this.kubectlService.executeCommand(
-        `kubectl rollout undo deployment/${deployment} -n ${namespace}`
-      );
-      if (response.success) {
-        // Start monitoring the rollback
-        this.fetchRolloutStatus(deployment, namespace);
-      }
-      return response.success;
-    } catch (error) {
-      console.error('Failed to undo rollout:', error);
-      return false;
-    }
   }
 
 }
