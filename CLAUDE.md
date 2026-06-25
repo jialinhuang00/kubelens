@@ -24,13 +24,12 @@
 │   │   ├── execute.js         #   POST /api/execute + WebSocket /api/execute/stream/ws
 │   │   ├── graph.js           #   GET  /api/graph — resource topology
 │   │   ├── snapshot.js        #   POST/GET /api/snapshot — export control + progress
-│   │   ├── resource-counts.js #   GET  /api/resource-counts
 │   │   ├── status.js          #   GET  /api/realtime/ping, /api/snapshot/ping
 │   │   ├── registry.js        #   GET  /api/registry/tags — image tags (ECR/GCR/ACR by URL)
 │   │   └── config.js          #   GET  /api/config — resource kinds from kubelens.config.yaml
 │   └── utils/
 │       ├── config-loader.ts    #   Loads + caches kubelens.config.yaml (resources, aliases)
-│       ├── snapshot-handler.ts #   Re-export shim + getResourceCounts
+│       ├── snapshot-handler.ts #   Re-export shim (handleCommand, parseKubectlCommand)
 │       ├── snapshot-loader.ts  #   Constants, cache, YAML/text file loading
 │       ├── snapshot-parsers.ts #   Table generators, describe generators, helpers
 │       ├── snapshot-commands.ts#   Command parser + all kubectl action handlers
@@ -41,7 +40,6 @@
 │       ├── stream.go          #   WebSocket /api/execute/stream/ws + stop/clear
 │       ├── graph.go           #   GET  /api/graph
 │       ├── k8s_export.go      #   export control + progress
-│       ├── resource_counts.go #   GET  /api/resource-counts
 │       ├── status.go          #   ping endpoints
 │       ├── registry.go        #   GET  /api/registry/tags — image tags (ECR/GCR/ACR by URL)
 │       └── config.go          #   GET  /api/config — resource kinds (store/config.go loads it)
