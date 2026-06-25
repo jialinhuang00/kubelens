@@ -6,6 +6,7 @@
 import yaml from 'js-yaml';
 import { loadYaml, loadText, listBackupNamespaces, DEFAULT_NAMESPACE } from './snapshot-loader';
 import type { K8sItem, K8sList } from './snapshot-loader';
+import { getResourceFileMap } from './config-loader';
 import {
   extractNames, findItem, pad, getAge,
   generateDeploymentTable, generateServiceTable, generateCronjobTable,
@@ -49,59 +50,33 @@ export interface ParsedCommand {
 }
 
 // --- Resource mapping ---
-const RESOURCE_FILE_MAP: Record<string, string | null> = {
-  'deployments': 'deployments.yaml',
-  'deployment': 'deployments.yaml',
-  'deploy': 'deployments.yaml',
-  'services': 'services.yaml',
-  'service': 'services.yaml',
-  'svc': 'services.yaml',
-  'pods': null,
-  'pod': null,
-  'cronjobs': 'cronjobs.yaml',
-  'cronjob': 'cronjobs.yaml',
-  'jobs': 'jobs.yaml',
-  'job': 'jobs.yaml',
-  'statefulsets': 'statefulsets.yaml',
-  'statefulset': 'statefulsets.yaml',
-  'sts': 'statefulsets.yaml',
-  'configmaps': 'configmaps.yaml',
-  'configmap': 'configmaps.yaml',
-  'cm': 'configmaps.yaml',
-  'endpoints': 'endpoints.yaml',
-  'ep': 'endpoints.yaml',
-  'secrets': 'secrets.yaml',
-  'secret': 'secrets.yaml',
-  'serviceaccounts': 'serviceaccounts.yaml',
-  'serviceaccount': 'serviceaccounts.yaml',
-  'sa': 'serviceaccounts.yaml',
-  'namespaces': null,
-  'namespace': null,
-  'ns': null,
-  'nodes': null,
-  'node': null,
-  'replicasets': null,
-  'replicaset': null,
-  'rs': null,
-  'persistentvolumeclaims': 'persistentvolumeclaims.yaml',
-  'persistentvolumeclaim': 'persistentvolumeclaims.yaml',
-  'pvc': 'persistentvolumeclaims.yaml',
-  'poddisruptionbudgets': 'poddisruptionbudgets.yaml',
-  'poddisruptionbudget': 'poddisruptionbudgets.yaml',
-  'pdb': 'poddisruptionbudgets.yaml',
-  'gateways': 'gateways.yaml',
-  'gateway': 'gateways.yaml',
-  'httproutes': 'httproutes.yaml',
-  'httproute': 'httproutes.yaml',
-  'tcproutes': 'tcproutes.yaml',
-  'tcproute': 'tcproutes.yaml',
-  'events': null,
-  'event': null,
-  'roles': 'roles.yaml',
-  'role': 'roles.yaml',
-  'rolebindings': 'rolebindings.yaml',
-  'rolebinding': 'rolebindings.yaml',
+
+// Kinds with bespoke (non-file) snapshot handling — synthesized or read from a
+// text snapshot, not a `<key>.yaml`. These override the config-derived map.
+const SPECIAL_NULL: Record<string, null> = {
+  pods: null, pod: null, po: null,
+  nodes: null, node: null, no: null,
+  namespaces: null, namespace: null, ns: null,
+  replicasets: null, replicaset: null, rs: null,
+  events: null, event: null,
 };
+
+// Snapshot-exported kinds that aren't in the resource config (no tree/graph role).
+const SNAPSHOT_EXTRA: Record<string, string> = {
+  endpoints: 'endpoints.yaml', endpoint: 'endpoints.yaml', ep: 'endpoints.yaml',
+  poddisruptionbudgets: 'poddisruptionbudgets.yaml', poddisruptionbudget: 'poddisruptionbudgets.yaml', pdb: 'poddisruptionbudgets.yaml',
+};
+
+// Resource name / alias → snapshot file. Derived from kubelens.config.yaml (so a
+// kind added there is resolvable here too), then overlaid with the snapshot-only
+// extras and the special non-file kinds. Built lazily, once.
+let _resourceFileMap: Record<string, string | null> | null = null;
+function resourceFileMap(): Record<string, string | null> {
+  if (!_resourceFileMap) {
+    _resourceFileMap = { ...getResourceFileMap(), ...SNAPSHOT_EXTRA, ...SPECIAL_NULL };
+  }
+  return _resourceFileMap;
+}
 
 const TABLE_GENERATORS: Record<string, (items: K8sItem[]) => string> = {
   'deployments.yaml': generateDeploymentTable,
@@ -317,7 +292,7 @@ function handleGet(parsed: ParsedCommand): CommandResult {
     return handleGetReplicasets(parsed);
   }
 
-  const yamlFile = RESOURCE_FILE_MAP[parsed.resource!];
+  const yamlFile = resourceFileMap()[parsed.resource!];
   if (!yamlFile) {
     return { success: false, error: `[SNAPSHOT] Unknown resource type: ${parsed.resource}` };
   }

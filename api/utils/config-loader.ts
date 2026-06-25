@@ -12,6 +12,7 @@ export interface ResourceConfig {
   color: string;
   priority?: boolean;
   show: ('tree' | 'graph')[];
+  aliases?: string[]; // kubectl short names, e.g. svc, deploy, cm
 }
 
 const CONFIG_PATH = path.join(__dirname, '../..', 'kubelens.config.yaml');
@@ -52,6 +53,22 @@ export function isCrd(r: ResourceConfig): boolean {
 
 export function getGraphResources(): ResourceConfig[] {
   return loadResources().filter(r => r.show?.includes('graph'));
+}
+
+/**
+ * Map every resource name + short alias (plural key, singular kind, kubectl
+ * shortnames) to its snapshot filename `<key>.yaml`. Derived from config so the
+ * snapshot kubectl emulator's vocabulary stays in sync — add a kind once, in config.
+ */
+export function getResourceFileMap(): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const r of loadResources()) {
+    const file = `${r.key}.yaml`;
+    map[r.key] = file;                // plural, e.g. deployments
+    map[r.kind.toLowerCase()] = file; // singular, e.g. deployment
+    for (const a of r.aliases ?? []) map[a] = file;
+  }
+  return map;
 }
 
 /**
