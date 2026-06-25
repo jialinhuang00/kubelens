@@ -15,12 +15,15 @@ import { Router } from '@angular/router';
 import { DecimalPipe, KeyValuePipe, NgTemplateOutlet } from '@angular/common';
 import { DataModeService } from '../../../core/services/data-mode.service';
 import { ThemeService } from '../../../core/services/theme.service';
+import { ConfigService, kindId } from '../../../core/services/config.service';
+import { VisibilityService } from '../../../core/services/visibility.service';
 import { NamespaceService } from '../../k8s/services/namespace.service';
 import { ModeToggleComponent } from '../../../shared/components/mode-toggle/mode-toggle.component';
 import { ThemeSwitcherComponent } from '../../../shared/components/theme-switcher/theme-switcher.component';
 import { BackLinkComponent } from '../../../shared/components/back-link/back-link.component';
 import { NamespaceChipsComponent } from '../../../shared/components/namespace-chips/namespace-chips.component';
 import { HandbookComponent } from '../../../shared/components/handbook/handbook.component';
+import { VisibilityPanelComponent } from '../../../shared/components/visibility-panel/visibility-panel.component';
 import { MemMonitorComponent } from '../../../shared/components/mem-monitor/mem-monitor.component';
 import { GraphDataService } from '../services/graph-data.service';
 import { GraphLayoutService, NodeLabel, NamespaceBoundary } from '../services/graph-layout.service';
@@ -45,7 +48,7 @@ import {
 
 @Component({
   selector: 'app-universe',
-  imports: [DecimalPipe, KeyValuePipe, NgTemplateOutlet, ModeToggleComponent, ThemeSwitcherComponent, BackLinkComponent, NamespaceChipsComponent, HandbookComponent, MemMonitorComponent],
+  imports: [DecimalPipe, KeyValuePipe, NgTemplateOutlet, ModeToggleComponent, ThemeSwitcherComponent, BackLinkComponent, NamespaceChipsComponent, HandbookComponent, VisibilityPanelComponent, MemMonitorComponent],
   templateUrl: './universe.component.html',
   styleUrls: ['./universe.component.scss'],
 })
@@ -55,6 +58,8 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly router = inject(Router);
   protected readonly dataModeService = inject(DataModeService);
   private readonly themeService = inject(ThemeService);
+  private readonly config = inject(ConfigService);
+  private readonly visibility = inject(VisibilityService);
   protected readonly namespaceService = inject(NamespaceService);
 
   @ViewChild('graphCanvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
@@ -128,6 +133,20 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
       this.themeService.activeTheme();
       // Read after a tick so CSS variables are applied first
       setTimeout(() => this.kindColors.set(getThemedKindColors()), 0);
+    });
+
+    // Hide graph kinds the user turned off in the visibility panel. Only the
+    // config-declared graph kinds are filterable; reference-only nodes (e.g. Role)
+    // always show. Client-side filter — no refetch.
+    effect(() => {
+      this.visibility.overrides(); // re-run on any toggle
+      const hidden = new Set<NodeKind>();
+      for (const r of this.config.resources()) {
+        if (r.show?.includes('graph') && !this.visibility.isVisible(kindId(r.group, r.kind), 'graph')) {
+          hidden.add(r.kind as NodeKind);
+        }
+      }
+      this.graphLayout.setHiddenKinds(hidden);
     });
   }
 
