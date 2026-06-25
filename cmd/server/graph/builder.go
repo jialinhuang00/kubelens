@@ -480,6 +480,27 @@ func BuildGraph(getItems GetItemsFn, namespaceList []string) GraphResult {
 			addNode(ns, "Gateway", gwName, "abstract", map[string]interface{}{
 				"gatewayClassName": spec["gatewayClassName"],
 			})
+			// Listener TLS: each listener can terminate TLS with one or more cert Secrets.
+			for _, l := range asSlice(spec["listeners"]) {
+				tls := asMap(asMap(l)["tls"])
+				for _, ref := range asSlice(tls["certificateRefs"]) {
+					rm := asMap(ref)
+					refKind := asStr(rm["kind"])
+					if refKind == "" {
+						refKind = "Secret"
+					}
+					secretName := asStr(rm["name"])
+					if refKind != "Secret" || secretName == "" {
+						continue
+					}
+					secNs := asStr(rm["namespace"])
+					if secNs == "" {
+						secNs = ns
+					}
+					addNode(secNs, "Secret", secretName, "abstract", nil)
+					addEdge(ns+"/Gateway/"+gwName, secNs+"/Secret/"+secretName, EdgeUsesSecret, SFGatewayTLS)
+				}
+			}
 		}
 
 		// Ingresses

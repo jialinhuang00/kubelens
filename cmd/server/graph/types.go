@@ -40,6 +40,7 @@ const (
 	SFScaleTargetRef     = "spec.scaleTargetRef"
 	SFRoleRef            = "roleRef"
 	SFSubjects           = "subjects"
+	SFGatewayTLS         = "spec.listeners.tls.certificateRefs"
 )
 
 // Pod phase / display status values.
