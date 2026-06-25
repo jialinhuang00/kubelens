@@ -408,7 +408,22 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
     const gateways = getItemsFn(ns, 'gateways');
     for (const gw of gateways) {
       const gwName = gw.metadata?.name;
-      if (gwName) addNode(ns, 'Gateway', gwName, 'abstract', { gatewayClassName: (gw.spec as Record<string, unknown>)?.gatewayClassName });
+      if (!gwName) continue;
+      const gwSpec = gw.spec as Record<string, unknown> | undefined;
+      addNode(ns, 'Gateway', gwName, 'abstract', { gatewayClassName: gwSpec?.gatewayClassName });
+
+      // Listener TLS: each listener can terminate TLS with one or more cert Secrets.
+      for (const listener of (gwSpec?.listeners || []) as Array<Record<string, unknown>>) {
+        const tls = listener.tls as Record<string, unknown> | undefined;
+        for (const ref of (tls?.certificateRefs || []) as Array<Record<string, unknown>>) {
+          const refKind = (ref.kind as string) || 'Secret';
+          const secretName = ref.name as string | undefined;
+          if (refKind !== 'Secret' || !secretName) continue;
+          const secNs = (ref.namespace as string) || ns;
+          addNode(secNs, 'Secret', secretName, 'abstract');
+          addEdge(`${ns}/Gateway/${gwName}`, `${secNs}/Secret/${secretName}`, EdgeType.UsesSecret, SourceField.GatewayTLS);
+        }
+      }
     }
 
     const ingresses = getItemsFn(ns, 'ingresses');

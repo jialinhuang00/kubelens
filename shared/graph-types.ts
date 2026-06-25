@@ -74,6 +74,7 @@ export enum SourceField {
   BackendRefs        = 'spec.rules.backendRefs',
   IngressBackend     = 'spec.rules.http.paths.backend',
   IngressTLS         = 'spec.tls.secretName',
+  GatewayTLS         = 'spec.listeners.tls.certificateRefs',
   ScaleTargetRef     = 'spec.scaleTargetRef',
   RoleRef            = 'roleRef',
   Subjects           = 'subjects',
