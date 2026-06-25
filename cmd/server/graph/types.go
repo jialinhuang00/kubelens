@@ -19,6 +19,7 @@ const (
 	EdgeParentGateway      = "parent-gateway"
 	EdgeBindsRole          = "binds-role"
 	EdgeOwns               = "owns"
+	EdgeTerminatesTls      = "terminates-tls"
 )
 
 // Source field path constants.
@@ -41,6 +42,7 @@ const (
 	SFRoleRef            = "roleRef"
 	SFSubjects           = "subjects"
 	SFGatewayTLS         = "spec.listeners.tls.certificateRefs"
+	SFLbCert             = "metadata.annotations.lb-ssl-cert"
 )
 
 // Pod phase / display status values.

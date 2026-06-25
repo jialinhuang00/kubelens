@@ -396,6 +396,31 @@ func BuildGraph(getItems GetItemsFn, namespaceList []string) GraphResult {
 			}
 		}
 
+		// Cloud-edge: a LoadBalancer Service may terminate TLS with an external cert
+		// (e.g. AWS ACM) named only by annotation — the cert lives outside k8s. Surface
+		// it as a Certificate node so the TLS termination point shows on the graph.
+		for _, svc := range getItems(ns, "services") {
+			svcName := store.ItemName(svc)
+			if svcName == "" {
+				continue
+			}
+			certRef := store.ItemAnnotations(svc)["service.beta.kubernetes.io/aws-load-balancer-ssl-cert"]
+			if certRef == "" {
+				continue
+			}
+			certID := certRef
+			if i := strings.LastIndex(certRef, "/"); i >= 0 {
+				certID = certRef[i+1:]
+			}
+			if len(certID) > 8 {
+				certID = certID[:8]
+			}
+			certName := "ACM:" + certID
+			addNode(ns, "Service", svcName, "abstract", map[string]interface{}{"type": store.ItemSpec(svc)["type"]})
+			addNode(ns, "Certificate", certName, "abstract", map[string]interface{}{"arn": certRef, "provider": "ACM", "external": true})
+			addEdge(ns+"/Service/"+svcName, ns+"/Certificate/"+certName, EdgeTerminatesTls, SFLbCert)
+		}
+
 		// HTTPRoutes
 		for _, hr := range getItems(ns, "httproutes") {
 			hrName := store.ItemName(hr)
