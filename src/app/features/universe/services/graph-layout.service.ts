@@ -59,6 +59,11 @@ export class GraphLayoutService {
   private graph: Graph<CosmosNode, CosmosLink> | null = null;
   private cosmosNodes: CosmosNode[] = [];
   private cosmosLinks: CosmosLink[] = [];
+  // Master sets (full graph). cosmosNodes/cosmosLinks are the visible subset fed
+  // to cosmos — positions live on the master nodes, so filtering never re-lays-out.
+  private allCosmosNodes: CosmosNode[] = [];
+  private allCosmosLinks: CosmosLink[] = [];
+  private hiddenKinds = new Set<NodeKind>();
   private nodeIndexMap = new Map<string, number>();
   private labelRafId: number | null = null;
   private callbacks: GraphCallbacks | null = null;
@@ -364,6 +369,32 @@ export class GraphLayoutService {
         });
       }
     }
+
+    // Keep the full set as master; the live arrays become a filtered view.
+    this.allCosmosNodes = this.cosmosNodes;
+    this.allCosmosLinks = this.cosmosLinks;
+    this.applyFilter();
+  }
+
+  /** Hide the given kinds from the graph (client-side; no refetch, positions kept). */
+  setHiddenKinds(kinds: Set<NodeKind>): void {
+    this.hiddenKinds = kinds;
+    if (this.graph) this.applyFilter();
+  }
+
+  /** Derive the visible node/link subset from the master set and feed it to cosmos. */
+  private applyFilter(): void {
+    this.cosmosNodes = this.allCosmosNodes.filter(n => !this.hiddenKinds.has(n.data.kind));
+    const visibleIds = new Set(this.cosmosNodes.map(n => n.id));
+    this.cosmosLinks = this.allCosmosLinks.filter(
+      l => visibleIds.has(l.source as string) && visibleIds.has(l.target as string)
+    );
+    this.nodeIndexMap.clear();
+    for (let i = 0; i < this.cosmosNodes.length; i++) {
+      this.nodeIndexMap.set(this.cosmosNodes[i].id, i);
+    }
+    this.temporaryNodeIds.clear();
+    if (this.graph) this.graph.setData(this.cosmosNodes, this.cosmosLinks);
   }
 
   selectNode(nodeId: string): void {
@@ -526,6 +557,8 @@ export class GraphLayoutService {
     }
     this.cosmosNodes = [];
     this.cosmosLinks = [];
+    this.allCosmosNodes = [];
+    this.allCosmosLinks = [];
     this.nodeIndexMap.clear();
     this.temporaryNodeIds.clear();
     this.baseNodeCount = 0;

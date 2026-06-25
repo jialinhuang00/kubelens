@@ -8,6 +8,7 @@ interface KindRow {
   group: string;
   label: string;
   color: string;
+  graphCapable: boolean; // graph can render this kind (config declares it for graph)
 }
 
 const DISCOVERED_COLOR = '#8a8a8a';
@@ -30,7 +31,13 @@ const DISCOVERED_COLOR = '#8a8a8a';
               <span class="panel-title">Resource Visibility</span>
               <button class="close-btn" (click)="open.set(false)">✕</button>
             </div>
-            <div class="panel-hint">Pick which kinds show in the sidebar tree. Detected from your cluster; saved in your browser.</div>
+            <div class="panel-hint">Pick which kinds show in the sidebar tree and the graph. Detected from your cluster; saved in your browser.</div>
+
+            <div class="matrix-head">
+              <span class="col-spacer"></span>
+              <span class="col-view">Tree</span>
+              <span class="col-view">Graph</span>
+            </div>
 
             <div class="groups">
               @for (g of groups(); track g.group) {
@@ -44,19 +51,36 @@ const DISCOVERED_COLOR = '#8a8a8a';
                     <input
                       type="checkbox"
                       class="group-all"
-                      [checked]="groupState(g) === 'all'"
-                      [indeterminate]="groupState(g) === 'some'"
-                      (change)="toggleGroup(g)"
-                      title="Select all in group"
+                      [checked]="groupState(g, 'tree') === 'all'"
+                      [indeterminate]="groupState(g, 'tree') === 'some'"
+                      (change)="toggleGroup(g, 'tree')"
+                      title="Toggle all in group (tree)"
                     />
+                    @if (hasGraphKinds(g)) {
+                      <input
+                        type="checkbox"
+                        class="group-all"
+                        [checked]="groupState(g, 'graph') === 'all'"
+                        [indeterminate]="groupState(g, 'graph') === 'some'"
+                        (change)="toggleGroup(g, 'graph')"
+                        title="Toggle all in group (graph)"
+                      />
+                    } @else {
+                      <span class="group-all-empty"></span>
+                    }
                   </div>
                   @if (!isCollapsed(g.group)) {
                     @for (r of g.kinds; track r.id) {
-                      <label class="kind-row" [class.off]="!vis.isVisible(r.id, 'tree')">
-                        <input type="checkbox" [checked]="vis.isVisible(r.id, 'tree')" (change)="vis.toggle(r.id, 'tree')" />
+                      <div class="kind-row" [class.off]="isRowOff(r)">
                         <span class="kind-dot" [style.backgroundColor]="r.color"></span>
                         <span class="kind-label">{{ r.label }}</span>
-                      </label>
+                        <input class="cell" type="checkbox" [checked]="vis.isVisible(r.id, 'tree')" (change)="vis.toggle(r.id, 'tree')" title="Show in tree" />
+                        @if (r.graphCapable) {
+                          <input class="cell" type="checkbox" [checked]="vis.isVisible(r.id, 'graph')" (change)="vis.toggle(r.id, 'graph')" title="Show in graph" />
+                        } @else {
+                          <span class="cell cell-empty" title="Not rendered in the graph">–</span>
+                        }
+                      </div>
                     }
                   }
                 </div>
@@ -64,7 +88,7 @@ const DISCOVERED_COLOR = '#8a8a8a';
             </div>
 
             <div class="panel-footer">
-              <span class="footer-note">Tree only for now — graph column coming.</span>
+              <span class="footer-note">Graph toggles the 16 core topology kinds.</span>
               <button class="reset-btn" (click)="vis.reset()">Reset</button>
             </div>
           </div>
@@ -102,9 +126,18 @@ const DISCOVERED_COLOR = '#8a8a8a';
       &:hover { color: var(--t-accent); }
     }
     .panel-hint { padding: 8px 12px; font-size: 10px; color: var(--t-text-dim); line-height: 1.5; }
+    .matrix-head {
+      display: flex; align-items: center; padding: 2px 12px 4px;
+      border-bottom: 1px solid var(--t-border);
+    }
+    .col-spacer { flex: 1; }
+    .col-view {
+      flex: 0 0 40px; text-align: center; font-size: 9px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em; color: var(--t-text-dim);
+    }
     .groups { overflow-y: auto; flex: 1; padding-bottom: 4px; }
     .group-header {
-      display: flex; align-items: center; gap: 6px;
+      display: flex; align-items: center;
       padding: 4px 12px; background: rgba(255, 255, 255, 0.03);
     }
     .group-toggle {
@@ -117,13 +150,18 @@ const DISCOVERED_COLOR = '#8a8a8a';
     .arrow.expanded { transform: rotate(90deg); }
     .group-name { font-weight: 600; }
     .group-count { color: var(--t-text-dim); opacity: 0.6; }
+    .group-all { flex: 0 0 40px; display: block; margin: 0 auto; }
+    .group-all-empty { flex: 0 0 40px; }
     .kind-row {
-      display: flex; align-items: center; gap: 8px;
-      padding: 4px 12px 4px 26px; cursor: pointer; font-size: 12px;
+      display: flex; align-items: center;
+      padding: 4px 12px 4px 26px; font-size: 12px;
       &:hover { background: rgba(255, 255, 255, 0.04); }
     }
-    .kind-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .kind-label { color: var(--t-text); }
+    .kind-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-right: 8px; }
+    .kind-label { flex: 1; color: var(--t-text); }
+    .cell { flex: 0 0 40px; }
+    input.cell { display: block; margin: 0 auto; cursor: pointer; }
+    .cell-empty { text-align: center; color: var(--t-text-dim); opacity: 0.35; }
     /* Unchecked kinds are dimmed so the active set stands out (still clickable). */
     .kind-row.off { opacity: 0.45; }
     .kind-row.off:hover { opacity: 0.7; }
@@ -151,11 +189,11 @@ export class VisibilityPanelComponent {
     const byId = new Map<string, KindRow>();
     for (const r of this.config.resources()) {
       const id = kindId(r.group, r.kind);
-      byId.set(id, { id, kind: r.kind, group: r.group, label: r.label, color: r.color });
+      byId.set(id, { id, kind: r.kind, group: r.group, label: r.label, color: r.color, graphCapable: !!r.show?.includes('graph') });
     }
     for (const d of this.config.discovered()) {
       const id = kindId(d.group, d.kind);
-      if (!byId.has(id)) byId.set(id, { id, kind: d.kind, group: d.group, label: d.kind, color: DISCOVERED_COLOR });
+      if (!byId.has(id)) byId.set(id, { id, kind: d.kind, group: d.group, label: d.kind, color: DISCOVERED_COLOR, graphCapable: false });
     }
     return [...byId.values()];
   });
@@ -186,14 +224,32 @@ export class VisibilityPanelComponent {
     this.userCollapsed.update(c => ({ ...c, [group]: !this.isCollapsed(group) }));
   }
 
-  groupState(g: { kinds: KindRow[] }): 'all' | 'some' | 'none' {
-    const on = g.kinds.filter(r => this.vis.isVisible(r.id, 'tree')).length;
-    return on === 0 ? 'none' : on === g.kinds.length ? 'all' : 'some';
+  /** Kinds in this group that the graph can actually render (have a graph checkbox). */
+  private rowsFor(g: { kinds: KindRow[] }, view: 'tree' | 'graph'): KindRow[] {
+    return view === 'graph' ? g.kinds.filter(r => r.graphCapable) : g.kinds;
   }
 
-  toggleGroup(g: { kinds: KindRow[] }): void {
-    const turnOn = this.groupState(g) !== 'all';
-    for (const r of g.kinds) this.vis.set(r.id, 'tree', turnOn);
+  hasGraphKinds(g: { kinds: KindRow[] }): boolean {
+    return g.kinds.some(r => r.graphCapable);
+  }
+
+  groupState(g: { kinds: KindRow[] }, view: 'tree' | 'graph'): 'all' | 'some' | 'none' {
+    const rows = this.rowsFor(g, view);
+    if (rows.length === 0) return 'none';
+    const on = rows.filter(r => this.vis.isVisible(r.id, view)).length;
+    return on === 0 ? 'none' : on === rows.length ? 'all' : 'some';
+  }
+
+  toggleGroup(g: { kinds: KindRow[] }, view: 'tree' | 'graph'): void {
+    const turnOn = this.groupState(g, view) !== 'all';
+    for (const r of this.rowsFor(g, view)) this.vis.set(r.id, view, turnOn);
+  }
+
+  /** Dim a row only when it's hidden everywhere it can appear. */
+  isRowOff(r: KindRow): boolean {
+    const treeOff = !this.vis.isVisible(r.id, 'tree');
+    const graphOff = !r.graphCapable || !this.vis.isVisible(r.id, 'graph');
+    return treeOff && graphOff;
   }
 
   onOverlayClick(e: MouseEvent): void {
