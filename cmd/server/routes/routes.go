@@ -8,7 +8,6 @@ import (
 func Register(mux *http.ServeMux) {
 	registerStatus(mux)
 	registerRegistry(mux)
-	registerResourceCounts(mux)
 	registerExecute(mux)
 	registerK8sExport(mux)
 	registerGraph(mux)
