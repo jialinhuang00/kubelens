@@ -349,6 +349,22 @@ export function buildGraph(getItemsFn: GetItemsFn, namespaceList: string[]): Gra
       }
     }
 
+    // Cloud-edge: a LoadBalancer Service may terminate TLS with an external cert
+    // (e.g. AWS ACM) named only by annotation — the cert lives outside k8s. Surface
+    // it as a Certificate node so the TLS termination point shows on the graph.
+    for (const svc of services) {
+      const svcName = svc.metadata?.name;
+      if (!svcName) continue;
+      const ann = ((svc.metadata as Record<string, unknown> | undefined)?.annotations || {}) as Record<string, string>;
+      const certRef = ann['service.beta.kubernetes.io/aws-load-balancer-ssl-cert'];
+      if (!certRef) continue;
+      const certId = certRef.split('/').pop() || certRef;
+      const certName = `ACM:${certId.slice(0, 8)}`;
+      addNode(ns, 'Service', svcName, 'abstract', { type: (svc.spec as Record<string, unknown> | undefined)?.type });
+      addNode(ns, 'Certificate', certName, 'abstract', { arn: certRef, provider: 'ACM', external: true });
+      addEdge(`${ns}/Service/${svcName}`, `${ns}/Certificate/${certName}`, EdgeType.TerminatesTls, SourceField.LbCert);
+    }
+
     const httproutes = getItemsFn(ns, 'httproutes');
     for (const hr of httproutes) {
       const hrName = hr.metadata?.name;

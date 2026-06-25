@@ -11,7 +11,8 @@ export type NodeKind =
   | 'PersistentVolumeClaim' | 'HorizontalPodAutoscaler'
   | 'Gateway' | 'HTTPRoute' | 'TCPRoute'
   | 'Pod' | 'ReplicaSet' | 'Job'
-  | 'Namespace' | 'NetworkPolicy' | 'PodDisruptionBudget';
+  | 'Namespace' | 'NetworkPolicy' | 'PodDisruptionBudget'
+  | 'Certificate'; // external (cloud) TLS cert, e.g. AWS ACM — not a k8s object
 
 /**
  * Graph node categories — our own grouping for visual styling.
@@ -45,6 +46,7 @@ export enum EdgeType {
   ParentGateway      = 'parent-gateway',      // HTTPRoute/TCPRoute → Gateway
   BindsRole          = 'binds-role',          // RoleBinding → Role/ServiceAccount
   Owns               = 'owns',               // Parent → child resource
+  TerminatesTls      = 'terminates-tls',      // LoadBalancer Service → external Certificate (e.g. ACM)
 }
 
 /** K8s Pod phase values, plus derived display statuses (e.g. CrashLoopBackOff). */
@@ -79,6 +81,7 @@ export enum SourceField {
   RoleRef            = 'roleRef',
   Subjects           = 'subjects',
   OwnerReference     = 'metadata.ownerReferences',
+  LbCert             = 'metadata.annotations.lb-ssl-cert',
 }
 
 /** A node in the K8s resource topology graph. */

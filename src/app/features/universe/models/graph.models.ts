@@ -78,6 +78,8 @@ export function getThemedKindColors(): Record<NodeKind, string> {
     ServiceAccount: rbac,
     Role: shiftBrightness(rbac, 1.2),
     RoleBinding: shiftBrightness(rbac, 0.88),
+    // External (cloud) — cool tone to read as "outside the cluster"
+    Certificate: '#5fa8c0',
   };
 }
 
@@ -98,6 +100,7 @@ export function getThemedEdgeColors(): Record<EdgeType, string> {
     [EdgeType.BindsRole]: shiftBrightness(rbac, 1.2),
     [EdgeType.ParentGateway]: shiftBrightness(net, 0.85),
     [EdgeType.Owns]: shiftBrightness(wk, 1.05),
+    [EdgeType.TerminatesTls]: '#5fa8c0',
   };
 }
 
@@ -125,6 +128,7 @@ export const KIND_COLORS: Record<NodeKind, string> = {
   ServiceAccount: '#c8a060',
   Role: '#f0d080',
   RoleBinding: '#b89050',
+  Certificate: '#5fa8c0',
 };
 
 export const EDGE_COLORS: Record<EdgeType, string> = {
@@ -137,6 +141,7 @@ export const EDGE_COLORS: Record<EdgeType, string> = {
   [EdgeType.BindsRole]: '#f0d080',
   [EdgeType.ParentGateway]: '#b0a898',
   [EdgeType.Owns]: '#88cc88',
+  [EdgeType.TerminatesTls]: '#5fa8c0',
 };
 
 export const CATEGORY_SIZES: Record<NodeCategory, number> = {
@@ -197,5 +202,8 @@ export function getCategory(kind: NodeKind): NodeCategory {
     case 'Role':
     case 'RoleBinding':
       return 'rbac';
+    case 'Certificate':
+      // External cloud resource; grouped with abstract for layout/sizing.
+      return 'abstract';
   }
 }
