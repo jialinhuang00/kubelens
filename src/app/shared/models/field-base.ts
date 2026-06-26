@@ -25,4 +25,6 @@ export const FIELD_BASE: Record<SourceField, FieldBase> = {
   [SourceField.Subjects]:           { short: 'RoleBinding grants access to ServiceAccount',      yaml: 'subjects[].name' },
   [SourceField.OwnerReference]:     { short: 'Pod/ReplicaSet records its owner (set by K8s, not the user)', yaml: 'metadata.ownerReferences[].name' },
   [SourceField.IngressTLS]:         { short: 'Ingress TLS terminates with a Secret',             yaml: 'spec.tls[].secretName' },
+  [SourceField.GatewayTLS]:         { short: 'Gateway listener TLS terminates with a Secret',     yaml: 'spec.listeners[].tls.certificateRefs[].name' },
+  [SourceField.LbCert]:             { short: 'LoadBalancer terminates TLS with an external cert', yaml: 'metadata.annotations["…aws-load-balancer-ssl-cert"]' },
 };
