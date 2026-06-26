@@ -220,6 +220,25 @@ export const FIELD_GLOSSARY: Record<SourceField, FieldInfo> = {
       '// if Secret missing → SSL_ERROR_RX_RECORD_TOO_LONG',
     ],
   },
+  [SourceField.GatewayTLS]: {
+    ...FIELD_BASE[SourceField.GatewayTLS],
+    edgeType: EdgeType.UsesSecret,
+    notes: 'Gateway API listener TLS. Each HTTPS listener references one or more cert Secrets via certificateRefs; the Gateway controller (istio, Envoy Gateway, ...) presents them. Empty when TLS terminates upstream (e.g. an AWS NLB/ACM in front of the gateway).',
+    usage: [
+      '// listener: { protocol: HTTPS, tls: { mode: Terminate, certificateRefs: [...] } }',
+      'curl -v https://my-app.example.com',
+    ],
+  },
+  [SourceField.LbCert]: {
+    ...FIELD_BASE[SourceField.LbCert],
+    edgeType: EdgeType.TerminatesTls,
+    notes: 'A LoadBalancer Service terminates TLS with a cert that lives outside k8s — e.g. AWS ACM, named only by the aws-load-balancer-ssl-cert annotation (an ARN). The cloud manages the cert, so its contents are invisible to kubectl; kubelens shows it as an external Certificate node.',
+    usage: [
+      '// Service annotation:',
+      '//   service.beta.kubernetes.io/aws-load-balancer-ssl-cert: arn:aws:acm:...',
+      'aws acm describe-certificate --certificate-arn <arn>',
+    ],
+  },
 };
 
 // ── Static examples (pure K8s knowledge, no cluster data needed) ──────────
@@ -244,6 +263,8 @@ const STATIC_EXAMPLES: Record<SourceField, { srcKind: NodeKind; srcName: string;
   [SourceField.Subjects]:           { srcKind: 'RoleBinding',             srcName: 'my-binding',    tgtKind: 'ServiceAccount',        tgtName: 'my-app-sa' },
   [SourceField.OwnerReference]:     { srcKind: 'Pod',                     srcName: 'my-app-abc12',  tgtKind: 'ReplicaSet',            tgtName: 'my-app-7f9b2' },
   [SourceField.IngressTLS]:         { srcKind: 'Ingress',                 srcName: 'my-ingress',    tgtKind: 'Secret',                tgtName: 'tls-secret' },
+  [SourceField.GatewayTLS]:         { srcKind: 'Gateway',                 srcName: 'my-gateway',    tgtKind: 'Secret',                tgtName: 'tls-secret' },
+  [SourceField.LbCert]:             { srcKind: 'Service',                 srcName: 'my-lb',         tgtKind: 'Certificate',           tgtName: 'ACM:34fface5' },
 };
 
 // ── YAML snippet builder ───────────────────────────────────────────────────
@@ -1226,6 +1247,7 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
     SourceField.ProjectedConfigMap, SourceField.ProjectedSecret,
     SourceField.ParentRefs, SourceField.BackendRefs,
     SourceField.IngressBackend, SourceField.IngressTLS,
+    SourceField.GatewayTLS, SourceField.LbCert,
     SourceField.ScaleTargetRef,
     SourceField.RoleRef, SourceField.Subjects,
     SourceField.OwnerReference,
