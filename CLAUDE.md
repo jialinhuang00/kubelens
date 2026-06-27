@@ -13,7 +13,8 @@
 - `execFile` instead of `exec` to prevent shell injection
 - `fs.promises` (async) for all file I/O in polled endpoints
 - Snapshot mode: per-request `?snapshot=true` via HTTP interceptor
-- Resource kinds (which kinds appear in tree + graph) come from `kubelens.config.yaml` via `GET /api/config` (frontend `ConfigService`, backend `config-loader`). Add a kind there, not in code.
+- Resource kinds (which kinds appear in tree + graph) come from `kubelens.config.yaml` via `GET /api/config` (frontend `ConfigService`, backend `config-loader`). Add a kind there, not in code. Per kind: `show` = capability (which views it CAN appear in), `default` = default-on views (subset of `show`; omit = same as `show`). `default: []` ships a kind capable-but-off.
+- `npm run init` generates `kubelens.config.yaml` for the current cluster: built-ins from `kubelens.default.yaml` + CRDs discovered via `kubectl api-resources` (shipped `default: []`, off). Pure detection logic in `api/utils/init-detect.ts` (unit-tested); `--force`/`--merge` flags.
 - Image tag lookups are registry-agnostic: `/api/registry/tags` detects ECR/GCR/ACR from the image URL and shells out to `aws`/`gcloud`/`az`.
 
 ## File Structure
@@ -26,9 +27,12 @@
 │   │   ├── snapshot.js        #   POST/GET /api/snapshot — export control + progress
 │   │   ├── status.js          #   GET  /api/realtime/ping, /api/snapshot/ping
 │   │   ├── registry.js        #   GET  /api/registry/tags — image tags (ECR/GCR/ACR by URL)
-│   │   └── config.js          #   GET  /api/config — resource kinds from kubelens.config.yaml
+│   │   ├── config.js          #   GET  /api/config — resource kinds from kubelens.config.yaml
+│   │   └── discovery.js       #   GET  /api/api-resources — cluster's kinds (kubectl api-resources)
 │   └── utils/
 │       ├── config-loader.ts    #   Loads + caches kubelens.config.yaml (resources, aliases)
+│       ├── api-resources.ts    #   Parser for `kubectl api-resources` table (shared: discovery + init)
+│       ├── init-detect.ts      #   `kubelens init` detection (cluster/registry/CRD), unit-tested
 │       ├── snapshot-handler.ts #   Re-export shim (handleCommand, parseKubectlCommand)
 │       ├── snapshot-loader.ts  #   Constants, cache, YAML/text file loading
 │       ├── snapshot-parsers.ts #   Table generators, describe generators, helpers
@@ -49,6 +53,7 @@
 │   ├── snapshot-node-workers.js # Node.js worker_threads export
 │   ├── snapshot-node-procs.js #   Node.js child_process export
 │   ├── split-resources.js     #   Splits kubectl JSON into per-kind YAML files
+│   ├── init.ts                #   `npm run init` — generate kubelens.config.yaml from the cluster
 │   └── kind-map.json          #   Kind → filename mapping
 ├── src/app/
 │   ├── core/services/         #   kubectl, config, data-mode, snapshot, websocket, execution-context, theme
@@ -61,6 +66,7 @@
 │       ├── benchmark/         #   Export optimization story
 │       └── k8s/               #   K8s resource views
 ├── kubelens.config.yaml       # Source of truth for resource kinds (tree + graph)
+├── kubelens.default.yaml      # Neutral built-ins base for `kubelens init`
 └── k8s-snapshot/              # Exported cluster data (gitignored)
 ```
 

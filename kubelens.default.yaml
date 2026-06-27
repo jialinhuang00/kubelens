@@ -1,0 +1,46 @@
+# kubelens default config — the neutral base `kubelens init` builds on.
+# Built-in Kubernetes kinds only (universal to any cluster). No cluster-specific
+# CRDs. `kubelens init` reads this, detects your cluster's CRDs via
+# `kubectl api-resources`, and writes a complete kubelens.config.yaml.
+#
+# Field reference: see kubelens.config.yaml.
+
+version: '1'
+
+resources:
+  # --- Workloads ---
+  - { kind: Deployment, key: deployments, resourceType: deployments, namePrefix: deployment.apps, group: apps, label: Deployments, color: '#e8b866', priority: true, show: [tree, graph], aliases: [deploy] }
+  - { kind: StatefulSet, key: statefulsets, resourceType: statefulsets, namePrefix: statefulset.apps, group: apps, label: StatefulSets, color: '#e0a050', show: [tree, graph], aliases: [sts] }
+  - { kind: DaemonSet, key: daemonsets, resourceType: daemonsets, namePrefix: daemonset.apps, group: apps, label: DaemonSets, color: '#d4956a', show: [tree, graph], aliases: [ds] }
+  - { kind: CronJob, key: cronjobs, resourceType: cronjobs, namePrefix: cronjob.batch, group: batch, label: CronJobs, color: '#c8a060', show: [tree, graph], aliases: [cj] }
+  - { kind: Job, key: jobs, resourceType: jobs, namePrefix: job.batch, group: batch, label: Jobs, color: '#b89860', show: [tree] }
+  - { kind: Pod, key: pods, resourceType: pods, namePrefix: pod, group: '', label: Pods, color: '#f0d080', priority: true, show: [tree, graph] }
+  - { kind: ReplicaSet, key: replicasets, resourceType: replicasets, namePrefix: replicaset.apps, group: apps, label: ReplicaSets, color: '#c0b880', show: [tree] }
+  # --- Networking ---
+  - { kind: Service, key: services, resourceType: services, namePrefix: service, group: '', label: Services, color: '#80c0b0', priority: true, show: [tree, graph], aliases: [svc] }
+  - { kind: Ingress, key: ingresses, resourceType: ingresses, namePrefix: ingress.networking.k8s.io, group: networking.k8s.io, label: Ingresses, color: '#70b8a8', show: [tree, graph], aliases: [ing] }
+  - { kind: NetworkPolicy, key: networkpolicies, resourceType: networkpolicies, namePrefix: networkpolicy.networking.k8s.io, group: networking.k8s.io, label: NetworkPolicies, color: '#90a8b8', show: [tree], aliases: [netpol] }
+  # --- Config ---
+  - { kind: ConfigMap, key: configmaps, resourceType: configmaps, namePrefix: configmap, group: '', label: ConfigMaps, color: '#a0b880', show: [tree, graph], aliases: [cm] }
+  - { kind: Secret, key: secrets, resourceType: secrets, namePrefix: secret, group: '', label: Secrets, color: '#c0a8a0', show: [tree, graph] }
+  # --- Storage ---
+  - { kind: PersistentVolumeClaim, key: persistentvolumeclaims, resourceType: persistentvolumeclaims, namePrefix: persistentvolumeclaim, group: '', label: PVCs, color: '#90b0c8', show: [tree, graph], aliases: [pvc] }
+  # --- Scaling ---
+  - { kind: HorizontalPodAutoscaler, key: horizontalpodautoscalers, resourceType: horizontalpodautoscalers, namePrefix: horizontalpodautoscaler.autoscaling, group: autoscaling, label: HPAs, color: '#b8a080', show: [tree, graph], aliases: [hpa] }
+  # --- RBAC ---
+  - { kind: ServiceAccount, key: serviceaccounts, resourceType: serviceaccounts, namePrefix: serviceaccount, group: '', label: ServiceAccounts, color: '#a8a0c0', show: [tree, graph], aliases: [sa] }
+  - { kind: Role, key: roles, resourceType: roles, namePrefix: role.rbac.authorization.k8s.io, group: rbac.authorization.k8s.io, label: Roles, color: '#b0a0c8', show: [tree] }
+  - { kind: RoleBinding, key: rolebindings, resourceType: rolebindings, namePrefix: rolebinding.rbac.authorization.k8s.io, group: rbac.authorization.k8s.io, label: RoleBindings, color: '#a898b8', show: [tree, graph] }
+
+# Noise groups/resources to keep out of discovery + the visibility panel.
+discovery:
+  exclude:
+    groups:
+      - coordination.k8s.io
+      - discovery.k8s.io
+      - events.k8s.io
+      - resource.k8s.io
+    resources:
+      - events
+      - endpoints
+      - controllerrevisions

@@ -9,6 +9,7 @@
     "build:export": "cd cmd/k8s-export && go build -o k8s-export .",
     "dev:go": "npm run build:export && concurrently \"PROJECT_ROOT=$PWD go -C cmd/server run .\" \"ng serve\"",
     "build": "ng build",
+    "init": "tsx scripts/init.ts",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:utils": "tsx --test api/utils/**/*.spec.ts",
