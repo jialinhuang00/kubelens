@@ -43,8 +43,13 @@ resources:
   - { kind: ServiceAccount, key: serviceaccounts, resourceType: serviceaccounts, namePrefix: serviceaccount, group: '', label: ServiceAccounts, color: '#a8a0c0', show: [tree, graph], aliases: [sa] }
   - { kind: Role, key: roles, resourceType: roles, namePrefix: role.rbac.authorization.k8s.io, group: rbac.authorization.k8s.io, label: Roles, color: '#b0a0c8', show: [tree] }
   - { kind: RoleBinding, key: rolebindings, resourceType: rolebindings, namePrefix: rolebinding.rbac.authorization.k8s.io, group: rbac.authorization.k8s.io, label: RoleBindings, color: '#a898b8', show: [tree, graph] }
-  # --- CRDs ---
-  - { kind: Application, key: applications, resourceType: applications.argoproj.io, namePrefix: application.argoproj.io, group: argoproj.io, label: Applications, color: '#e07850', show: [tree] }
+  # --- CRDs (cluster-dependent; not every cluster runs these) ---
+  # Built-ins above are universal. CRDs below ship off by default (show: []):
+  # they appear in the visibility panel as known kinds (with this label/colour),
+  # and you flip them on if your cluster runs them. Gateway API kinds default to
+  # graph instead — the topology builder has first-class edges for them and the
+  # fetch no-ops gracefully on clusters without Gateway API.
+  - { kind: Application, key: applications, resourceType: applications.argoproj.io, namePrefix: application.argoproj.io, group: argoproj.io, label: Applications, color: '#e07850', show: [] }
   - { kind: Gateway, key: gateways, resourceType: gateways.gateway.networking.k8s.io, namePrefix: gateway.gateway.networking.k8s.io, group: gateway.networking.k8s.io, label: Gateways, color: '#6ab0a0', show: [graph] }
   - { kind: HTTPRoute, key: httproutes, resourceType: httproutes.gateway.networking.k8s.io, namePrefix: httproute.gateway.networking.k8s.io, group: gateway.networking.k8s.io, label: HTTPRoutes, color: '#7ab8b8', show: [graph] }
   - { kind: TCPRoute, key: tcproutes, resourceType: tcproutes.gateway.networking.k8s.io, namePrefix: tcproute.gateway.networking.k8s.io, group: gateway.networking.k8s.io, label: TCPRoutes, color: '#8ac0c0', show: [graph] }
