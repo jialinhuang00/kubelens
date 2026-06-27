@@ -35,9 +35,11 @@ export class VisibilityService {
     }
   }
 
-  /** Config default: is this kind declared for this view in kubelens.config.yaml? */
+  /** Config default-on state: is this kind ON for this view by default? Uses `default`
+   *  (default-on views) when present, else falls back to `show` (capability). */
   private configDefault(id: string, view: ViewName): boolean {
-    return this.config.resources().find(r => kindId(r.group, r.kind) === id)?.show?.includes(view) ?? false;
+    const r = this.config.resources().find(r => kindId(r.group, r.kind) === id);
+    return (r?.default ?? r?.show)?.includes(view) ?? false;
   }
 
   isVisible(id: string, view: ViewName): boolean {
