@@ -32,16 +32,26 @@ Frontend at `http://localhost:4200`. Backend (Node) at port 3042.
 
 ## Configuration
 
-Which Kubernetes kinds show up in the resource tree and topology graph is driven by `kubelens.config.yaml` (read at startup via `/api/config`), not hardcoded. Add your own CRDs there:
+Which Kubernetes kinds show up in the resource tree and topology graph is driven by `kubelens.config.yaml` (read at startup via `/api/config`), not hardcoded. The committed config works out of the box; to fit it to your own cluster:
+
+```bash
+npm run init              # detect cluster + registry + CRDs → kubelens.config.yaml
+npm run init -- --merge   # later: refresh CRDs, keep your edits
+```
+
+`init` reads `kubelens.default.yaml` (universal built-ins), infers cluster type and image registry from kubeconfig/images, lists your CRDs via `kubectl api-resources`, and writes a complete config. Discovered CRDs ship off — enable them in the in-app visibility panel.
+
+Or add a kind by hand:
 
 ```yaml
 resources:
   - { kind: VirtualService, key: virtualservices, resourceType: virtualservices.networking.istio.io,
       namePrefix: virtualservice.networking.istio.io, group: networking.istio.io,
-      label: VirtualServices, color: '#7a9eaa', show: [tree, graph] }
+      label: VirtualServices, color: '#7a9eaa', show: [tree], default: [] }
 ```
 
-`show` controls which views list the kind (`tree`, `graph`, or both).
+- `show` — capability: which views this kind *can* appear in (`tree`, `graph`).
+- `default` — default-on views (subset of `show`); omit to default to `show`. `default: []` ships a kind capable-but-off; it appears in the visibility panel for the user to switch on.
 
 ## Dev
 
