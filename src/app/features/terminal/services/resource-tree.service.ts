@@ -72,7 +72,7 @@ export class ResourceTreeService {
 
   /** Is this a config kind that defaults to showing in the tree? (fetched eagerly so re-show is instant) */
   private isConfigTreeDefault(id: string): boolean {
-    return this.config.resources().some(r => kindId(r.group, r.kind) === id && r.show?.includes('tree'));
+    return this.config.resources().some(r => kindId(r.group, r.kind) === id && (r.default ?? r.show)?.includes('tree'));
   }
 
   private makeNode(k: TreeKind): ResourceTreeNode {

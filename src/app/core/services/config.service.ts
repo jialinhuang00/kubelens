@@ -12,7 +12,8 @@ export interface ResourceKind {
   label: string;
   color: string;
   priority?: boolean;
-  show: ('tree' | 'graph')[];
+  show: ('tree' | 'graph')[];      // capability: which views this kind CAN appear in
+  default?: ('tree' | 'graph')[];  // default-on views (subset of show); absent = same as show
 }
 
 /** A kind discovered from the cluster via kubectl api-resources. */

@@ -11,8 +11,9 @@ export interface ResourceConfig {
   label: string;
   color: string;
   priority?: boolean;
-  show: ('tree' | 'graph')[];
-  aliases?: string[]; // kubectl short names, e.g. svc, deploy, cm
+  show: ('tree' | 'graph')[];         // capability: which views this kind CAN appear in
+  default?: ('tree' | 'graph')[];     // default-on views (subset of show); absent = same as show
+  aliases?: string[];                 // kubectl short names, e.g. svc, deploy, cm
 }
 
 const CONFIG_PATH = path.join(__dirname, '../..', 'kubelens.config.yaml');
