@@ -6,6 +6,8 @@
   cdkDrag
   cdkDragBoundary=".panel-area"
   [cdkDragDisabled]="panel().isMaximized"
+  (cdkDragStarted)="onDragStarted()"
+  (cdkDragMoved)="onDragMoved($event)"
   (cdkDragEnded)="onDragEnded($event)"
   (mousedown)="onMouseDown()"
 >

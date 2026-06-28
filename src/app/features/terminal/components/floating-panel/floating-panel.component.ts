@@ -1,7 +1,7 @@
 import { Component, input, output, inject, computed, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { CdkDrag, CdkDragHandle, CdkDragEnd } from '@angular/cdk/drag-drop';
+import { CdkDrag, CdkDragHandle, CdkDragEnd, CdkDragMove } from '@angular/cdk/drag-drop';
 import { PanelState } from '../../models/panel.models';
 import { PanelManagerService } from '../../services/panel-manager.service';
 import { PanelExecutionService } from '../../services/panel-execution.service';
@@ -99,8 +99,64 @@ export class FloatingPanelComponent {
     this.panelManager.bringToFront(this.panel().id);
   }
 
+  /**
+   * Nearest workspace tab while the pointer is in (or just below) the workspace bar.
+   * Picks by horizontal distance to each tab's center — "approaching desktop 3"
+   * lights desktop 3 even if the pointer hasn't landed exactly on it. -1 = new desktop.
+   */
+  private nearestWorkspace(x: number, y: number): number | null {
+    const bar = document.querySelector('.workspace-bar') as HTMLElement | null;
+    if (!bar) return null;
+    const barRect = bar.getBoundingClientRect();
+    if (y > barRect.bottom + 24) return null; // not near the bar — this is a reposition
+
+    let best: number | null = null;
+    let bestDist = Infinity;
+    for (const tab of Array.from(document.querySelectorAll<HTMLElement>('[data-ws-index]'))) {
+      const r = tab.getBoundingClientRect();
+      const dist = Math.abs(x - (r.left + r.width / 2));
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = Number(tab.dataset['wsIndex']);
+      }
+    }
+    return best;
+  }
+
+  onDragStarted(): void {
+    this.panelManager.draggingPanelId.set(this.panel().id);
+  }
+
+  onDragMoved(event: CdkDragMove): void {
+    const { x, y } = event.pointerPosition;
+    const target = this.nearestWorkspace(x, y);
+    this.panelManager.dragOverWorkspace.set(target);
+    // Only show the proxy block once a desktop is actually targeted — not for the whole drag.
+    this.panelManager.dragGhost.set(target !== null ? { x, y, label: this.panelTitle() } : null);
+  }
+
   onDragEnded(event: CdkDragEnd): void {
     const p = this.panel();
+    // Drop onto whatever tab is currently highlighted — keeps drop consistent with the hover.
+    const target = this.panelManager.dragOverWorkspace();
+    this.panelManager.draggingPanelId.set(null);
+    this.panelManager.dragOverWorkspace.set(null);
+
+    if (target !== null) {
+      const isMove = target === -1 || target !== p.workspace;
+      this.panelManager.dragGhost.set(null); // hover proxy is done; the panel itself does the throw
+      event.source.reset();
+      if (isMove) {
+        // Panel collapses toward the cursor (which is on the chosen desktop); commit on landing.
+        this.flingPanelInto(event.source.element.nativeElement, event.dropPoint, () => {
+          if (target === -1) this.panelManager.movePanelToNewWorkspace(p.id);
+          else this.panelManager.movePanelToWorkspace(p.id, target);
+        });
+      }
+      return;
+    }
+
+    this.panelManager.dragGhost.set(null);
     const el = event.source.element.nativeElement;
     const transform = el.style.transform;
 
@@ -114,6 +170,27 @@ export class FloatingPanelComponent {
       });
       event.source.reset();
     }
+  }
+
+  /** Collapse the panel toward `anchor` (viewport coords — the drop cursor), then run `done`. */
+  private flingPanelInto(el: HTMLElement, anchor: { x: number; y: number }, done: () => void): void {
+    const r = el.getBoundingClientRect();
+    // transform-origin at the cursor (in the panel's local coords) so the panel shrinks INTO
+    // that point — no center-collapse, no downward drift.
+    const ox = anchor.x - r.left;
+    const oy = anchor.y - r.top;
+    el.style.transformOrigin = `${ox}px ${oy}px`;
+
+    const anim = el.animate(
+      [
+        { transform: 'scale(1)', opacity: 1, offset: 0 },
+        { transform: 'scale(0.06)', opacity: 0, offset: 1 },
+      ],
+      { duration: 300, easing: 'ease-in', fill: 'forwards' },
+    );
+
+    anim.onfinish = done;
+    anim.oncancel = done;
   }
 
   onDoubleClickHeader(): void {

@@ -40,6 +40,16 @@ export class PanelManagerService {
   activeWorkspace = signal(0);
   workspaceCount = signal(1);
 
+  // Id of the panel currently being dragged (drives drop-target highlight on the workspace tabs)
+  draggingPanelId = signal<string | null>(null);
+
+  // Workspace index the drag pointer is currently hovering (-1 = the "new desktop" button, null = none)
+  dragOverWorkspace = signal<number | null>(null);
+
+  // A small proxy block that follows the pointer while dragging, so the panel still
+  // reads as being "carried" up into a desktop even though it's clamped to the area.
+  dragGhost = signal<{ x: number; y: number; label: string } | null>(null);
+
   // Only panels in the active workspace
   panelList = computed(() =>
     [...this.panels().values()].filter(p => p.workspace === this.activeWorkspace())
@@ -239,6 +249,14 @@ export class PanelManagerService {
 
   movePanelToWorkspace(id: string, workspace: number): void {
     this.updatePanel(id, { workspace });
+    this.persistState();
+  }
+
+  /** Spin the panel off into a brand-new desktop without switching the active view. */
+  movePanelToNewWorkspace(id: string): void {
+    const newIndex = this.workspaceCount();
+    this.workspaceCount.update(c => c + 1);
+    this.updatePanel(id, { workspace: newIndex });
     this.persistState();
   }
 

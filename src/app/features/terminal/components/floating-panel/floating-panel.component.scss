@@ -17,6 +17,13 @@
   &.maximized {
     border-radius: 0;
   }
+
+  // While being dragged, dim + dash the source panel — the ghost is what you're "carrying".
+  &.cdk-drag-dragging {
+    opacity: 0.4;
+    border-style: dashed;
+    border-color: var(--t-accent);
+  }
 }
 
 .panel-header {
