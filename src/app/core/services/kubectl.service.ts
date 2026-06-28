@@ -296,21 +296,15 @@ export class KubectlService {
   }
 
   async getNamespaces(): Promise<string[]> {
-    try {
-      const response = await this.executeCommand('kubectl get namespaces -o jsonpath={.items[*].metadata.name}');
-
-      if (response.success) {
-        const out = response.stdout.replace(/"/g, '').trim();
-        if (!out || out.startsWith('No resources found')) return [];
-        return out.split(' ').filter(ns => ns);
-      }
-
-      // Fallback namespaces if command fails
-      return [];
-    } catch (error) {
-      console.error('Failed to load namespaces:', error);
-      return [];
+    const response = await this.executeCommand('kubectl get namespaces -o jsonpath={.items[*].metadata.name}');
+    // Surface failure instead of swallowing to [] — otherwise the caller can't tell
+    // "cluster unreachable" from "still loading" and spins forever.
+    if (!response.success) {
+      throw new Error(response.error || 'kubectl failed');
     }
+    const out = response.stdout.replace(/"/g, '').trim();
+    if (!out || out.startsWith('No resources found')) return [];
+    return out.split(' ').filter(ns => ns);
   }
 
 }

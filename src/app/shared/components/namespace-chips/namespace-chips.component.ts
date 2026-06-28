@@ -27,10 +27,11 @@ import { FormsModule } from '@angular/forms';
             {{ ns }}
           </button>
         }
-        @if (filtered().length === 0 && namespaces().length === 0) {
-          <div class="empty-hint">Loading namespaces...</div>
-        }
-        @if (filtered().length === 0 && namespaces().length > 0) {
+        @if (error()) {
+          <div class="empty-hint err">{{ error() }}</div>
+        } @else if (filtered().length === 0 && namespaces().length === 0) {
+          <div class="empty-hint">{{ loading() ? 'Loading namespaces...' : 'No namespaces' }}</div>
+        } @else if (filtered().length === 0 && namespaces().length > 0) {
           <div class="empty-hint">No match</div>
         }
       </div>
@@ -123,12 +124,19 @@ import { FormsModule } from '@angular/forms';
       color: var(--t-text-dim);
       padding: 4px 0;
     }
+
+    .empty-hint.err {
+      color: #d08770;
+      line-height: 1.5;
+    }
   `],
 })
 export class NamespaceChipsComponent {
   readonly namespaces = input.required<string[]>();
   readonly selected = input<string | null>(null);
   readonly disabled = input(false);
+  readonly loading = input(false);
+  readonly error = input<string | null>(null);
   readonly select = output<string>();
 
   readonly filter = signal('');

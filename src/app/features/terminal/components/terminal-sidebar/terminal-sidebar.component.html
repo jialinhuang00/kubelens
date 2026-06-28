@@ -8,6 +8,8 @@
   <app-namespace-chips
     [namespaces]="namespaces()"
     [selected]="selectedNamespace()"
+    [loading]="nsLoading()"
+    [error]="nsError()"
     (select)="onSelectNamespace($event)"
   />
 
