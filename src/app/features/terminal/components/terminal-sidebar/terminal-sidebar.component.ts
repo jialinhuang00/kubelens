@@ -29,6 +29,8 @@ export class TerminalSidebarComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
 
   namespaces = this.namespaceService.namespaces;
+  nsLoading = this.namespaceService.isLoading;
+  nsError = this.namespaceService.error;
 
   /** Show the API group on a tree node only for third-party CRDs (official groups stay clean). */
   protected showDomain(group: string): boolean {
