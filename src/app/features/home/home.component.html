@@ -110,11 +110,11 @@
   } @else {
     <!-- Availability hints — only when no export activity -->
     @if (!dataModeService.realtimeAvailable() && !dataModeService.snapshotAvailable()) {
-      <p class="hint hint-error">kubectl not available and no snapshot found</p>
+      <p class="hint hint-error">No live cluster (kubectl unreachable) and no snapshot yet. Point kubectl at a cluster for Realtime, or export a snapshot below.</p>
     } @else if (!dataModeService.realtimeAvailable()) {
       <p class="hint">kubectl not available — using snapshot mode</p>
-    } @else if (!dataModeService.snapshotAvailable() || showExport()) {
-      <!-- First-time export (no snapshot yet) OR user explicitly opened the panel -->
+    } @else if (showExport()) {
+      <!-- Export panel only when the user opts in (Realtime is the default; no auto-block) -->
       <div class="export-backdrop" (click)="showExport.set(false)"></div>
       <div class="export-panel">
         @if (!dataModeService.snapshotAvailable()) {
@@ -173,9 +173,9 @@
     </a>
   </div>
 
-  @if (dataModeService.snapshotAvailable() && !exportService.isRunning() && !exportService.paused() && !exportService.done()) {
-    <button class="snapshot-update-link" (click)="showExport.set(!showExport())">
-      update snapshot?
+  @if (!exportService.isRunning() && !exportService.paused() && !exportService.done() && !showExport()) {
+    <button class="snapshot-update-link" (click)="showExport.set(true)">
+      {{ dataModeService.snapshotAvailable() ? 'update snapshot?' : 'export a snapshot?' }}
     </button>
   }
 </div>
