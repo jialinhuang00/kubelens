@@ -291,7 +291,11 @@ export class PanelManagerService {
     const saved: SavedWorkspace = {
       activeWorkspace: this.activeWorkspace(),
       workspaceCount: this.workspaceCount(),
-      panels: [...this.panels().values()].map(p => ({
+      // Only resource panels are worth restoring — they reopen as the resource's
+      // control window (empty until you click a template, same as freshly opened).
+      // General panels are one-off command outputs; restoring them yields a useless
+      // empty shell with no way to re-run, so they're left out.
+      panels: [...this.panels().values()].filter(p => p.type === 'resource').map(p => ({
         id: p.id,
         type: p.type,
         resourceKind: p.resourceKind,
