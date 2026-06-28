@@ -174,17 +174,12 @@ export class OutputParserService {
 
       const title = titleMatch[1];
 
-      // Find the header line (look for typical kubectl headers)
+      // The header is the first line that leads with a NAME column. Every `kubectl get`
+      // table starts with NAME, so match on that instead of a whitelist of follow-on
+      // columns (which silently dropped CronJob, Job, PVC, and other kinds).
       let headerIndex = -1;
       for (let i = 1; i < lines.length; i++) {
-        const line = lines[i];
-        if (line.includes('NAME') && (
-          line.includes('READY') ||
-          line.includes('TYPE') ||
-          line.includes('CLUSTER-IP') ||
-          line.includes('DESIRED') ||
-          line.includes('CURRENT') ||
-          line.includes('AVAILABLE'))) {
+        if (lines[i].trimStart().startsWith('NAME')) {
           headerIndex = i;
           break;
         }
