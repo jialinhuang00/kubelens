@@ -4,7 +4,7 @@ Browser-based Kubernetes visualization. GPU-accelerated resource graph + multi-w
 
 ![K8s Universe — resource topology graph](./docs/01-universe-overview.png)
 
-![K8s Terminal — multi-window kubectl interface](./docs/03-terminal.png)
+![K8s Terminal — drag a resource window onto another desktop to move it](./docs/03-terminal.gif)
 
 ## Prerequisites
 
