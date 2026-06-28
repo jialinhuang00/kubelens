@@ -16,14 +16,24 @@ export interface ResourceConfig {
   aliases?: string[];                 // kubectl short names, e.g. svc, deploy, cm
 }
 
+export interface TemplateDef {
+  name: string;
+  command: string;
+  requiresInput?: boolean;
+  disabled?: boolean;
+}
+
 const CONFIG_PATH = path.join(__dirname, '../..', 'kubelens.config.yaml');
+const DEFAULT_PATH = path.join(__dirname, '../..', 'kubelens.default.yaml');
 
 interface ConfigDoc {
   resources?: ResourceConfig[];
   discovery?: { exclude?: { groups?: string[]; resources?: string[] } };
+  templates?: Record<string, TemplateDef[]>;
 }
 
 let docCache: ConfigDoc | null = null;
+let defaultDocCache: ConfigDoc | null = null;
 
 /** Read and cache the whole kubelens.config.yaml. */
 function loadDoc(): ConfigDoc {
@@ -37,8 +47,26 @@ function loadDoc(): ConfigDoc {
   return docCache;
 }
 
+/** Read and cache kubelens.default.yaml (holds the universal per-kind command templates). */
+function loadDefaultDoc(): ConfigDoc {
+  if (defaultDocCache) return defaultDocCache;
+  try {
+    defaultDocCache = (yaml.load(fs.readFileSync(DEFAULT_PATH, 'utf8')) as ConfigDoc) ?? {};
+  } catch (e) {
+    console.error('Failed to load kubelens.default.yaml:', (e as Error).message);
+    defaultDocCache = {};
+  }
+  return defaultDocCache;
+}
+
 export function loadResources(): ResourceConfig[] {
   return loadDoc().resources ?? [];
+}
+
+/** Per-kind command templates (universal), keyed by Kind. From kubelens.default.yaml;
+ *  config.yaml may override per kind. */
+export function loadTemplates(): Record<string, TemplateDef[]> {
+  return { ...loadDefaultDoc().templates, ...loadDoc().templates };
 }
 
 /** Groups/resources to hide from cluster discovery (pure plumbing). */

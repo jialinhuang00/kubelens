@@ -24,6 +24,14 @@ export interface DiscoveredKind {
   resourceType: string;  // kubectl target, e.g. "virtualservices.networking.istio.io"
 }
 
+/** A per-kind command template (from kubelens.default.yaml `templates`). */
+export interface TemplateDef {
+  name: string;
+  command: string;       // {name} = selected resource, {namespace} resolved at execution
+  requiresInput?: boolean;
+  disabled?: boolean;
+}
+
 /** Canonical identity for a kind: group + Kind. Unique even when two CRDs share a Kind name. */
 export function kindId(group: string, kind: string): string {
   return `${group}/${kind}`;
@@ -45,6 +53,7 @@ export class ConfigService {
   private http = inject(HttpClient);
   resources = signal<ResourceKind[]>([]);
   discovered = signal<DiscoveredKind[]>([]);
+  templates = signal<Record<string, TemplateDef[]>>({});
   private loaded?: Promise<ResourceKind[]>;
   private discoveredLoaded?: Promise<DiscoveredKind[]>;
 
@@ -73,9 +82,10 @@ export class ConfigService {
   ensureLoaded(): Promise<ResourceKind[]> {
     if (!this.loaded) {
       this.loaded = firstValueFrom(
-        this.http.get<{ resources: ResourceKind[] }>(`${API_BASE}/config`)
+        this.http.get<{ resources: ResourceKind[]; templates?: Record<string, TemplateDef[]> }>(`${API_BASE}/config`)
       ).then(r => {
         this.resources.set(r.resources);
+        this.templates.set(r.templates ?? {});
         return r.resources;
       }).catch(err => {
         console.error('Failed to load /api/config:', err);
