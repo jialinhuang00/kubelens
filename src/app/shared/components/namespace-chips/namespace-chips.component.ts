@@ -94,8 +94,8 @@ import { FormsModule } from '@angular/forms';
     .namespace-chip {
       font-size: 10px;
       font-family: 'JetBrains Mono', 'Fira Code', monospace;
-      padding: 2px 8px;
-      border-radius: 4px;
+      padding: 3px 10px;
+      border-radius: 999px;
       border: 1px solid var(--t-border);
       background: transparent;
       color: var(--t-text-dim);
