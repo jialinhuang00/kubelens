@@ -11,7 +11,10 @@ import {
   extractNames, findItem, pad, getAge,
   generateDeploymentTable, generateServiceTable, generateCronjobTable,
   generateStatefulsetTable, generateJobTable, generateConfigmapTable,
-  generateEndpointTable,
+  generateEndpointTable, generateSecretTable, generatePvcTable,
+  generateServiceAccountTable, generateDaemonsetTable, generateIngressTable,
+  generateHpaTable, generateRoleTable, generateRoleBindingTable,
+  generateNetworkPolicyTable,
   generateDeploymentDescribe, generatePodDescribe, generateServiceDescribe,
   generateGenericDescribe,
 } from './snapshot-parsers';
@@ -86,6 +89,15 @@ const TABLE_GENERATORS: Record<string, (items: K8sItem[]) => string> = {
   'jobs.yaml': generateJobTable,
   'configmaps.yaml': generateConfigmapTable,
   'endpoints.yaml': generateEndpointTable,
+  'secrets.yaml': generateSecretTable,
+  'persistentvolumeclaims.yaml': generatePvcTable,
+  'serviceaccounts.yaml': generateServiceAccountTable,
+  'daemonsets.yaml': generateDaemonsetTable,
+  'ingresses.yaml': generateIngressTable,
+  'horizontalpodautoscalers.yaml': generateHpaTable,
+  'roles.yaml': generateRoleTable,
+  'rolebindings.yaml': generateRoleBindingTable,
+  'networkpolicies.yaml': generateNetworkPolicyTable,
 };
 
 // --- Command parser ---
