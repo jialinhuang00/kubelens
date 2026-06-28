@@ -79,6 +79,16 @@ router.post('/snapshot', async (req, res) => {
     }
   }
 
+  // --- CLEAR --- (dismiss a finished/failed state so it doesn't survive a reload)
+  if (command === 'clear') {
+    if (exportState.running) {
+      return res.status(409).json({ error: 'Export running' });
+    }
+    exportState.error = null;
+    exportState.paused = false;
+    return res.json({ cleared: true });
+  }
+
   // --- START ---
   if (exportState.running) {
     return res.status(409).json({ error: 'Export already running' });

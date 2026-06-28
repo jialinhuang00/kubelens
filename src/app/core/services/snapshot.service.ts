@@ -119,6 +119,21 @@ export class SnapshotService {
     this.paused.set(true);
   }
 
+  /** Dismiss a finished/failed/paused export so it stops blocking — clears the
+   *  local state and the server's, so a reload doesn't resurrect the modal. */
+  async dismissError(): Promise<void> {
+    this.error.set(null);
+    this.done.set(false);
+    this.paused.set(false);
+    try {
+      await firstValueFrom(
+        this.http.post(`${API_BASE}/snapshot`, { command: 'clear' })
+      );
+    } catch {
+      // ignore — local state already cleared
+    }
+  }
+
   private applyProgress(data: ExportProgress): void {
     this.totalNs.set(data.totalNamespaces);
     this.completedNs.set(data.completedNamespaces);
