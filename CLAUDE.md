@@ -4,7 +4,7 @@
 - Angular 20+ standalone components with signals
 - Express.js backend (`api/index.js` + `api/routes/`) with Go backend (`cmd/server/`)
 - TypeScript with strict compilation
-- Soft Gold cyberpunk theme (`#e8b866` accent on `#0e0b08` background)
+- Nord theme (`#88c0d0` accent on `#2e3440` background) — single theme, folded into `:root` in `styles.scss` (no runtime switching, no `[data-theme]` blocks)
 - Dual data mode: **Realtime** (live kubectl) and **Snapshot** (offline `k8s-snapshot/`)
 
 ## Key Patterns
