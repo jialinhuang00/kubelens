@@ -1,8 +1,7 @@
 import { Component, signal, HostListener } from '@angular/core';
 import { TerminalSidebarComponent } from './terminal-sidebar/terminal-sidebar.component';
 import { PanelAreaComponent } from './panel-area/panel-area.component';
-import { ModeToggleComponent } from '../../../shared/components/mode-toggle/mode-toggle.component';
-import { ThemeSwitcherComponent } from '../../../shared/components/theme-switcher/theme-switcher.component';
+import { CommandBarComponent } from './command-bar/command-bar.component';
 import { HandbookComponent } from '../../../shared/components/handbook/handbook.component';
 import { MemMonitorComponent } from '../../../shared/components/mem-monitor/mem-monitor.component';
 import { VisibilityPanelComponent } from '../../../shared/components/visibility-panel/visibility-panel.component';
@@ -10,7 +9,7 @@ import { VisibilityPanelComponent } from '../../../shared/components/visibility-
 @Component({
   selector: 'app-terminal',
   standalone: true,
-  imports: [TerminalSidebarComponent, PanelAreaComponent, ModeToggleComponent, ThemeSwitcherComponent, HandbookComponent, MemMonitorComponent, VisibilityPanelComponent],
+  imports: [TerminalSidebarComponent, PanelAreaComponent, CommandBarComponent, HandbookComponent, MemMonitorComponent, VisibilityPanelComponent],
   templateUrl: './terminal.component.html',
   styleUrl: './terminal.component.scss',
 })

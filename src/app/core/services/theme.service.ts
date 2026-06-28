@@ -1,6 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
 
-export type ThemeId = 'default' | 'lith-harbor' | 'ellinia' | 'perion' | 'ossyria';
+export type ThemeId = 'default' | 'lith-harbor' | 'ellinia' | 'perion' | 'ossyria' | 'el-nath';
 
 export interface ThemeOption {
   id: ThemeId;
@@ -8,7 +8,7 @@ export interface ThemeOption {
   preview: string;
 }
 
-const VALID_THEMES = new Set<string>(['default', 'lith-harbor', 'ellinia', 'perion', 'ossyria']);
+const VALID_THEMES = new Set<string>(['default', 'lith-harbor', 'ellinia', 'perion', 'ossyria', 'el-nath']);
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
@@ -20,13 +20,14 @@ export class ThemeService {
     { id: 'ellinia', label: 'Ellinia', preview: '#5aaa68' },
     { id: 'perion', label: 'Perion', preview: '#d4784a' },
     { id: 'ossyria', label: 'Ossyria', preview: '#222222' },
+    { id: 'el-nath', label: 'El Nath', preview: '#88c0d0' },
   ];
 
   readonly activeTheme = signal<ThemeId>(this.loadTheme());
 
   readonly isDark = computed(() => {
     const t = this.activeTheme();
-    return t === 'ellinia' || t === 'perion';
+    return t === 'ellinia' || t === 'perion' || t === 'el-nath';
   });
 
   constructor() {
@@ -48,7 +49,7 @@ export class ThemeService {
   }
 
   private loadTheme(): ThemeId {
-    const stored = localStorage.getItem(this.STORAGE_KEY);
-    return stored && VALID_THEMES.has(stored) ? (stored as ThemeId) : 'default';
+    // Single theme now (Nord / El Nath). Kept as a service so views can stay theme-token driven.
+    return 'el-nath';
   }
 }
