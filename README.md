@@ -18,17 +18,19 @@ Optional (only for image tag lookups in the rollout panel):
 
 ## Quick Start
 
+You need `kubectl` already pointed at a cluster (see Prerequisites).
+
 ```bash
 npm install
 npm run dev
 ```
 
-Frontend at `http://localhost:4200`. Backend (Node) at port 3042.
+Frontend at `http://localhost:4200`, backend at port 3042. The landing page is where you pick a mode and, for offline use, export a snapshot.
 
 ## Modes
 
-- **Realtime** — runs kubectl against a live cluster
-- **Snapshot** — reads from `k8s-snapshot/` (export via home page or `bash scripts/k8s-export.sh`)
+- **Realtime** — runs kubectl against your live cluster (the default).
+- **Snapshot** — reads exported YAML from `k8s-snapshot/`. Create one from the landing page **Export** panel, then switch to Snapshot mode; no cluster needed after that. (`scripts/snapshot-bash.sh` does the same from the CLI if you prefer.)
 
 ## Configuration
 
