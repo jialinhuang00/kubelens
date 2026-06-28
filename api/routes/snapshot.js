@@ -257,17 +257,14 @@ router.get('/snapshot', async (req, res) => {
     } catch { /* ignore */ }
   }
 
-  // Determine paused vs done when not running
-  let paused = exportState.paused;
-  if (!exportState.running && !exportState.paused) {
-    if (hasCompleteMarker) {
-      // .export-complete exists → export finished successfully
-      paused = false;
-    } else if (liveCount > 0 && !exportState.error) {
-      // Files exist but no completion marker → partial/interrupted (user-paused)
-      paused = true;
-    }
-  }
+  // "Paused" = a resumable partial export: files on disk, no completion marker,
+  // not running, no error. A start→stop that produced zero files is NOT paused —
+  // there's nothing to resume — so it falls back to idle (avoids a dead-end modal
+  // that only offers "Resume" with 0 files exported).
+  const paused = !exportState.running
+    && !hasCompleteMarker
+    && liveCount > 0
+    && !exportState.error;
 
   // ETA: elapsed / doneNs * remainingNs — clamped to only decrease
   let etaSeconds = null;
