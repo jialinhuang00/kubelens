@@ -9,12 +9,32 @@
 .workspace-bar {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 2px;
   padding: 4px 8px;
   border-bottom: 1px solid var(--t-border);
   background: rgba(0, 0, 0, 0.2);
   flex-shrink: 0;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  transition: padding 0.18s ease, background 0.18s ease;
+
+  // While a panel is being dragged, the desktop tabs grow taller (macOS spaces-bar feel).
+  &.dragging {
+    padding-top: 8px;
+    padding-bottom: 8px;
+    background: rgba(136, 192, 208, 0.06);
+    border-bottom-color: var(--t-accent);
+
+    .workspace-tab {
+      padding-top: 9px;
+      padding-bottom: 9px;
+    }
+
+    .workspace-add {
+      align-self: stretch;
+      height: auto;
+    }
+  }
 }
 
 .workspace-tab {
@@ -41,6 +61,28 @@
     color: var(--t-accent);
     background: rgba(128, 128, 128, 0.06);
   }
+
+  &.drop-target {
+    border-style: dashed;
+    border-color: var(--t-accent);
+    color: var(--t-accent);
+    background: rgba(136, 192, 208, 0.12);
+  }
+
+  // Pointer is right over this tab — strongest "drop here" state.
+  &.drop-hover {
+    border-style: solid;
+    border-color: var(--t-accent);
+    color: var(--t-bg-body);
+    background: var(--t-accent);
+    padding-top: 12px;
+    padding-bottom: 12px;
+
+    .ws-count {
+      background: var(--t-bg-body);
+      color: var(--t-accent);
+    }
+  }
 }
 
 .ws-label {
@@ -48,11 +90,18 @@
 }
 
 .ws-count {
-  font-size: 9px;
+  min-width: 15px;
+  height: 15px;
+  margin-left: 3px;
   padding: 0 4px;
-  background: rgba(128, 128, 128, 0.1);
-  border-radius: 3px;
-  color: var(--t-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  background: var(--t-accent);
+  color: var(--t-bg-body);
+  border-radius: 999px;
 }
 
 .ws-close {
@@ -94,6 +143,19 @@
     border-color: var(--t-accent);
     color: var(--t-accent);
   }
+
+  &.drop-target {
+    border-color: var(--t-accent);
+    color: var(--t-accent);
+    background: rgba(136, 192, 208, 0.12);
+  }
+
+  &.drop-hover {
+    border-style: solid;
+    border-color: var(--t-accent);
+    background: var(--t-accent);
+    color: var(--t-bg-body);
+  }
 }
 
 // Panel area
@@ -102,6 +164,34 @@
   flex: 1;
   overflow: hidden;
   min-height: 0;
+}
+
+// Small proxy that follows the cursor while dragging a panel toward a desktop.
+.drag-ghost {
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 180px;
+  padding: 5px 9px;
+  border: 1px solid var(--t-accent);
+  border-radius: var(--t-radius-sm);
+  background: var(--t-bg-panel);
+  color: var(--t-accent);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  transform: translate(12px, 12px); // sit just below-right of the cursor
+  white-space: nowrap;
+}
+
+.ghost-icon { flex-shrink: 0; }
+
+.ghost-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .empty-state {

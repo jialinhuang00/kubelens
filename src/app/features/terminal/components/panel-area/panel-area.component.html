@@ -1,10 +1,13 @@
 <!-- Workspace tabs -->
 @if (panelManager.workspaceCount() > 1 || panelManager.allPanels().size > 0) {
-  <div class="workspace-bar">
+  <div class="workspace-bar" [class.dragging]="panelManager.draggingPanelId() !== null">
     @for (ws of panelManager.workspaces(); track ws.index) {
       <button
         class="workspace-tab"
         [class.active]="panelManager.activeWorkspace() === ws.index"
+        [class.drop-target]="isDropTarget(ws.index)"
+        [class.drop-hover]="panelManager.dragOverWorkspace() === ws.index"
+        [attr.data-ws-index]="ws.index"
         (click)="onSwitchWorkspace(ws.index)"
       >
         <span class="ws-label">Desktop {{ ws.index + 1 }}</span>
@@ -20,7 +23,14 @@
         }
       </button>
     }
-    <button class="workspace-add" (click)="onAddWorkspace()" title="New desktop">
+    <button
+      class="workspace-add"
+      [class.drop-target]="panelManager.draggingPanelId() !== null"
+      [class.drop-hover]="panelManager.dragOverWorkspace() === -1"
+      [attr.data-ws-index]="-1"
+      (click)="onAddWorkspace()"
+      title="New desktop"
+    >
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
       </svg>
@@ -34,6 +44,15 @@
       [panel]="panel"
       (closeRequest)="onClosePanel($event)"
     />
+  }
+
+  @if (panelManager.dragGhost(); as ghost) {
+    <div class="drag-ghost" [style.left.px]="ghost.x" [style.top.px]="ghost.y">
+      <svg class="ghost-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/>
+      </svg>
+      <span class="ghost-label">{{ ghost.label }}</span>
+    </div>
   }
 
   @if (panelManager.panelCount() === 0) {
