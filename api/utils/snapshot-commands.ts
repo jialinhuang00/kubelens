@@ -666,33 +666,33 @@ function handleGetAll(parsed: ParsedCommand): CommandResult {
     const header = lines[0];
     const podLines = lines.slice(1).map(l => `pod/${l.trim().split(/\s+/)[0]}   ${l.trim().split(/\s+/).slice(1).join('   ')}`);
     if (podLines.length > 0) {
-      parts.push(`=== POD ===\n${header}\n${podLines.join('\n')}`);
+      parts.push(`=== Pod ===\n${header}\n${podLines.join('\n')}`);
     }
   }
 
   const deployData = loadYaml('deployments.yaml', ns);
   if (deployData && (deployData.items || []).length > 0) {
-    parts.push(`=== DEPLOYMENT ===\n${generateDeploymentTable(deployData.items || [])}`);
+    parts.push(`=== Deployment ===\n${generateDeploymentTable(deployData.items || [])}`);
   }
 
   const svcData = loadYaml('services.yaml', ns);
   if (svcData && (svcData.items || []).length > 0) {
-    parts.push(`=== SERVICE ===\n${generateServiceTable(svcData.items || [])}`);
+    parts.push(`=== Service ===\n${generateServiceTable(svcData.items || [])}`);
   }
 
   const stsData = loadYaml('statefulsets.yaml', ns);
   if (stsData && (stsData.items || []).length > 0) {
-    parts.push(`=== STATEFULSET ===\n${generateStatefulsetTable(stsData.items || [])}`);
+    parts.push(`=== StatefulSet ===\n${generateStatefulsetTable(stsData.items || [])}`);
   }
 
   const cjData = loadYaml('cronjobs.yaml', ns);
   if (cjData && (cjData.items || []).length > 0) {
-    parts.push(`=== CRONJOB ===\n${generateCronjobTable(cjData.items || [])}`);
+    parts.push(`=== CronJob ===\n${generateCronjobTable(cjData.items || [])}`);
   }
 
   const jobData = loadYaml('jobs.yaml', ns);
   if (jobData && (jobData.items || []).length > 0) {
-    parts.push(`=== JOB ===\n${generateJobTable(jobData.items || [])}`);
+    parts.push(`=== Job ===\n${generateJobTable(jobData.items || [])}`);
   }
 
   // Match real kubectl when the namespace has nothing to show.
