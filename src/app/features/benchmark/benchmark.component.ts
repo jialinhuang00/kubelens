@@ -1,12 +1,11 @@
 import { Component, signal, afterNextRender } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { RACE_GROUPS, TCP_ROWS, PRIM_CARDS, RaceItem, RaceGroup } from './benchmark.data';
-import { ThemeSwitcherComponent } from '../../shared/components/theme-switcher/theme-switcher.component';
 
 @Component({
   selector: 'app-benchmark',
   standalone: true,
-  imports: [RouterLink, ThemeSwitcherComponent],
+  imports: [RouterLink],
   templateUrl: './benchmark.component.html',
   styleUrl: './benchmark.component.scss',
 })

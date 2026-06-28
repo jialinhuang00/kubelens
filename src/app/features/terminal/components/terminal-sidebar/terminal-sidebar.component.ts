@@ -1,6 +1,5 @@
 import { Component, inject, signal, effect, OnInit, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { BackLinkComponent } from '../../../../shared/components/back-link/back-link.component';
 import { NamespaceChipsComponent } from '../../../../shared/components/namespace-chips/namespace-chips.component';
 import { NamespaceService } from '../../../k8s/services/namespace.service';
 import { ResourceTreeService } from '../../services/resource-tree.service';
@@ -13,7 +12,7 @@ import { CommandTemplate } from '../../../../shared/models/kubectl.models';
 @Component({
   selector: 'app-terminal-sidebar',
   standalone: true,
-  imports: [CommonModule, BackLinkComponent, NamespaceChipsComponent],
+  imports: [CommonModule, NamespaceChipsComponent],
   templateUrl: './terminal-sidebar.component.html',
   styleUrl: './terminal-sidebar.component.scss',
 })

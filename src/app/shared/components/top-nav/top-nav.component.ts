@@ -1,5 +1,7 @@
-import { Component } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, computed, inject } from '@angular/core';
+import { RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, map, startWith } from 'rxjs';
 import { ModeToggleComponent } from '../mode-toggle/mode-toggle.component';
 
 /**
@@ -21,7 +23,9 @@ import { ModeToggleComponent } from '../mode-toggle/mode-toggle.component';
         <a routerLink="/benchmark" routerLinkActive="active">Benchmark</a>
       </div>
       <div class="right">
-        <app-mode-toggle />
+        @if (showModeToggle()) {
+          <app-mode-toggle />
+        }
       </div>
     </nav>
   `,
@@ -70,4 +74,22 @@ import { ModeToggleComponent } from '../mode-toggle/mode-toggle.component';
     }
   `],
 })
-export class TopNavComponent {}
+export class TopNavComponent {
+  private router = inject(Router);
+
+  // Track the active URL so the mode toggle can hide on static pages.
+  private url = toSignal(
+    this.router.events.pipe(
+      filter(e => e instanceof NavigationEnd),
+      map(e => (e as NavigationEnd).urlAfterRedirects),
+      startWith(this.router.url),
+    ),
+    { initialValue: this.router.url },
+  );
+
+  // Knowledge + Benchmark are static pages with no cluster data; Realtime/Snapshot is meaningless there.
+  protected showModeToggle = computed(() => {
+    const u = this.url();
+    return !u.startsWith('/knowledge') && !u.startsWith('/benchmark');
+  });
+}

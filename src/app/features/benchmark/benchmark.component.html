@@ -1,9 +1,4 @@
-<div class="theme-corner">
-  <app-theme-switcher />
-</div>
-
 <nav class="bench-nav">
-  <a routerLink="/" class="nav-back">← home</a>
   <button class="nav-link" [class.active]="activeSection() === 'race'"   (click)="scrollTo('race')"  >§1 Export Race</button>
   <button class="nav-link" [class.active]="activeSection() === 'tree'"   (click)="scrollTo('tree')"  >§2 Process Tree</button>
   <button class="nav-link" [class.active]="activeSection() === 'tcp'"    (click)="scrollTo('tcp')"   >§3 TCP</button>

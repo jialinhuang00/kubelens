@@ -40,11 +40,6 @@ table.tcp-table,
   font-family: 'IBM Plex Mono', monospace;
 }
 
-// ── Theme corner ──────────────────────────────────────────────
-.theme-corner {
-  position: fixed; top: 12px; right: 12px; z-index: 200;
-}
-
 // ── Nav ───────────────────────────────────────────────────────
 .bench-nav {
   position: sticky; top: 0; z-index: 100;
@@ -63,7 +58,6 @@ table.tcp-table,
     font-family: inherit; cursor: pointer;
 
     &:hover, &.active { color: var(--accent); border-bottom-color: var(--accent); }
-    &.nav-back { color: var(--text-dim); margin-right: auto; }
   }
 }
 

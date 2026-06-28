@@ -6,8 +6,6 @@ import {
 import { Router, RouterLink } from '@angular/router';
 import { DataModeService } from '../../core/services/data-mode.service';
 import { ThemeService } from '../../core/services/theme.service';
-import { BackLinkComponent } from '../../shared/components/back-link/back-link.component';
-import { ThemeSwitcherComponent } from '../../shared/components/theme-switcher/theme-switcher.component';
 import { NetworkPatternsComponent, type NetworkType } from './network-patterns/network-patterns.component';
 import {
   GraphNode, GraphEdge,
@@ -1221,7 +1219,7 @@ export const CRD_GLOSSARY: Record<CrdField, CrdInfo> = {
 
 @Component({
   selector: 'app-knowledge',
-  imports: [BackLinkComponent, ThemeSwitcherComponent, NetworkPatternsComponent, RouterLink],
+  imports: [NetworkPatternsComponent, RouterLink],
   templateUrl: './knowledge.component.html',
   styleUrls: ['./knowledge.component.scss'],
 })

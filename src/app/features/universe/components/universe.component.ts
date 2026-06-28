@@ -18,7 +18,6 @@ import { ThemeService } from '../../../core/services/theme.service';
 import { ConfigService, kindId } from '../../../core/services/config.service';
 import { VisibilityService } from '../../../core/services/visibility.service';
 import { NamespaceService } from '../../k8s/services/namespace.service';
-import { BackLinkComponent } from '../../../shared/components/back-link/back-link.component';
 import { NamespaceChipsComponent } from '../../../shared/components/namespace-chips/namespace-chips.component';
 import { HandbookComponent } from '../../../shared/components/handbook/handbook.component';
 import { VisibilityPanelComponent } from '../../../shared/components/visibility-panel/visibility-panel.component';
@@ -46,7 +45,7 @@ import {
 
 @Component({
   selector: 'app-universe',
-  imports: [DecimalPipe, KeyValuePipe, NgTemplateOutlet, BackLinkComponent, NamespaceChipsComponent, HandbookComponent, VisibilityPanelComponent, MemMonitorComponent],
+  imports: [DecimalPipe, KeyValuePipe, NgTemplateOutlet, NamespaceChipsComponent, HandbookComponent, VisibilityPanelComponent, MemMonitorComponent],
   templateUrl: './universe.component.html',
   styleUrls: ['./universe.component.scss'],
 })
