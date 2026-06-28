@@ -155,9 +155,10 @@ export class OutputParserService {
   }
 
   private hasMultipleTables(output: string): boolean {
-    // Check if output contains multiple "=== ResourceType ===" sections
+    // The snapshot get-all emulator tags each section with "=== ResourceType ===".
+    // Even a single tagged section should render as a table, not leak the raw marker.
     const tableSectionCount = (output.match(/=== \w+ ===/g) || []).length;
-    return tableSectionCount > 1;
+    return tableSectionCount >= 1;
   }
 
   private parseMultipleTables(output: string): TableData[] {
