@@ -621,8 +621,8 @@ function handleGetReplicasets(parsed: ParsedCommand): CommandResult {
 }
 
 function handleGetEvents(parsed: ParsedCommand): CommandResult {
-  const events = [
-    `LAST SEEN   TYPE      REASON              OBJECT                                        MESSAGE`,
+  const header = `LAST SEEN   TYPE      REASON              OBJECT                                        MESSAGE`;
+  let rows = [
     `3m          Normal    Scheduled           pod/web-app-7449d97884-j7bt5                  Successfully assigned ${DEFAULT_NAMESPACE}/web-app-7449d97884-j7bt5 to ip-10-0-1-50.ec2.internal`,
     `3m          Normal    Pulled              pod/web-app-7449d97884-j7bt5                  Container image already present on machine`,
     `3m          Normal    Created             pod/web-app-7449d97884-j7bt5                  Created container web-app`,
@@ -631,6 +631,16 @@ function handleGetEvents(parsed: ParsedCommand): CommandResult {
     `23h         Normal    ScalingReplicaSet   deployment/api-server                         Scaled up replica set api-server-86997f5d7f to 1`,
     `23h         Warning   BackOff             pod/worker-86565f7d48-2v46j                   Back-off restarting failed container`,
   ];
+
+  // Support `--field-selector type=Warning` (the "warnings" quick action) by filtering on the TYPE column.
+  const fieldSelector = parsed.flags['field-selector'];
+  if (typeof fieldSelector === 'string') {
+    const m = fieldSelector.match(/type=(\w+)/i);
+    if (m) {
+      const wanted = m[1].toLowerCase();
+      rows = rows.filter(r => r.trim().split(/\s+/)[1]?.toLowerCase() === wanted);
+    }
+  }
 
   if (parsed.output === 'json') {
     return {
@@ -643,7 +653,7 @@ function handleGetEvents(parsed: ParsedCommand): CommandResult {
     };
   }
 
-  return { success: true, stdout: events.join('\n') };
+  return { success: true, stdout: [header, ...rows].join('\n') };
 }
 
 function handleGetAll(parsed: ParsedCommand): CommandResult {
