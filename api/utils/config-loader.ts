@@ -101,6 +101,21 @@ export function getResourceFileMap(): Record<string, string> {
 }
 
 /**
+ * Map every resource name + alias to its `kubectl get -o name` prefix (e.g.
+ * `deployments` / `deploy` → `deployment.apps`). Lets the snapshot emulator emit
+ * the same `<prefix>/<name>` lines real kubectl does.
+ */
+export function getNamePrefixMap(): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const r of loadResources()) {
+    map[r.key] = r.namePrefix;
+    map[r.kind.toLowerCase()] = r.namePrefix;
+    for (const a of r.aliases ?? []) map[a] = r.namePrefix;
+  }
+  return map;
+}
+
+/**
  * Snapshot filename aliases for CRDs, whose YAML file is named with the full
  * group (e.g. `applications.argoproj.io.yaml`) but may also appear bare.
  */

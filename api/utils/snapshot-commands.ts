@@ -6,7 +6,7 @@
 import yaml from 'js-yaml';
 import { loadYaml, loadText, listBackupNamespaces, DEFAULT_NAMESPACE } from './snapshot-loader';
 import type { K8sItem, K8sList } from './snapshot-loader';
-import { getResourceFileMap } from './config-loader';
+import { getResourceFileMap, getNamePrefixMap } from './config-loader';
 import {
   extractNames, findItem, pad, getAge,
   generateDeploymentTable, generateServiceTable, generateCronjobTable,
@@ -272,6 +272,14 @@ function handleGet(parsed: ParsedCommand): CommandResult {
     return handleGetAll(parsed);
   }
 
+  // `-o name`, including comma-joined types (`get deployments,pods,services -o name`):
+  // emit `<namePrefix>/<name>` per item across every requested type. Real kubectl
+  // parses this natively; the emulator handles it here so the tree's batch load works
+  // offline (this is the only place the comma-separated form appears).
+  if (parsed.output === 'name' && parsed.resource && !parsed.resourceName) {
+    return handleGetName(parsed);
+  }
+
   if (['namespaces', 'namespace', 'ns'].includes(parsed.resource!)) {
     return handleGetNamespaces(parsed);
   }
@@ -368,6 +376,26 @@ function handleGet(parsed: ParsedCommand): CommandResult {
   }
 
   return { success: true, stdout: extractNames(data).join('\n') };
+}
+
+/**
+ * `kubectl get <type[,type...]> -o name` → one `<prefix>/<name>` line per item.
+ * Resolves each type to its config-derived snapshot file (bypassing the SPECIAL_NULL
+ * overlay so pods/replicasets read from their YAML), prefixing names the way kubectl does.
+ */
+function handleGetName(parsed: ParsedCommand): CommandResult {
+  const fileMap = { ...getResourceFileMap(), ...SNAPSHOT_EXTRA };
+  const prefixMap = getNamePrefixMap();
+  const lines: string[] = [];
+  for (const type of parsed.resource!.split(',').map(t => t.trim()).filter(Boolean)) {
+    const file = fileMap[type];
+    if (!file) continue; // unknown type: kubectl would error, but stay lenient for the batch
+    const data = loadYaml(file, parsed.namespace);
+    if (!data) continue;
+    const prefix = prefixMap[type] ?? type;
+    for (const name of extractNames(data)) lines.push(`${prefix}/${name}`);
+  }
+  return { success: true, stdout: lines.join('\n') };
 }
 
 function handleGetNamespaces(parsed: ParsedCommand): CommandResult {
