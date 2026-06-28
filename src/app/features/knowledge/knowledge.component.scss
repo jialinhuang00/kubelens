@@ -1,12 +1,12 @@
 :host {
   display: block;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
 }
 
 .knowledge-container {
   display: flex;
-  height: 100vh;
+  height: 100%;
   background: var(--t-bg-body);
   color: var(--t-text-primary);
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
@@ -17,7 +17,7 @@
 .sidebar {
   width: 320px;
   flex-shrink: 0;
-  height: 100vh;
+  height: 100%;
   background: var(--t-bg-surface);
   border-right: 1px solid var(--t-border);
   display: flex;

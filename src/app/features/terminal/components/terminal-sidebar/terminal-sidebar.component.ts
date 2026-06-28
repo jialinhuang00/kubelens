@@ -1,12 +1,10 @@
 import { Component, inject, signal, effect, OnInit, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { BackLinkComponent } from '../../../../shared/components/back-link/back-link.component';
 import { NamespaceChipsComponent } from '../../../../shared/components/namespace-chips/namespace-chips.component';
 import { NamespaceService } from '../../../k8s/services/namespace.service';
 import { ResourceTreeService } from '../../services/resource-tree.service';
 import { PanelManagerService } from '../../services/panel-manager.service';
-import { PanelExecutionService } from '../../services/panel-execution.service';
 import { TemplateService } from '../../../dashboard/services/template.service';
 import { DataModeService } from '../../../../core/services/data-mode.service';
 import { isOfficialGroup } from '../../../../core/services/config.service';
@@ -15,7 +13,7 @@ import { CommandTemplate } from '../../../../shared/models/kubectl.models';
 @Component({
   selector: 'app-terminal-sidebar',
   standalone: true,
-  imports: [CommonModule, FormsModule, BackLinkComponent, NamespaceChipsComponent],
+  imports: [CommonModule, BackLinkComponent, NamespaceChipsComponent],
   templateUrl: './terminal-sidebar.component.html',
   styleUrl: './terminal-sidebar.component.scss',
 })
@@ -23,7 +21,6 @@ export class TerminalSidebarComponent implements OnInit {
   private namespaceService = inject(NamespaceService);
   protected resourceTree = inject(ResourceTreeService);
   private panelManager = inject(PanelManagerService);
-  private panelExecution = inject(PanelExecutionService);
   private templateService = inject(TemplateService);
   protected dataModeService = inject(DataModeService);
   private destroyRef = inject(DestroyRef);
@@ -37,7 +34,6 @@ export class TerminalSidebarComponent implements OnInit {
     return !isOfficialGroup(group);
   }
   selectedNamespace = signal('');
-  customCommand = signal('');
 
   private prevMode: boolean | null = null;
   private modeEffect = effect(() => {
@@ -94,48 +90,6 @@ export class TerminalSidebarComponent implements OnInit {
     } else {
       const templates = this.getTemplatesForKind(kind, name);
       this.panelManager.openResourcePanel(kind, name, this.selectedNamespace(), templates);
-    }
-  }
-
-  onExecuteCustomCommand(): void {
-    const cmd = this.customCommand().trim();
-    if (!cmd) return;
-    const panelId = this.panelManager.openGeneralPanel();
-    this.panelExecution.execute(panelId, cmd);
-  }
-
-  onQuickAction(action: string): void {
-    const ns = this.selectedNamespace();
-    let command = '';
-    switch (action) {
-      case 'get-all':
-        command = ns ? `kubectl get all -n '${ns}'` : 'kubectl get all --all-namespaces';
-        break;
-      case 'events':
-        command = ns ? `kubectl get events -n '${ns}' --sort-by=.lastTimestamp` : 'kubectl get events --all-namespaces --sort-by=.lastTimestamp';
-        break;
-      case 'nodes':
-        command = 'kubectl get nodes -o wide';
-        break;
-      case 'images':
-        command = ns ? `kubectl get pods -n '${ns}' -o custom-columns="POD:.metadata.name,IMAGE:.spec.containers[*].image" --no-headers` : '';
-        break;
-      case 'top-pods':
-        command = ns ? `kubectl top pods -n '${ns}' --sort-by=memory` : '';
-        break;
-      case 'endpoints':
-        command = ns ? `kubectl get endpoints -n '${ns}'` : '';
-        break;
-    }
-    if (!command) return;
-    const panelId = this.panelManager.openGeneralPanel();
-    this.panelExecution.execute(panelId, command);
-  }
-
-  onCommandKeyDown(event: KeyboardEvent): void {
-    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-      event.preventDefault();
-      this.onExecuteCustomCommand();
     }
   }
 

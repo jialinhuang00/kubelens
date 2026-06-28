@@ -18,8 +18,6 @@ import { ThemeService } from '../../../core/services/theme.service';
 import { ConfigService, kindId } from '../../../core/services/config.service';
 import { VisibilityService } from '../../../core/services/visibility.service';
 import { NamespaceService } from '../../k8s/services/namespace.service';
-import { ModeToggleComponent } from '../../../shared/components/mode-toggle/mode-toggle.component';
-import { ThemeSwitcherComponent } from '../../../shared/components/theme-switcher/theme-switcher.component';
 import { BackLinkComponent } from '../../../shared/components/back-link/back-link.component';
 import { NamespaceChipsComponent } from '../../../shared/components/namespace-chips/namespace-chips.component';
 import { HandbookComponent } from '../../../shared/components/handbook/handbook.component';
@@ -48,7 +46,7 @@ import {
 
 @Component({
   selector: 'app-universe',
-  imports: [DecimalPipe, KeyValuePipe, NgTemplateOutlet, ModeToggleComponent, ThemeSwitcherComponent, BackLinkComponent, NamespaceChipsComponent, HandbookComponent, VisibilityPanelComponent, MemMonitorComponent],
+  imports: [DecimalPipe, KeyValuePipe, NgTemplateOutlet, BackLinkComponent, NamespaceChipsComponent, HandbookComponent, VisibilityPanelComponent, MemMonitorComponent],
   templateUrl: './universe.component.html',
   styleUrls: ['./universe.component.scss'],
 })
@@ -128,11 +126,23 @@ export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {
   // Theme-aware kind color palette (refreshed on theme or mode change)
   readonly kindColors = signal<Record<NodeKind, string>>(getThemedKindColors());
 
+  private prevSnapshot: boolean | null = null;
+
   constructor() {
     effect(() => {
       this.themeService.activeTheme();
       // Read after a tick so CSS variables are applied first
       setTimeout(() => this.kindColors.set(getThemedKindColors()), 0);
+    });
+
+    // Mode (snapshot/realtime) now lives in the global top nav, not a local toggle.
+    // React to changes here so switching mode from the nav still reloads the graph.
+    effect(() => {
+      const snapshot = this.dataModeService.isSnapshotMode();
+      if (this.prevSnapshot !== null && snapshot !== this.prevSnapshot) {
+        this.onModeChanged();
+      }
+      this.prevSnapshot = snapshot;
     });
 
     // Hide graph kinds the user turned off in the visibility panel. Only the
