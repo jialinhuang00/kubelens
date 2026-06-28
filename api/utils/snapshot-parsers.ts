@@ -259,6 +259,120 @@ export function generateEndpointTable(items: K8sItem[]): string {
   return [header, ...rows].join('\n');
 }
 
+/** kubectl-style secret table: `NAME TYPE DATA AGE`. */
+export function generateSecretTable(items: K8sItem[]): string {
+  const header = `${pad('NAME', 44)}${pad('TYPE', 36)}${pad('DATA', 7)}AGE`;
+  const rows = items.map(s => {
+    const dataCount = s.data ? Object.keys(s.data).length : 0;
+    return `${pad(s.metadata.name, 44)}${pad((s.type as string) || 'Opaque', 36)}${pad(String(dataCount), 7)}${getAge(s.metadata.creationTimestamp)}`;
+  });
+  return [header, ...rows].join('\n');
+}
+
+/** Abbreviate PVC access modes the way kubectl does (ReadWriteMany → RWX). */
+const ACCESS_MODE_ABBR: Record<string, string> = {
+  ReadWriteOnce: 'RWO', ReadOnlyMany: 'ROX', ReadWriteMany: 'RWX', ReadWriteOncePod: 'RWOP',
+};
+
+/** kubectl-style PVC table: `NAME STATUS VOLUME CAPACITY ACCESS MODES STORAGECLASS AGE`. */
+export function generatePvcTable(items: K8sItem[]): string {
+  const header = `${pad('NAME', 28)}${pad('STATUS', 9)}${pad('VOLUME', 38)}${pad('CAPACITY', 11)}${pad('ACCESS MODES', 15)}${pad('STORAGECLASS', 15)}AGE`;
+  const rows = items.map(p => {
+    const spec = (p.spec || {}) as Record<string, unknown>;
+    const status = (p.status || {}) as Record<string, unknown>;
+    const capacity = ((status.capacity || {}) as Record<string, string>).storage || '';
+    const modes = ((spec.accessModes as string[]) || []).map(m => ACCESS_MODE_ABBR[m] || m).join(',') || '<none>';
+    return `${pad(p.metadata.name, 28)}${pad((status.phase as string) || '<unknown>', 9)}${pad((spec.volumeName as string) || '', 38)}${pad(capacity, 11)}${pad(modes, 15)}${pad((spec.storageClassName as string) || '<none>', 15)}${getAge(p.metadata.creationTimestamp)}`;
+  });
+  return [header, ...rows].join('\n');
+}
+
+/** kubectl-style service-account table: `NAME SECRETS AGE`. */
+export function generateServiceAccountTable(items: K8sItem[]): string {
+  const header = `${pad('NAME', 38)}${pad('SECRETS', 10)}AGE`;
+  const rows = items.map(sa => {
+    const secrets = ((sa.secrets as unknown[]) || []).length;
+    return `${pad(sa.metadata.name, 38)}${pad(String(secrets), 10)}${getAge(sa.metadata.creationTimestamp)}`;
+  });
+  return [header, ...rows].join('\n');
+}
+
+/** kubectl-style daemonset table: `NAME DESIRED CURRENT READY UP-TO-DATE AVAILABLE NODE SELECTOR AGE`. */
+export function generateDaemonsetTable(items: K8sItem[]): string {
+  const header = `${pad('NAME', 22)}${pad('DESIRED', 9)}${pad('CURRENT', 9)}${pad('READY', 7)}${pad('UP-TO-DATE', 12)}${pad('AVAILABLE', 11)}${pad('NODE SELECTOR', 20)}AGE`;
+  const rows = items.map(d => {
+    const st = (d.status || {}) as Record<string, unknown>;
+    const spec = (d.spec || {}) as Record<string, unknown>;
+    const tplSpec = (((spec.template || {}) as Record<string, unknown>).spec || {}) as Record<string, unknown>;
+    const nodeSel = Object.entries((tplSpec.nodeSelector || {}) as Record<string, string>).map(([k, v]) => `${k}=${v}`).join(',') || '<none>';
+    return `${pad(d.metadata.name, 22)}${pad(String(st.desiredNumberScheduled ?? 0), 9)}${pad(String(st.currentNumberScheduled ?? 0), 9)}${pad(String(st.numberReady ?? 0), 7)}${pad(String(st.updatedNumberScheduled ?? 0), 12)}${pad(String(st.numberAvailable ?? 0), 11)}${pad(nodeSel, 20)}${getAge(d.metadata.creationTimestamp)}`;
+  });
+  return [header, ...rows].join('\n');
+}
+
+/** kubectl-style ingress table: `NAME CLASS HOSTS ADDRESS PORTS AGE`. */
+export function generateIngressTable(items: K8sItem[]): string {
+  const header = `${pad('NAME', 20)}${pad('CLASS', 16)}${pad('HOSTS', 30)}${pad('ADDRESS', 20)}${pad('PORTS', 10)}AGE`;
+  const rows = items.map(i => {
+    const spec = (i.spec || {}) as Record<string, unknown>;
+    const status = (i.status || {}) as Record<string, unknown>;
+    const hosts = ((spec.rules as Array<Record<string, unknown>>) || []).map(r => r.host as string).filter(Boolean).join(',') || '*';
+    const lb = (((status.loadBalancer || {}) as Record<string, unknown>).ingress as Array<Record<string, unknown>>) || [];
+    const address = lb.map(a => (a.hostname as string) || (a.ip as string)).filter(Boolean).join(',');
+    const ports = spec.tls ? '80, 443' : '80';
+    return `${pad(i.metadata.name, 20)}${pad((spec.ingressClassName as string) || '<none>', 16)}${pad(hosts, 30)}${pad(address, 20)}${pad(ports, 10)}${getAge(i.metadata.creationTimestamp)}`;
+  });
+  return [header, ...rows].join('\n');
+}
+
+/** kubectl-style HPA table: `NAME REFERENCE TARGETS MINPODS MAXPODS REPLICAS AGE`. */
+export function generateHpaTable(items: K8sItem[]): string {
+  const header = `${pad('NAME', 20)}${pad('REFERENCE', 28)}${pad('TARGETS', 16)}${pad('MINPODS', 9)}${pad('MAXPODS', 9)}${pad('REPLICAS', 10)}AGE`;
+  const rows = items.map(h => {
+    const spec = (h.spec || {}) as Record<string, unknown>;
+    const status = (h.status || {}) as Record<string, unknown>;
+    const ref = (spec.scaleTargetRef || {}) as Record<string, string>;
+    const reference = `${ref.kind}/${ref.name}`;
+    const specMetric = ((spec.metrics as Array<Record<string, unknown>>) || [])[0]?.resource as Record<string, unknown> | undefined;
+    const curMetric = ((status.currentMetrics as Array<Record<string, unknown>>) || [])[0]?.resource as Record<string, unknown> | undefined;
+    const target = ((specMetric?.target || {}) as Record<string, unknown>).averageUtilization;
+    const current = ((curMetric?.current || {}) as Record<string, unknown>).averageUtilization;
+    const metricName = (specMetric?.name as string) || 'cpu';
+    const targets = target != null ? `${metricName}: ${current != null ? `${current}%` : '<unknown>'}/${target}%` : '<none>';
+    return `${pad(h.metadata.name, 20)}${pad(reference, 28)}${pad(targets, 16)}${pad(String(spec.minReplicas ?? 1), 9)}${pad(String(spec.maxReplicas ?? 1), 9)}${pad(String(status.currentReplicas ?? 0), 10)}${getAge(h.metadata.creationTimestamp)}`;
+  });
+  return [header, ...rows].join('\n');
+}
+
+/** kubectl-style role table: `NAME CREATED AT` (RBAC kinds show a timestamp, not an age). */
+export function generateRoleTable(items: K8sItem[]): string {
+  const header = `${pad('NAME', 40)}CREATED AT`;
+  const rows = items.map(r => `${pad(r.metadata.name, 40)}${r.metadata.creationTimestamp || '<unknown>'}`);
+  return [header, ...rows].join('\n');
+}
+
+/** kubectl-style rolebinding table: `NAME ROLE AGE`. */
+export function generateRoleBindingTable(items: K8sItem[]): string {
+  const header = `${pad('NAME', 40)}${pad('ROLE', 36)}AGE`;
+  const rows = items.map(rb => {
+    const ref = rb.roleRef;
+    return `${pad(rb.metadata.name, 40)}${pad(`${ref?.kind ?? 'Role'}/${ref?.name ?? ''}`, 36)}${getAge(rb.metadata.creationTimestamp)}`;
+  });
+  return [header, ...rows].join('\n');
+}
+
+/** kubectl-style networkpolicy table: `NAME POD-SELECTOR AGE`. */
+export function generateNetworkPolicyTable(items: K8sItem[]): string {
+  const header = `${pad('NAME', 24)}${pad('POD-SELECTOR', 40)}AGE`;
+  const rows = items.map(n => {
+    const sel = (((n.spec || {}) as Record<string, unknown>).podSelector || {}) as Record<string, unknown>;
+    const matchLabels = (sel.matchLabels || {}) as Record<string, string>;
+    const podSelector = Object.entries(matchLabels).map(([k, v]) => `${k}=${v}`).join(',') || '<none>';
+    return `${pad(n.metadata.name, 24)}${pad(podSelector, 40)}${getAge(n.metadata.creationTimestamp)}`;
+  });
+  return [header, ...rows].join('\n');
+}
+
 // --- Describe generators ---
 
 /**
