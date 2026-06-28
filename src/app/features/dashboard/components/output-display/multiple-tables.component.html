@@ -38,6 +38,12 @@
 <div class="space-y-4">
   @for (tableData of multipleTables; track tableData.title) {
   <div>
+    <div class="kind-title" (click)="onToggleTable(tableData.title)">
+      <span class="kind-toggle">{{ isTableExpanded(tableData.title) ? '▾' : '▸' }}</span>
+      <span class="kind-name">{{ tableData.title }}</span>
+      <span class="kind-count">{{ tableData.data.length }}</span>
+    </div>
+    @if (isTableExpanded(tableData.title)) {
     <div class="table-container">
       <table class="min-w-full compact-table">
         <thead style="background: var(--bg-tertiary);"
@@ -75,6 +81,7 @@
         </tbody>
       </table>
     </div>
+    }
   </div>
   }
 </div>
