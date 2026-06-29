@@ -134,7 +134,11 @@ export class GraphLayoutService {
         hoveredNodeRingColor: '#ffffff',
         focusedNodeRingColor: getComputedStyle(document.documentElement).getPropertyValue('--t-accent').trim() || '#e8b866',
         randomSeed: 42,
-        disableSimulation: isLarge,
+        // Always use the preset namespace-grid positions from buildCosmosData and
+        // skip the force sim. With the sim on, small graphs never visually settle
+        // — the canvas keeps drifting and is hard to click. (It used to run for
+        // graphs under 200 nodes.) Static presets match the large-graph behaviour.
+        disableSimulation: true,
         simulation: {
           gravity: 0.25,
           center: 0.35,
