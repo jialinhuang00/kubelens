@@ -93,3 +93,6 @@ k8s-snapshot*/
 
 # Internal planning / scratch docs (not for the repo)
 plan-*.md
+
+# Local archive (kept tools/notes; benchmark.sh holds real cluster IPs)
+archive/
