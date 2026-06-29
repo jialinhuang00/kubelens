@@ -158,7 +158,7 @@ templates:
     - name: YAML
       command: kubectl get secret {name} -n {namespace} -o yaml
     - name: Decode
-      command: 'kubectl get secret {name} -n {namespace} -o jsonpath="{.data}" | jq ''to_entries[] | {key: .key, value: (.value | @base64d)}'''
+      command: kubectl get secret {name} -n {namespace} -o jsonpath="{.data}"
   PersistentVolumeClaim:
     - name: Details
       command: kubectl describe pvc {name} -n {namespace}

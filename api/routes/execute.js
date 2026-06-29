@@ -129,6 +129,34 @@ function splitGetAllTables(output) {
   return result;
 }
 
+/**
+ * The Secret "Decode" template asks for `-o jsonpath={.data}`. There's no shell
+ * to pipe into jq (parseArgs would mangle the `|`), and raw jsonpath prints a Go
+ * map rather than JSON — so detect that command, fetch the secret as JSON, and
+ * base64-decode its data here. Mirrors the snapshot emulator so both modes return
+ * the same decoded output. Returns the decoded JSON string, or null if not a match.
+ */
+async function tryDecodeSecret(args) {
+  if (args[0] !== 'get' || (args[1] !== 'secret' && args[1] !== 'secrets')) return null;
+  if (!args.some(a => a === 'jsonpath={.data}' || a === '{.data}')) return null;
+  const name = args[2] && !args[2].startsWith('-') ? args[2] : null;
+  if (!name) return null;
+
+  const jsonArgs = ['get', 'secret', name];
+  const nsIdx = args.findIndex(a => a === '-n' || a === '--namespace');
+  if (nsIdx >= 0 && args[nsIdx + 1]) jsonArgs.push('-n', args[nsIdx + 1]);
+  jsonArgs.push('-o', 'json');
+
+  const { stdout } = await execFileAsync('kubectl', jsonArgs, { timeout: 30000 });
+  const data = JSON.parse(stdout).data || {};
+  const decoded = {};
+  for (const [k, v] of Object.entries(data)) {
+    try { decoded[k] = Buffer.from(v, 'base64').toString('utf-8'); }
+    catch { decoded[k] = v; }
+  }
+  return JSON.stringify(decoded, null, 2);
+}
+
 // POST /api/execute
 router.post('/execute', async (req, res) => {
   const { command } = req.body;
@@ -158,6 +186,11 @@ router.post('/execute', async (req, res) => {
   console.log(`Args: ${JSON.stringify(args)}`);
 
   try {
+    const decodedSecret = await tryDecodeSecret(args);
+    if (decodedSecret !== null) {
+      return res.json({ success: true, stdout: decodedSecret, command });
+    }
+
     const { stdout } = await execFileAsync('kubectl', args, { timeout: 30000 });
 
     let processedOutput = stdout;
