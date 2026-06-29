@@ -12,7 +12,7 @@ import {
   generateDeploymentTable, generateServiceTable, generateCronjobTable,
   generateStatefulsetTable, generateJobTable,
   generateDeploymentDescribe, generatePodDescribe, generateServiceDescribe,
-  generateGenericDescribe,
+  generateGenericDescribe, generateReplicaSetDescribe,
 } from './snapshot-parsers';
 
 /** Result from handleCommand(). Either `{ success: true, stdout }` or `{ success: false, error }`. */
@@ -777,6 +777,25 @@ function handleDescribe(parsed: ParsedCommand): CommandResult {
     return {
       success: true,
       stdout: (data.items || []).map(item => generateServiceDescribe(item)).join('\n\n---\n\n')
+    };
+  }
+
+  // ReplicaSets aren't exported as their own file — they're synthesized from the
+  // owning Deployment (matching `handleGetReplicasets`'s `<deployment>-<generation>` name).
+  if (['replicaset', 'replicasets', 'rs'].includes(resource!)) {
+    const data = loadYaml('deployments.yaml', parsed.namespace);
+    if (!data) return { success: false, error: 'No replicaset data' };
+    const deployments = data.items || [];
+    const rsNameOf = (d: K8sItem) => `${d.metadata.name}-${String(d.metadata.generation || '1').padStart(2, '0')}`;
+    if (name) {
+      const dep = deployments.find(d => rsNameOf(d) === name)
+        || deployments.find(d => name.startsWith(`${d.metadata.name}-`));
+      if (!dep) return { success: false, error: `Error from server (NotFound): replicasets.apps "${name}" not found` };
+      return { success: true, stdout: generateReplicaSetDescribe(dep, name) };
+    }
+    return {
+      success: true,
+      stdout: deployments.map(d => generateReplicaSetDescribe(d, rsNameOf(d))).join('\n\n---\n\n')
     };
   }
 

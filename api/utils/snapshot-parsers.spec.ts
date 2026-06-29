@@ -5,6 +5,7 @@ import {
   generateDeploymentTable, generateServiceTable, generateConfigmapTable,
   generateCronjobTable, generateStatefulsetTable, generateJobTable, generateEndpointTable,
   generateDeploymentDescribe, generateServiceDescribe, generateGenericDescribe,
+  generateReplicaSetDescribe,
 } from './snapshot-parsers';
 import { makeItem, makeList, makeDeploymentItem, makeServiceItem, makeConfigMapItem, makeMetadata } from './test-fixtures';
 
@@ -313,6 +314,39 @@ describe('generateDeploymentDescribe', () => {
     assert.ok(out.includes('3 desired'));
     assert.ok(out.includes('StrategyType:'));
     assert.ok(out.includes('Pod Template:'));
+  });
+});
+
+// --- generateReplicaSetDescribe ---
+
+describe('generateReplicaSetDescribe', () => {
+  it('returns not-found for null', () => {
+    const out = generateReplicaSetDescribe(null, 'ghost-rs');
+    assert.ok(out.includes('NotFound'));
+    assert.ok(out.includes('ghost-rs'));
+  });
+
+  it('synthesizes RS details from the owning deployment', () => {
+    const dep = makeDeploymentItem('web', {
+      replicas: 3, ready: 3,
+      labels: { app: 'web' },
+      image: 'nginx:1.25',
+    });
+    const out = generateReplicaSetDescribe(dep, 'web-07');
+    assert.ok(out.includes('Name:           web-07'));
+    assert.ok(out.includes('Controlled By:  Deployment/web'));
+    assert.ok(out.includes('app=web'));
+    assert.ok(out.includes('nginx:1.25'));
+    assert.ok(out.includes('3 current / 3 desired'));
+    assert.ok(out.includes('Pod Template:'));
+  });
+
+  it('does not duplicate the pod-template-hash label', () => {
+    const dep = makeDeploymentItem('web', { replicas: 1, ready: 1, labels: { app: 'web' } });
+    const out = generateReplicaSetDescribe(dep, 'web-99');
+    const hashLines = out.split('\n').filter(l => l.includes('pod-template-hash='));
+    // exactly once in the Selector line and once in the Labels block — the bug printed it twice in Labels
+    assert.equal(hashLines.length, 2);
   });
 });
 

@@ -324,6 +324,53 @@ Events:               <none>`;
 }
 
 /**
+ * Generate `kubectl describe replicaset` output. Snapshots don't export ReplicaSets
+ * as their own file — they're synthesized from the owning Deployment (see
+ * `handleGetReplicasets`), so describe is derived the same way: pass the parent
+ * Deployment plus the synthetic RS name.
+ */
+export function generateReplicaSetDescribe(deployment: K8sItem | null, rsName: string): string {
+  if (!deployment) return `Error from server (NotFound): replicasets.apps "${rsName}" not found`;
+  const m = deployment.metadata;
+  const s = (deployment.spec || {}) as Record<string, unknown>;
+  const st = (deployment.status || {}) as Record<string, unknown>;
+  const template = (s.template || {}) as Record<string, unknown>;
+  const templateSpec = (template.spec || {}) as Record<string, unknown>;
+  const templateMeta = (template.metadata || {}) as Record<string, unknown>;
+  const templateLabels = (templateMeta.labels || {}) as Record<string, string>;
+  const selector = (s.selector || {}) as Record<string, unknown>;
+  const matchLabels = (selector.matchLabels || {}) as Record<string, string>;
+  const hash = (templateLabels['pod-template-hash'] as string) || rsName.split('-').pop() || 'abc123';
+
+  const containers = ((templateSpec.containers || []) as Array<Record<string, unknown>>).map(c => {
+    const envLines = ((c.env || []) as Array<Record<string, unknown>>).map(e => `      ${e.name}:  ${e.value || '<set to the key>'}`).join('\n');
+    const resources = (c.resources || {}) as Record<string, unknown>;
+    const containerPorts = ((c.ports || []) as Array<Record<string, unknown>>).map(p => `${p.containerPort}/${(p.protocol as string) || 'TCP'}`).join(', ') || '<none>';
+    return `  ${c.name}:\n    Image:      ${c.image}\n    Port:       ${containerPorts}\n    Limits:     ${JSON.stringify(resources.limits || {})}\n    Requests:   ${JSON.stringify(resources.requests || {})}\n    Environment:\n${envLines || '      <none>'}`;
+  }).join('\n');
+
+  const desired = (s.replicas as number) ?? 1;
+  const current = (st.replicas as number) ?? desired;
+  const ready = (st.readyReplicas as number) ?? 0;
+  const selectorStr = Object.entries({ ...matchLabels, 'pod-template-hash': hash }).map(([k, v]) => `${k}=${v}`).join(',');
+  const labelLines = Object.entries({ ...templateLabels, 'pod-template-hash': hash }).map(([k, v]) => `${k}=${v}`).join('\n                ');
+
+  return `Name:           ${rsName}
+Namespace:      ${m.namespace}
+Selector:       ${selectorStr}
+Labels:         ${labelLines}
+Annotations:    <none>
+Controlled By:  Deployment/${m.name}
+Replicas:       ${current} current / ${desired} desired
+Pods Status:    ${ready} Running / 0 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:  ${Object.entries(templateLabels).map(([k, v]) => `${k}=${v}`).join('\n           ') || '<none>'}
+  Containers:
+${containers}
+Events:         <none>`;
+}
+
+/**
  * Generate `kubectl describe pod` output by parsing pods-snapshot.txt.
  * Unlike other describe functions, this reads from the text snapshot (not YAML).
  * @param podName - Pod name to look up in pods-snapshot.txt
