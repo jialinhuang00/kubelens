@@ -1,0 +1,11 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    # Map host:8080 → node:30080 so the browser can reach the gateway Service's
+    # NodePort. Traffic then goes through kube-proxy, which load-balances across
+    # the gateway pods (unlike `kubectl port-forward`, which pins one pod).
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 8080
+        protocol: TCP

@@ -28,6 +28,10 @@ pnpm run dev
 
 Frontend at `http://localhost:4200`, backend at port 3042. The landing page is where you pick a mode and, for offline use, export a snapshot.
 
+No cluster to point at? [`examples/`](./examples/README.md) spins up a throwaway
+[kind](https://kind.sigs.k8s.io/) cluster with a small 3-service demo app, so you
+have something real to explore in a couple of commands.
+
 ## Modes
 
 - **Realtime** — runs kubectl against your live cluster (the default).
