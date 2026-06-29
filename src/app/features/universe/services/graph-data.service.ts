@@ -26,6 +26,12 @@ export class GraphDataService {
     // Cancel previous in-flight request (server detects client disconnect)
     this.inflight?.unsubscribe();
 
+    // Drop stale data before fetching. This service is a root singleton, so its
+    // data survives navigation and mode switches. The Universe component's init
+    // pollers wait for data() to go non-null, then build the graph once — if the
+    // previous mode's data were still here, they'd build with it before the new
+    // response lands (switching mode would keep showing the old cluster).
+    this._data.set(null);
     this._loading.set(true);
     this._error.set(null);
 
