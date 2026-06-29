@@ -83,10 +83,34 @@
       color: var(--t-accent);
     }
   }
+
+  // The desktop the dragged panel already lives on — can't drop back onto itself.
+  &.drop-disabled,
+  &.drop-disabled:hover {
+    cursor: not-allowed;
+    opacity: 0.4;
+    border-style: dashed;
+    border-color: var(--t-border);
+    color: var(--t-text-dim);
+    background: transparent;
+  }
 }
 
 .ws-label {
   white-space: nowrap;
+}
+
+// Inline rename field — sized to match a tab so the bar doesn't jump.
+.workspace-rename {
+  padding: 3px 10px;
+  border: 1px solid var(--t-accent);
+  border-radius: 4px;
+  background: var(--t-bg-body);
+  color: var(--t-text-primary);
+  font-size: 10px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  outline: none;
+  width: 90px;
 }
 
 .ws-count {

@@ -2,26 +2,39 @@
 @if (panelManager.workspaceCount() > 1 || panelManager.allPanels().size > 0) {
   <div class="workspace-bar" [class.dragging]="panelManager.draggingPanelId() !== null">
     @for (ws of panelManager.workspaces(); track ws.index) {
-      <button
-        class="workspace-tab"
-        [class.active]="panelManager.activeWorkspace() === ws.index"
-        [class.drop-target]="isDropTarget(ws.index)"
-        [class.drop-hover]="panelManager.dragOverWorkspace() === ws.index"
-        [attr.data-ws-index]="ws.index"
-        (click)="onSwitchWorkspace(ws.index)"
-      >
-        <span class="ws-label">Desktop {{ ws.index + 1 }}</span>
-        @if (ws.panelCount > 0) {
-          <span class="ws-count">{{ ws.panelCount }}</span>
-        }
-        @if (panelManager.workspaceCount() > 1) {
-          <button class="ws-close" (click)="onRemoveWorkspace(ws.index, $event)" title="Remove desktop">
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        }
-      </button>
+      @if (editingWorkspace() === ws.index) {
+        <input
+          class="workspace-rename"
+          [value]="ws.name || 'Desktop ' + (ws.index + 1)"
+          (keydown.enter)="commitRename(ws.index, $event)"
+          (keydown.escape)="cancelRename()"
+          (blur)="commitRename(ws.index, $event)"
+        />
+      } @else {
+        <button
+          class="workspace-tab"
+          [class.active]="panelManager.activeWorkspace() === ws.index"
+          [class.drop-target]="isDropTarget(ws.index)"
+          [class.drop-disabled]="isDropDisabled(ws.index)"
+          [class.drop-hover]="panelManager.dragOverWorkspace() === ws.index && !isDropDisabled(ws.index)"
+          [attr.data-ws-index]="ws.index"
+          (click)="onSwitchWorkspace(ws.index)"
+          (dblclick)="startRename(ws.index)"
+          title="Double-click to rename"
+        >
+          <span class="ws-label">{{ ws.name || 'Desktop ' + (ws.index + 1) }}</span>
+          @if (ws.panelCount > 0) {
+            <span class="ws-count">{{ ws.panelCount }}</span>
+          }
+          @if (panelManager.workspaceCount() > 1) {
+            <button class="ws-close" (click)="onRemoveWorkspace(ws.index, $event)" title="Remove desktop">
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          }
+        </button>
+      }
     }
     <button
       class="workspace-add"

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PanelManagerService } from '../../services/panel-manager.service';
 import { FloatingPanelComponent } from '../floating-panel/floating-panel.component';
@@ -20,6 +20,13 @@ export class PanelAreaComponent {
     return this.panelManager.getPanelWorkspace(draggingId) !== index;
   }
 
+  /** The desktop the dragged panel already lives on — dropping there is a no-op, so show it disabled. */
+  isDropDisabled(index: number): boolean {
+    const draggingId = this.panelManager.draggingPanelId();
+    if (draggingId === null) return false;
+    return this.panelManager.getPanelWorkspace(draggingId) === index;
+  }
+
   onClosePanel(id: string): void {
     this.panelManager.closePanel(id);
   }
@@ -35,5 +42,28 @@ export class PanelAreaComponent {
   onRemoveWorkspace(index: number, event: MouseEvent): void {
     event.stopPropagation();
     this.panelManager.removeWorkspace(index);
+  }
+
+  /** Which desktop tab is currently being renamed (null = none). */
+  editingWorkspace = signal<number | null>(null);
+
+  startRename(index: number): void {
+    this.editingWorkspace.set(index);
+    // The input mounts on the next render; focus + select it once it's in the DOM.
+    setTimeout(() => {
+      const el = document.querySelector('.workspace-rename') as HTMLInputElement | null;
+      el?.focus();
+      el?.select();
+    });
+  }
+
+  commitRename(index: number, event: Event): void {
+    if (this.editingWorkspace() !== index) return; // Enter already committed; ignore the trailing blur.
+    this.panelManager.renameWorkspace(index, (event.target as HTMLInputElement).value);
+    this.editingWorkspace.set(null);
+  }
+
+  cancelRename(): void {
+    this.editingWorkspace.set(null);
   }
 }

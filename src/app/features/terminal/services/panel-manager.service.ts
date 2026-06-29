@@ -27,6 +27,7 @@ interface SavedPanel {
 interface SavedWorkspace {
   activeWorkspace: number;
   workspaceCount: number;
+  workspaceNames?: [number, string][];
   panels: SavedPanel[];
 }
 
@@ -39,6 +40,9 @@ export class PanelManagerService {
   // Workspace state
   activeWorkspace = signal(0);
   workspaceCount = signal(1);
+
+  // Custom desktop names, keyed by workspace index. Absent = fall back to "Desktop N".
+  private workspaceNames = signal<Map<number, string>>(new Map());
 
   // Id of the panel currently being dragged (drives drop-target highlight on the workspace tabs)
   draggingPanelId = signal<string | null>(null);
@@ -62,8 +66,10 @@ export class PanelManagerService {
   workspaces = computed(() => {
     const count = this.workspaceCount();
     const all = this.panels();
+    const names = this.workspaceNames();
     return Array.from({ length: count }, (_, i) => ({
       index: i,
+      name: names.get(i),
       panelCount: [...all.values()].filter(p => p.workspace === i).length,
     }));
   });
@@ -214,6 +220,19 @@ export class PanelManagerService {
     }
   }
 
+  /** Rename a desktop. Empty or the default "Desktop N" clears the custom name. */
+  renameWorkspace(index: number, name: string): void {
+    const trimmed = name.trim();
+    const next = new Map(this.workspaceNames());
+    if (!trimmed || trimmed === `Desktop ${index + 1}`) {
+      next.delete(index);
+    } else {
+      next.set(index, trimmed);
+    }
+    this.workspaceNames.set(next);
+    this.persistState();
+  }
+
   addWorkspace(): void {
     const newIndex = this.workspaceCount();
     this.workspaceCount.update(c => c + 1);
@@ -237,6 +256,14 @@ export class PanelManagerService {
     }
     this.panels.set(next);
     this.workspaceCount.update(c => c - 1);
+
+    // Reindex custom names to match the shifted workspace indices.
+    const nextNames = new Map<number, string>();
+    for (const [k, v] of this.workspaceNames()) {
+      if (k === index) continue;
+      nextNames.set(k > index ? k - 1 : k, v);
+    }
+    this.workspaceNames.set(nextNames);
 
     // Adjust active workspace
     if (this.activeWorkspace() >= this.workspaceCount()) {
@@ -273,6 +300,7 @@ export class PanelManagerService {
     this.nextZIndex = 1;
     this.activeWorkspace.set(0);
     this.workspaceCount.set(1);
+    this.workspaceNames.set(new Map());
     this.persistState();
   }
 
@@ -291,6 +319,7 @@ export class PanelManagerService {
     const saved: SavedWorkspace = {
       activeWorkspace: this.activeWorkspace(),
       workspaceCount: this.workspaceCount(),
+      workspaceNames: [...this.workspaceNames().entries()],
       // Only resource panels are worth restoring — they reopen as the resource's
       // control window (empty until you click a template, same as freshly opened).
       // General panels are one-off command outputs; restoring them yields a useless
@@ -336,6 +365,7 @@ export class PanelManagerService {
       this.panels.set(next);
       this.workspaceCount.set(saved.workspaceCount || 1);
       this.activeWorkspace.set(saved.activeWorkspace || 0);
+      this.workspaceNames.set(new Map(saved.workspaceNames || []));
       return true;
     } catch {
       return false;
