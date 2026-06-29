@@ -9,6 +9,7 @@ Browser-based Kubernetes visualization. GPU-accelerated resource graph + multi-w
 ## Prerequisites
 
 - Node.js 18+
+- pnpm (the repo ships a `pnpm-lock.yaml`; install with `npm i -g pnpm` or via Corepack)
 - `kubectl` configured with a valid kubeconfig (required for Realtime mode)
 - Snapshot mode works offline — no cluster needed
 
@@ -21,8 +22,8 @@ Optional (only for image tag lookups in the rollout panel):
 You need `kubectl` already pointed at a cluster (see Prerequisites).
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 Frontend at `http://localhost:4200`, backend at port 3042. The landing page is where you pick a mode and, for offline use, export a snapshot.
@@ -37,8 +38,8 @@ Frontend at `http://localhost:4200`, backend at port 3042. The landing page is w
 Which Kubernetes kinds show up in the resource tree and topology graph is driven by `kubelens.config.yaml` (read at startup via `/api/config`), not hardcoded. The committed config works out of the box; to fit it to your own cluster:
 
 ```bash
-npm run init              # detect cluster + registry + CRDs → kubelens.config.yaml
-npm run init -- --merge   # later: refresh CRDs, keep your edits
+pnpm run init              # detect cluster + registry + CRDs → kubelens.config.yaml
+pnpm run init -- --merge   # later: refresh CRDs, keep your edits
 ```
 
 `init` reads `kubelens.default.yaml` (universal built-ins), infers cluster type and image registry from kubeconfig/images, lists your CRDs via `kubectl api-resources`, and writes a complete config. Discovered CRDs ship off — enable them in the in-app visibility panel.
@@ -58,9 +59,9 @@ resources:
 ## Dev
 
 ```bash
-npm run dev       # frontend + backend
-ng build          # production build
-ng test           # unit tests
+pnpm run dev      # frontend + backend
+pnpm run build    # production build
+pnpm test         # unit tests
 ```
 
 ## Stack

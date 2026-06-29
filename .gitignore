@@ -84,6 +84,7 @@ k8s-snapshot*/
 
 # Claude Code
 .claude/worktrees/
+**/.claude/settings.local.json
 
 # Git specific
 .git/
