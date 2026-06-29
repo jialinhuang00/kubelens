@@ -23,6 +23,24 @@ export interface TemplateDef {
   disabled?: boolean;
 }
 
+/**
+ * One column of a snapshot `kubectl get` table. `value` is a mini-template:
+ * `{.dotted.path}` reads a field, `{.path|transform[:args]}` runs a named
+ * transform (age, count, keys, join, bool, kv, ports, accessModes, ref),
+ * `{|itemTransform}` passes the whole item (jobDuration, endpoints, …), and a
+ * trailing `?fallback` supplies a default when the result is empty. `width`
+ * right-pads the column; omit it on the last column. See snapshot-parsers.renderTable.
+ */
+export interface TableColumn {
+  name: string;
+  value: string;
+  width?: number;
+}
+
+export interface TableSpec {
+  columns: TableColumn[];
+}
+
 const CONFIG_PATH = path.join(__dirname, '../..', 'kubelens.config.yaml');
 const DEFAULT_PATH = path.join(__dirname, '../..', 'kubelens.default.yaml');
 
@@ -30,6 +48,7 @@ interface ConfigDoc {
   resources?: ResourceConfig[];
   discovery?: { exclude?: { groups?: string[]; resources?: string[] } };
   templates?: Record<string, TemplateDef[]>;
+  tables?: Record<string, TableSpec>;
 }
 
 let docCache: ConfigDoc | null = null;
@@ -67,6 +86,30 @@ export function loadResources(): ResourceConfig[] {
  *  config.yaml may override per kind. */
 export function loadTemplates(): Record<string, TemplateDef[]> {
   return { ...loadDefaultDoc().templates, ...loadDoc().templates };
+}
+
+/** Per-kind snapshot `kubectl get` table specs, keyed by Kind. From
+ *  kubelens.default.yaml; config.yaml may override per kind. */
+export function loadTables(): Record<string, TableSpec> {
+  return { ...loadDefaultDoc().tables, ...loadDoc().tables };
+}
+
+/** Table spec for a Kind (e.g. 'Deployment'), or undefined if none is declared. */
+export function getTableSpec(kind: string): TableSpec | undefined {
+  return loadTables()[kind];
+}
+
+// Snapshot-exported files with no resource entry (no tree/graph role), mapped
+// to the Kind their table spec is keyed under.
+const FILE_KIND_EXTRA: Record<string, string> = { 'endpoints.yaml': 'Endpoints' };
+
+/** Resolve a snapshot filename (e.g. 'deployments.yaml') to its table spec via
+ *  its Kind. Drives the snapshot `kubectl get` table renderer. */
+export function getTableSpecForFile(yamlFile: string): TableSpec | undefined {
+  const key = yamlFile.replace(/\.yaml$/, '');
+  const res = loadResources().find(r => r.key === key);
+  const kind = res?.kind ?? FILE_KIND_EXTRA[yamlFile];
+  return kind ? getTableSpec(kind) : undefined;
 }
 
 /** Groups/resources to hide from cluster discovery (pure plumbing). */

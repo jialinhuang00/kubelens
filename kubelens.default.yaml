@@ -130,3 +130,120 @@ templates:
     - { name: Resources, command: "kubectl get applications.argoproj.io {name} -n {namespace} -o jsonpath=\"{range .status.resources[*]}{.kind}/{.name} {.status} {.health.status}{'\\n'}{end}\"" }
     - { name: Details, command: "kubectl describe applications.argoproj.io {name} -n {namespace}" }
     - { name: YAML, command: "kubectl get applications.argoproj.io {name} -n {namespace} -o yaml" }
+
+# Snapshot `kubectl get` table layouts, keyed by Kind. Each column is name +
+# value template + width (omit width on the last column; it's left unpadded like
+# kubectl's trailing AGE). The value mini-template:
+#   {.dotted.path}            read a field
+#   {.path|transform[:args]}  run a value transform (age, count, keys, join,
+#                             bool, kv, ports, accessModes, ref)
+#   {|itemTransform}          pass the whole item (jobDuration, endpoints,
+#                             ingressHosts/Address/Ports, hpaTargets)
+#   {...?fallback}            default when the resolved value is empty
+# Rendered by snapshot-parsers.renderTable. Add a kind's table here, not in code.
+tables:
+  Deployment:
+    columns:
+      - { name: NAME, value: "{.metadata.name}", width: 38 }
+      - { name: READY, value: "{.status.readyReplicas?0}/{.spec.replicas?1}", width: 8 }
+      - { name: UP-TO-DATE, value: "{.status.updatedReplicas?0}", width: 13 }
+      - { name: AVAILABLE, value: "{.status.availableReplicas?0}", width: 12 }
+      - { name: AGE, value: "{.metadata.creationTimestamp|age}" }
+  Service:
+    columns:
+      - { name: NAME, value: "{.metadata.name}", width: 32 }
+      - { name: TYPE, value: "{.spec.type?ClusterIP}", width: 12 }
+      - { name: CLUSTER-IP, value: "{.spec.clusterIP?<none>}", width: 17 }
+      - { name: EXTERNAL-IP, value: "{.spec.externalIPs|join?<none>}", width: 14 }
+      - { name: "PORT(S)", value: "{.spec.ports|ports?<none>}", width: 29 }
+      - { name: AGE, value: "{.metadata.creationTimestamp|age}" }
+  CronJob:
+    columns:
+      - { name: NAME, value: "{.metadata.name}", width: 31 }
+      - { name: SCHEDULE, value: "{.spec.schedule?* * * * *}", width: 15 }
+      - { name: SUSPEND, value: "{.spec.suspend|bool}", width: 10 }
+      - { name: ACTIVE, value: "{.status.active|count}", width: 9 }
+      - { name: "LAST SCHEDULE", value: "{.status.lastScheduleTime|age?<none>}", width: 16 }
+      - { name: AGE, value: "{.metadata.creationTimestamp|age}" }
+  StatefulSet:
+    columns:
+      - { name: NAME, value: "{.metadata.name}", width: 22 }
+      - { name: READY, value: "{.status.readyReplicas?0}/{.spec.replicas?1}", width: 8 }
+      - { name: AGE, value: "{.metadata.creationTimestamp|age}" }
+  Job:
+    columns:
+      - { name: NAME, value: "{.metadata.name}", width: 35 }
+      - { name: COMPLETIONS, value: "{.status.succeeded?0}/{.spec.completions?1}", width: 14 }
+      - { name: DURATION, value: "{|jobDuration}", width: 11 }
+      - { name: AGE, value: "{.metadata.creationTimestamp|age}" }
+  ConfigMap:
+    columns:
+      - { name: NAME, value: "{.metadata.name}", width: 34 }
+      - { name: DATA, value: "{.data|keys}", width: 7 }
+      - { name: AGE, value: "{.metadata.creationTimestamp|age}" }
+  Endpoints:
+    columns:
+      - { name: NAME, value: "{.metadata.name}", width: 32 }
+      - { name: ENDPOINTS, value: "{|endpoints}", width: 35 }
+      - { name: AGE, value: "{.metadata.creationTimestamp|age}" }
+  Secret:
+    columns:
+      - { name: NAME, value: "{.metadata.name}", width: 44 }
+      - { name: TYPE, value: "{.type?Opaque}", width: 36 }
+      - { name: DATA, value: "{.data|keys}", width: 7 }
+      - { name: AGE, value: "{.metadata.creationTimestamp|age}" }
+  PersistentVolumeClaim:
+    columns:
+      - { name: NAME, value: "{.metadata.name}", width: 28 }
+      - { name: STATUS, value: "{.status.phase?<unknown>}", width: 9 }
+      - { name: VOLUME, value: "{.spec.volumeName}", width: 38 }
+      - { name: CAPACITY, value: "{.status.capacity.storage}", width: 11 }
+      - { name: "ACCESS MODES", value: "{.spec.accessModes|accessModes?<none>}", width: 15 }
+      - { name: STORAGECLASS, value: "{.spec.storageClassName?<none>}", width: 15 }
+      - { name: AGE, value: "{.metadata.creationTimestamp|age}" }
+  ServiceAccount:
+    columns:
+      - { name: NAME, value: "{.metadata.name}", width: 38 }
+      - { name: SECRETS, value: "{.secrets|count}", width: 10 }
+      - { name: AGE, value: "{.metadata.creationTimestamp|age}" }
+  DaemonSet:
+    columns:
+      - { name: NAME, value: "{.metadata.name}", width: 22 }
+      - { name: DESIRED, value: "{.status.desiredNumberScheduled?0}", width: 9 }
+      - { name: CURRENT, value: "{.status.currentNumberScheduled?0}", width: 9 }
+      - { name: READY, value: "{.status.numberReady?0}", width: 7 }
+      - { name: UP-TO-DATE, value: "{.status.updatedNumberScheduled?0}", width: 12 }
+      - { name: AVAILABLE, value: "{.status.numberAvailable?0}", width: 11 }
+      - { name: "NODE SELECTOR", value: "{.spec.template.spec.nodeSelector|kv?<none>}", width: 20 }
+      - { name: AGE, value: "{.metadata.creationTimestamp|age}" }
+  Ingress:
+    columns:
+      - { name: NAME, value: "{.metadata.name}", width: 20 }
+      - { name: CLASS, value: "{.spec.ingressClassName?<none>}", width: 16 }
+      - { name: HOSTS, value: "{|ingressHosts}", width: 30 }
+      - { name: ADDRESS, value: "{|ingressAddress}", width: 20 }
+      - { name: PORTS, value: "{|ingressPorts}", width: 10 }
+      - { name: AGE, value: "{.metadata.creationTimestamp|age}" }
+  HorizontalPodAutoscaler:
+    columns:
+      - { name: NAME, value: "{.metadata.name}", width: 20 }
+      - { name: REFERENCE, value: "{.spec.scaleTargetRef|ref}", width: 28 }
+      - { name: TARGETS, value: "{|hpaTargets}", width: 16 }
+      - { name: MINPODS, value: "{.spec.minReplicas?1}", width: 9 }
+      - { name: MAXPODS, value: "{.spec.maxReplicas?1}", width: 9 }
+      - { name: REPLICAS, value: "{.status.currentReplicas?0}", width: 10 }
+      - { name: AGE, value: "{.metadata.creationTimestamp|age}" }
+  Role:
+    columns:
+      - { name: NAME, value: "{.metadata.name}", width: 40 }
+      - { name: "CREATED AT", value: "{.metadata.creationTimestamp?<unknown>}" }
+  RoleBinding:
+    columns:
+      - { name: NAME, value: "{.metadata.name}", width: 40 }
+      - { name: ROLE, value: "{.roleRef|ref:Role}", width: 36 }
+      - { name: AGE, value: "{.metadata.creationTimestamp|age}" }
+  NetworkPolicy:
+    columns:
+      - { name: NAME, value: "{.metadata.name}", width: 24 }
+      - { name: "POD-SELECTOR", value: "{.spec.podSelector.matchLabels|kv?<none>}", width: 40 }
+      - { name: AGE, value: "{.metadata.creationTimestamp|age}" }

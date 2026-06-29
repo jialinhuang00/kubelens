@@ -6,15 +6,11 @@
 import yaml from 'js-yaml';
 import { loadYaml, loadText, listBackupNamespaces, DEFAULT_NAMESPACE } from './snapshot-loader';
 import type { K8sItem, K8sList } from './snapshot-loader';
-import { getResourceFileMap, getNamePrefixMap } from './config-loader';
+import { getResourceFileMap, getNamePrefixMap, getTableSpecForFile } from './config-loader';
 import {
-  extractNames, findItem, pad, getAge,
+  extractNames, findItem, pad, getAge, renderTable,
   generateDeploymentTable, generateServiceTable, generateCronjobTable,
-  generateStatefulsetTable, generateJobTable, generateConfigmapTable,
-  generateEndpointTable, generateSecretTable, generatePvcTable,
-  generateServiceAccountTable, generateDaemonsetTable, generateIngressTable,
-  generateHpaTable, generateRoleTable, generateRoleBindingTable,
-  generateNetworkPolicyTable,
+  generateStatefulsetTable, generateJobTable,
   generateDeploymentDescribe, generatePodDescribe, generateServiceDescribe,
   generateGenericDescribe,
 } from './snapshot-parsers';
@@ -80,25 +76,6 @@ function resourceFileMap(): Record<string, string | null> {
   }
   return _resourceFileMap;
 }
-
-const TABLE_GENERATORS: Record<string, (items: K8sItem[]) => string> = {
-  'deployments.yaml': generateDeploymentTable,
-  'services.yaml': generateServiceTable,
-  'cronjobs.yaml': generateCronjobTable,
-  'statefulsets.yaml': generateStatefulsetTable,
-  'jobs.yaml': generateJobTable,
-  'configmaps.yaml': generateConfigmapTable,
-  'endpoints.yaml': generateEndpointTable,
-  'secrets.yaml': generateSecretTable,
-  'persistentvolumeclaims.yaml': generatePvcTable,
-  'serviceaccounts.yaml': generateServiceAccountTable,
-  'daemonsets.yaml': generateDaemonsetTable,
-  'ingresses.yaml': generateIngressTable,
-  'horizontalpodautoscalers.yaml': generateHpaTable,
-  'roles.yaml': generateRoleTable,
-  'rolebindings.yaml': generateRoleBindingTable,
-  'networkpolicies.yaml': generateNetworkPolicyTable,
-};
 
 // --- Command parser ---
 
@@ -349,9 +326,9 @@ function handleGet(parsed: ParsedCommand): CommandResult {
       const val = resolveJsonPath(item, jsonPath);
       return { success: true, stdout: typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val || '') };
     }
-    const generator = TABLE_GENERATORS[yamlFile];
-    if (generator) {
-      return { success: true, stdout: generator([item]) };
+    const spec = getTableSpecForFile(yamlFile);
+    if (spec) {
+      return { success: true, stdout: renderTable(spec, [item]) };
     }
     return { success: true, stdout: yaml.dump(item) };
   }
@@ -378,9 +355,9 @@ function handleGet(parsed: ParsedCommand): CommandResult {
     return handleCustomColumns(parsed, items);
   }
 
-  const generator = TABLE_GENERATORS[yamlFile];
-  if (generator) {
-    let output = generator(items);
+  const spec = getTableSpecForFile(yamlFile);
+  if (spec) {
+    let output = renderTable(spec, items);
     if (parsed.flags.noHeaders) {
       output = output.split('\n').slice(1).join('\n');
     }

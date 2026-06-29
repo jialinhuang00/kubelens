@@ -5,6 +5,8 @@
 
 import { loadText, DEFAULT_NAMESPACE } from './snapshot-loader';
 import type { K8sItem, K8sList } from './snapshot-loader';
+import { getTableSpec } from './config-loader';
+import type { TableSpec } from './config-loader';
 
 // --- Helpers ---
 
@@ -88,290 +90,170 @@ export function getDuration(start: string, end: string): string {
   return `${Math.floor(mins / 60)}h${mins % 60}m`;
 }
 
-// --- Tabular generators ---
-
-/**
- * Generate a kubectl-style deployment table.
- * @param items - Array of Deployment K8sItems
- * @returns Multi-line string:
- * ```
- * NAME                                  READY   UP-TO-DATE   AVAILABLE   AGE
- * api-server                             2/2     2            2           5d
- * web                                   3/3     3            3           10d
- * ```
- */
-export function generateDeploymentTable(items: K8sItem[]): string {
-  const header = 'NAME                                  READY   UP-TO-DATE   AVAILABLE   AGE';
-  const rows = items.map(d => {
-    const name = d.metadata.name;
-    const desired = (d.spec as Record<string, unknown>)?.replicas as number || 1;
-    const status = d.status as Record<string, unknown> || {};
-    const ready = (status.readyReplicas as number) || 0;
-    const upToDate = (status.updatedReplicas as number) || 0;
-    const available = (status.availableReplicas as number) || 0;
-    const age = getAge(d.metadata.creationTimestamp);
-    return `${pad(name, 38)}${pad(`${ready}/${desired}`, 8)}${pad(String(upToDate), 13)}${pad(String(available), 12)}${age}`;
-  });
-  return [header, ...rows].join('\n');
-}
-
-/**
- * Generate a kubectl-style service table.
- * @param items - Array of Service K8sItems
- * @returns Multi-line string:
- * ```
- * NAME                            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
- * api-server-svc              ClusterIP   10.0.0.1         <none>        80/TCP                       5d
- * ```
- */
-export function generateServiceTable(items: K8sItem[]): string {
-  const header = 'NAME                            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE';
-  const rows = items.map(s => {
-    const name = s.metadata.name;
-    const spec = (s.spec || {}) as Record<string, unknown>;
-    const type = (spec.type as string) || 'ClusterIP';
-    const clusterIP = (spec.clusterIP as string) || '<none>';
-    const externalIP = ((spec.externalIPs as string[]) || []).join(',') || '<none>';
-    const ports = ((spec.ports as Array<Record<string, unknown>>) || []).map(p => {
-      if (p.nodePort) return `${p.port}:${p.nodePort}/${(p.protocol as string) || 'TCP'}`;
-      return `${p.port}/${(p.protocol as string) || 'TCP'}`;
-    }).join(',') || '<none>';
-    const age = getAge(s.metadata.creationTimestamp);
-    return `${pad(name, 32)}${pad(type, 12)}${pad(clusterIP, 17)}${pad(externalIP, 14)}${pad(ports, 29)}${age}`;
-  });
-  return [header, ...rows].join('\n');
-}
-
-/**
- * Generate a kubectl-style cronjob table.
- * @param items - Array of CronJob K8sItems
- * @returns Multi-line string:
- * ```
- * NAME                           SCHEDULE       SUSPEND   ACTIVE   LAST SCHEDULE   AGE
- * check-vault                    0 * * * *      False     0        45m             30d
- * ```
- */
-export function generateCronjobTable(items: K8sItem[]): string {
-  const header = 'NAME                           SCHEDULE       SUSPEND   ACTIVE   LAST SCHEDULE   AGE';
-  const rows = items.map(c => {
-    const name = c.metadata.name;
-    const spec = (c.spec || {}) as Record<string, unknown>;
-    const status = (c.status || {}) as Record<string, unknown>;
-    const schedule = (spec.schedule as string) || '* * * * *';
-    const suspend = spec.suspend ? 'True' : 'False';
-    const active = ((status.active as unknown[]) || []).length;
-    const lastSchedule = status.lastScheduleTime ? getAge(status.lastScheduleTime as string) : '<none>';
-    const age = getAge(c.metadata.creationTimestamp);
-    return `${pad(name, 31)}${pad(schedule, 15)}${pad(suspend, 10)}${pad(String(active), 9)}${pad(lastSchedule, 16)}${age}`;
-  });
-  return [header, ...rows].join('\n');
-}
-
-/**
- * Generate a kubectl-style statefulset table.
- * @param items - Array of StatefulSet K8sItems
- * @returns Multi-line string:
- * ```
- * NAME                  READY   AGE
- * scanner-worker         2/2     30d
- * ```
- */
-export function generateStatefulsetTable(items: K8sItem[]): string {
-  const header = 'NAME                  READY   AGE';
-  const rows = items.map(s => {
-    const name = s.metadata.name;
-    const desired = (s.spec as Record<string, unknown>)?.replicas as number || 1;
-    const ready = (s.status as Record<string, unknown>)?.readyReplicas as number || 0;
-    const age = getAge(s.metadata.creationTimestamp);
-    return `${pad(name, 22)}${pad(`${ready}/${desired}`, 8)}${age}`;
-  });
-  return [header, ...rows].join('\n');
-}
-
-/**
- * Generate a kubectl-style job table.
- * @param items - Array of Job K8sItems
- * @returns Multi-line string:
- * ```
- * NAME                               COMPLETIONS   DURATION   AGE
- * check-vault-29510683               1/1           45s        2d
- * ```
- */
-export function generateJobTable(items: K8sItem[]): string {
-  const header = 'NAME                               COMPLETIONS   DURATION   AGE';
-  const rows = items.map(j => {
-    const name = j.metadata.name;
-    const spec = (j.spec || {}) as Record<string, unknown>;
-    const status = (j.status || {}) as Record<string, unknown>;
-    const succeeded = (status.succeeded as number) || 0;
-    const completions = (spec.completions as number) || 1;
-    const duration = status.completionTime && status.startTime
-      ? getDuration(status.startTime as string, status.completionTime as string)
-      : '<none>';
-    const age = getAge(j.metadata.creationTimestamp);
-    return `${pad(name, 35)}${pad(`${succeeded}/${completions}`, 14)}${pad(duration, 11)}${age}`;
-  });
-  return [header, ...rows].join('\n');
-}
-
-/**
- * Generate a kubectl-style configmap table.
- * @param items - Array of ConfigMap K8sItems
- * @returns Multi-line string:
- * ```
- * NAME                              DATA   AGE
- * app-config                        3      10d
- * ```
- */
-export function generateConfigmapTable(items: K8sItem[]): string {
-  const header = 'NAME                              DATA   AGE';
-  const rows = items.map(c => {
-    const name = c.metadata.name;
-    const dataCount = c.data ? Object.keys(c.data).length : 0;
-    const age = getAge(c.metadata.creationTimestamp);
-    return `${pad(name, 34)}${pad(String(dataCount), 7)}${age}`;
-  });
-  return [header, ...rows].join('\n');
-}
-
-/**
- * Generate a kubectl-style endpoints table. Shows up to 3 addresses; adds "+ more..." if truncated.
- * @param items - Array of Endpoints K8sItems
- * @returns Multi-line string:
- * ```
- * NAME                            ENDPOINTS                          AGE
- * api-server-svc              10.0.0.1:8080,10.0.0.2:8080       5d
- * ```
- */
-export function generateEndpointTable(items: K8sItem[]): string {
-  const header = 'NAME                            ENDPOINTS                          AGE';
-  const rows = items.map(e => {
-    const name = e.metadata.name;
-    const endpoints = (e.subsets || []).flatMap(s =>
-      (s.addresses || []).flatMap(a =>
-        (s.ports || []).map(p => `${a.ip}:${p.port}`)
-      )
-    ).slice(0, 3).join(',') || '<none>';
-    const suffix = (e.subsets || []).flatMap(s => s.addresses || []).length > 3 ? ' + more...' : '';
-    const age = getAge(e.metadata.creationTimestamp);
-    return `${pad(name, 32)}${pad(endpoints + suffix, 35)}${age}`;
-  });
-  return [header, ...rows].join('\n');
-}
-
-/** kubectl-style secret table: `NAME TYPE DATA AGE`. */
-export function generateSecretTable(items: K8sItem[]): string {
-  const header = `${pad('NAME', 44)}${pad('TYPE', 36)}${pad('DATA', 7)}AGE`;
-  const rows = items.map(s => {
-    const dataCount = s.data ? Object.keys(s.data).length : 0;
-    return `${pad(s.metadata.name, 44)}${pad((s.type as string) || 'Opaque', 36)}${pad(String(dataCount), 7)}${getAge(s.metadata.creationTimestamp)}`;
-  });
-  return [header, ...rows].join('\n');
-}
+// --- Table renderer (config-driven) ---
+//
+// The per-kind `kubectl get` tables used to be 16 hand-written functions, each
+// pad()-ing fixed-width columns. They're now declared as data in
+// kubelens.config.yaml's `tables:` block (one column = name + value template +
+// width) and rendered by renderTable below. Adding a kind is YAML, not code.
+// Only the genuinely computed bits (age, ratios, port lists, …) stay as code,
+// exposed as the small transform registries here.
 
 /** Abbreviate PVC access modes the way kubectl does (ReadWriteMany → RWX). */
 const ACCESS_MODE_ABBR: Record<string, string> = {
   ReadWriteOnce: 'RWO', ReadOnlyMany: 'ROX', ReadWriteMany: 'RWX', ReadWriteOncePod: 'RWOP',
 };
 
-/** kubectl-style PVC table: `NAME STATUS VOLUME CAPACITY ACCESS MODES STORAGECLASS AGE`. */
-export function generatePvcTable(items: K8sItem[]): string {
-  const header = `${pad('NAME', 28)}${pad('STATUS', 9)}${pad('VOLUME', 38)}${pad('CAPACITY', 11)}${pad('ACCESS MODES', 15)}${pad('STORAGECLASS', 15)}AGE`;
-  const rows = items.map(p => {
-    const spec = (p.spec || {}) as Record<string, unknown>;
-    const status = (p.status || {}) as Record<string, unknown>;
-    const capacity = ((status.capacity || {}) as Record<string, string>).storage || '';
-    const modes = ((spec.accessModes as string[]) || []).map(m => ACCESS_MODE_ABBR[m] || m).join(',') || '<none>';
-    return `${pad(p.metadata.name, 28)}${pad((status.phase as string) || '<unknown>', 9)}${pad((spec.volumeName as string) || '', 38)}${pad(capacity, 11)}${pad(modes, 15)}${pad((spec.storageClassName as string) || '<none>', 15)}${getAge(p.metadata.creationTimestamp)}`;
-  });
-  return [header, ...rows].join('\n');
+type AnyRecord = Record<string, unknown>;
+
+/** Walk a dotted path (`.spec.template.spec.nodeSelector`) from an item root. */
+function getPath(obj: unknown, path: string): unknown {
+  const parts = path.replace(/^\./, '').split('.').filter(Boolean);
+  let cur: unknown = obj;
+  for (const p of parts) {
+    if (cur == null) return undefined;
+    cur = (cur as AnyRecord)[p];
+  }
+  return cur;
 }
 
-/** kubectl-style service-account table: `NAME SECRETS AGE`. */
-export function generateServiceAccountTable(items: K8sItem[]): string {
-  const header = `${pad('NAME', 38)}${pad('SECRETS', 10)}AGE`;
-  const rows = items.map(sa => {
-    const secrets = ((sa.secrets as unknown[]) || []).length;
-    return `${pad(sa.metadata.name, 38)}${pad(String(secrets), 10)}${getAge(sa.metadata.creationTimestamp)}`;
-  });
-  return [header, ...rows].join('\n');
-}
+/**
+ * Single-field transforms. Receive the resolved field value (+ optional args)
+ * and return its display string. A transform that yields '' lets the column's
+ * `?fallback` default kick in.
+ */
+const VALUE_TRANSFORMS: Record<string, (v: unknown, args: string[]) => string> = {
+  age: v => (v ? getAge(v as string) : ''),
+  count: v => String(Array.isArray(v) ? v.length : 0),
+  keys: v => String(v && typeof v === 'object' ? Object.keys(v).length : 0),
+  join: (v, a) => (Array.isArray(v) ? v : []).join(a[0] || ','),
+  bool: (v, a) => (v ? (a[0] || 'True') : (a[1] || 'False')),
+  kv: v => Object.entries((v && typeof v === 'object' ? v : {}) as AnyRecord).map(([k, val]) => `${k}=${val}`).join(','),
+  ports: v => (Array.isArray(v) ? v : []).map(p => {
+    const port = p as AnyRecord;
+    const proto = (port.protocol as string) || 'TCP';
+    return port.nodePort ? `${port.port}:${port.nodePort}/${proto}` : `${port.port}/${proto}`;
+  }).join(','),
+  accessModes: v => (Array.isArray(v) ? v : []).map(m => ACCESS_MODE_ABBR[m as string] || m).join(','),
+  ref: (v, a) => {
+    const r = (v || {}) as AnyRecord;
+    return `${(r.kind as string) || a[0] || ''}/${(r.name as string) || ''}`;
+  },
+};
 
-/** kubectl-style daemonset table: `NAME DESIRED CURRENT READY UP-TO-DATE AVAILABLE NODE SELECTOR AGE`. */
-export function generateDaemonsetTable(items: K8sItem[]): string {
-  const header = `${pad('NAME', 22)}${pad('DESIRED', 9)}${pad('CURRENT', 9)}${pad('READY', 7)}${pad('UP-TO-DATE', 12)}${pad('AVAILABLE', 11)}${pad('NODE SELECTOR', 20)}AGE`;
-  const rows = items.map(d => {
-    const st = (d.status || {}) as Record<string, unknown>;
-    const spec = (d.spec || {}) as Record<string, unknown>;
-    const tplSpec = (((spec.template || {}) as Record<string, unknown>).spec || {}) as Record<string, unknown>;
-    const nodeSel = Object.entries((tplSpec.nodeSelector || {}) as Record<string, string>).map(([k, v]) => `${k}=${v}`).join(',') || '<none>';
-    return `${pad(d.metadata.name, 22)}${pad(String(st.desiredNumberScheduled ?? 0), 9)}${pad(String(st.currentNumberScheduled ?? 0), 9)}${pad(String(st.numberReady ?? 0), 7)}${pad(String(st.updatedNumberScheduled ?? 0), 12)}${pad(String(st.numberAvailable ?? 0), 11)}${pad(nodeSel, 20)}${getAge(d.metadata.creationTimestamp)}`;
-  });
-  return [header, ...rows].join('\n');
-}
-
-/** kubectl-style ingress table: `NAME CLASS HOSTS ADDRESS PORTS AGE`. */
-export function generateIngressTable(items: K8sItem[]): string {
-  const header = `${pad('NAME', 20)}${pad('CLASS', 16)}${pad('HOSTS', 30)}${pad('ADDRESS', 20)}${pad('PORTS', 10)}AGE`;
-  const rows = items.map(i => {
-    const spec = (i.spec || {}) as Record<string, unknown>;
-    const status = (i.status || {}) as Record<string, unknown>;
-    const hosts = ((spec.rules as Array<Record<string, unknown>>) || []).map(r => r.host as string).filter(Boolean).join(',') || '*';
-    const lb = (((status.loadBalancer || {}) as Record<string, unknown>).ingress as Array<Record<string, unknown>>) || [];
-    const address = lb.map(a => (a.hostname as string) || (a.ip as string)).filter(Boolean).join(',');
-    const ports = spec.tls ? '80, 443' : '80';
-    return `${pad(i.metadata.name, 20)}${pad((spec.ingressClassName as string) || '<none>', 16)}${pad(hosts, 30)}${pad(address, 20)}${pad(ports, 10)}${getAge(i.metadata.creationTimestamp)}`;
-  });
-  return [header, ...rows].join('\n');
-}
-
-/** kubectl-style HPA table: `NAME REFERENCE TARGETS MINPODS MAXPODS REPLICAS AGE`. */
-export function generateHpaTable(items: K8sItem[]): string {
-  const header = `${pad('NAME', 20)}${pad('REFERENCE', 28)}${pad('TARGETS', 16)}${pad('MINPODS', 9)}${pad('MAXPODS', 9)}${pad('REPLICAS', 10)}AGE`;
-  const rows = items.map(h => {
-    const spec = (h.spec || {}) as Record<string, unknown>;
-    const status = (h.status || {}) as Record<string, unknown>;
-    const ref = (spec.scaleTargetRef || {}) as Record<string, string>;
-    const reference = `${ref.kind}/${ref.name}`;
-    const specMetric = ((spec.metrics as Array<Record<string, unknown>>) || [])[0]?.resource as Record<string, unknown> | undefined;
-    const curMetric = ((status.currentMetrics as Array<Record<string, unknown>>) || [])[0]?.resource as Record<string, unknown> | undefined;
-    const target = ((specMetric?.target || {}) as Record<string, unknown>).averageUtilization;
-    const current = ((curMetric?.current || {}) as Record<string, unknown>).averageUtilization;
+/**
+ * Whole-item transforms for columns that can't be a single path: they read
+ * several fields or apply cross-field logic. Invoked via `{|name}`.
+ */
+const ITEM_TRANSFORMS: Record<string, (item: K8sItem) => string> = {
+  jobDuration: j => {
+    const st = (j.status || {}) as AnyRecord;
+    return st.completionTime && st.startTime
+      ? getDuration(st.startTime as string, st.completionTime as string)
+      : '<none>';
+  },
+  endpoints: e => {
+    const eps = (e.subsets || []).flatMap(s =>
+      (s.addresses || []).flatMap(a => (s.ports || []).map(p => `${a.ip}:${p.port}`))
+    ).slice(0, 3).join(',') || '<none>';
+    const suffix = (e.subsets || []).flatMap(s => s.addresses || []).length > 3 ? ' + more...' : '';
+    return eps + suffix;
+  },
+  ingressHosts: i => {
+    const rules = (((i.spec || {}) as AnyRecord).rules as AnyRecord[]) || [];
+    return rules.map(r => r.host as string).filter(Boolean).join(',') || '*';
+  },
+  ingressAddress: i => {
+    const lb = ((((i.status || {}) as AnyRecord).loadBalancer || {}) as AnyRecord).ingress as AnyRecord[] || [];
+    return lb.map(a => (a.hostname as string) || (a.ip as string)).filter(Boolean).join(',');
+  },
+  ingressPorts: i => (((i.spec || {}) as AnyRecord).tls ? '80, 443' : '80'),
+  hpaTargets: h => {
+    const spec = (h.spec || {}) as AnyRecord;
+    const status = (h.status || {}) as AnyRecord;
+    const specMetric = ((spec.metrics as AnyRecord[]) || [])[0]?.resource as AnyRecord | undefined;
+    const curMetric = ((status.currentMetrics as AnyRecord[]) || [])[0]?.resource as AnyRecord | undefined;
+    const target = ((specMetric?.target || {}) as AnyRecord).averageUtilization;
+    const current = ((curMetric?.current || {}) as AnyRecord).averageUtilization;
     const metricName = (specMetric?.name as string) || 'cpu';
-    const targets = target != null ? `${metricName}: ${current != null ? `${current}%` : '<unknown>'}/${target}%` : '<none>';
-    return `${pad(h.metadata.name, 20)}${pad(reference, 28)}${pad(targets, 16)}${pad(String(spec.minReplicas ?? 1), 9)}${pad(String(spec.maxReplicas ?? 1), 9)}${pad(String(status.currentReplicas ?? 0), 10)}${getAge(h.metadata.creationTimestamp)}`;
-  });
+    return target != null ? `${metricName}: ${current != null ? `${current}%` : '<unknown>'}/${target}%` : '<none>';
+  },
+};
+
+/** Resolve one `{...}` token (path / transform / item-transform, + `?fallback`). */
+function resolveToken(token: string, item: K8sItem): string {
+  if (token.startsWith('|')) {
+    const [name] = token.slice(1).split(':');
+    const fn = ITEM_TRANSFORMS[name];
+    return fn ? fn(item) : '';
+  }
+
+  // Peel off the optional `?fallback` default, then the optional `|transform`.
+  const qIdx = token.indexOf('?');
+  const def = qIdx >= 0 ? token.slice(qIdx + 1) : undefined;
+  const head = qIdx >= 0 ? token.slice(0, qIdx) : token;
+
+  let path = head;
+  let result: unknown;
+  const pIdx = head.indexOf('|');
+  if (pIdx >= 0) {
+    path = head.slice(0, pIdx);
+    const t = head.slice(pIdx + 1);
+    const ci = t.indexOf(':');
+    const tname = ci >= 0 ? t.slice(0, ci) : t;
+    const targs = ci >= 0 ? t.slice(ci + 1).split(',') : [];
+    const fn = VALUE_TRANSFORMS[tname];
+    result = fn ? fn(getPath(item, path), targs) : getPath(item, path);
+  } else {
+    result = getPath(item, path);
+  }
+
+  if (result === undefined || result === null || result === '') {
+    result = def !== undefined ? def : '';
+  }
+  return String(result);
+}
+
+/** Expand a column's `value` template against one item. */
+function interpolate(template: string, item: K8sItem): string {
+  return template.replace(/\{([^}]*)\}/g, (_m, tok) => resolveToken(tok, item));
+}
+
+/**
+ * Render a kubectl-style table from a declarative column spec. The header is
+ * derived from each column's `name` (pad()-ed to `width`); the last column is
+ * left unpadded, matching real kubectl's trailing AGE column.
+ * @param spec - Column definitions (from kubelens.config.yaml `tables:`)
+ * @param items - Resources to render as rows
+ * @returns Multi-line string: header line followed by one line per item
+ */
+export function renderTable(spec: TableSpec, items: K8sItem[]): string {
+  const cols = spec.columns;
+  const last = cols.length - 1;
+  const header = cols.map((c, i) => (i === last ? c.name : pad(c.name, c.width ?? 0))).join('');
+  const rows = items.map(item =>
+    cols.map((c, i) => {
+      const v = interpolate(c.value, item);
+      return i === last ? v : pad(v, c.width ?? 0);
+    }).join('')
+  );
   return [header, ...rows].join('\n');
 }
 
-/** kubectl-style role table: `NAME CREATED AT` (RBAC kinds show a timestamp, not an age). */
-export function generateRoleTable(items: K8sItem[]): string {
-  const header = `${pad('NAME', 40)}CREATED AT`;
-  const rows = items.map(r => `${pad(r.metadata.name, 40)}${r.metadata.creationTimestamp || '<unknown>'}`);
-  return [header, ...rows].join('\n');
-}
+// Thin wrappers kept for the kinds covered by snapshot-parsers.spec.ts — they
+// now just look up the kind's spec and render it, exercising the data-driven
+// path end to end. The dispatch in snapshot-commands.ts resolves specs by file,
+// so a new kind needs no wrapper, only a `tables:` entry.
+const EMPTY_SPEC: TableSpec = { columns: [{ name: 'NAME', value: '{.metadata.name}' }] };
+const byKind = (kind: string, items: K8sItem[]) => renderTable(getTableSpec(kind) ?? EMPTY_SPEC, items);
 
-/** kubectl-style rolebinding table: `NAME ROLE AGE`. */
-export function generateRoleBindingTable(items: K8sItem[]): string {
-  const header = `${pad('NAME', 40)}${pad('ROLE', 36)}AGE`;
-  const rows = items.map(rb => {
-    const ref = rb.roleRef;
-    return `${pad(rb.metadata.name, 40)}${pad(`${ref?.kind ?? 'Role'}/${ref?.name ?? ''}`, 36)}${getAge(rb.metadata.creationTimestamp)}`;
-  });
-  return [header, ...rows].join('\n');
-}
-
-/** kubectl-style networkpolicy table: `NAME POD-SELECTOR AGE`. */
-export function generateNetworkPolicyTable(items: K8sItem[]): string {
-  const header = `${pad('NAME', 24)}${pad('POD-SELECTOR', 40)}AGE`;
-  const rows = items.map(n => {
-    const sel = (((n.spec || {}) as Record<string, unknown>).podSelector || {}) as Record<string, unknown>;
-    const matchLabels = (sel.matchLabels || {}) as Record<string, string>;
-    const podSelector = Object.entries(matchLabels).map(([k, v]) => `${k}=${v}`).join(',') || '<none>';
-    return `${pad(n.metadata.name, 24)}${pad(podSelector, 40)}${getAge(n.metadata.creationTimestamp)}`;
-  });
-  return [header, ...rows].join('\n');
-}
+export const generateDeploymentTable = (items: K8sItem[]) => byKind('Deployment', items);
+export const generateServiceTable = (items: K8sItem[]) => byKind('Service', items);
+export const generateCronjobTable = (items: K8sItem[]) => byKind('CronJob', items);
+export const generateStatefulsetTable = (items: K8sItem[]) => byKind('StatefulSet', items);
+export const generateJobTable = (items: K8sItem[]) => byKind('Job', items);
+export const generateConfigmapTable = (items: K8sItem[]) => byKind('ConfigMap', items);
+export const generateEndpointTable = (items: K8sItem[]) => byKind('Endpoints', items);
 
 // --- Describe generators ---
 
