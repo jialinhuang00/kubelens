@@ -35,16 +35,25 @@ Frontend at `http://localhost:4200`, backend at port 3042. The landing page is w
 
 ## Configuration
 
-Which Kubernetes kinds show up in the resource tree and topology graph is driven by `kubelens.config.yaml` (read at startup via `/api/config`), not hardcoded. The committed config works out of the box; to fit it to your own cluster:
+Everything the app shows is driven by config, not hardcoded. The committed config works out of the box; it's also where you customize.
+
+Two files, clear roles:
+
+- **`kubelens.config.yaml`** — the only file the app reads (at startup, via `/api/config`). Edit it directly to customize your setup.
+- **`kubelens.default.yaml`** — a neutral seed (built-in kinds, no CRDs) that `init` builds from. Never read at runtime.
+
+Fit it to your own cluster:
 
 ```bash
 pnpm run init              # detect cluster + registry + CRDs → kubelens.config.yaml
 pnpm run init -- --merge   # later: refresh CRDs, keep your edits
 ```
 
-`init` reads `kubelens.default.yaml` (universal built-ins), infers cluster type and image registry from kubeconfig/images, lists your CRDs via `kubectl api-resources`, and writes a complete config. Discovered CRDs ship off — enable them in the in-app visibility panel.
+`init` reads the seed, infers cluster type and image registry from kubeconfig/images, lists your CRDs via `kubectl api-resources`, and writes a complete config. Discovered CRDs ship off — enable them in the in-app visibility panel. (Edit the seed and re-run `init` to change the shipped defaults; edit `config.yaml` for a one-off.)
 
-Or add a kind by hand:
+Three sections are customizable, all hand-editable:
+
+**Kinds** (`resources`) — which kinds appear in the tree and graph:
 
 ```yaml
 resources:
@@ -54,7 +63,31 @@ resources:
 ```
 
 - `show` — capability: which views this kind *can* appear in (`tree`, `graph`).
-- `default` — default-on views (subset of `show`); omit to default to `show`. `default: []` ships a kind capable-but-off; it appears in the visibility panel for the user to switch on.
+- `default` — default-on views (subset of `show`); omit to default to `show`. `default: []` ships a kind capable-but-off; it appears in the visibility panel to switch on.
+
+**Panel commands** (`templates`) — the buttons on each resource window, keyed by Kind. `{name}` / `{namespace}` resolve at run time:
+
+```yaml
+templates:
+  Pod:
+    - { name: Logs, command: "kubectl logs {name} -n {namespace} --tail=50 -f" }
+    - { name: Delete, command: "kubectl delete pod {name} -n {namespace}" }
+```
+
+Flags: `requiresInput` (populate an editable command instead of running it), `disabled` (greyed out).
+
+**Snapshot tables** (`tables`) — column layout for `kubectl get` output in Snapshot mode, keyed by Kind. `value` is a template: `{.path}` reads a field, `{.path|age}` runs a transform, `{...?fallback}` defaults when empty:
+
+```yaml
+tables:
+  Deployment:
+    columns:
+      - { name: NAME,  value: "{.metadata.name}", width: 38 }
+      - { name: READY, value: "{.status.readyReplicas?0}/{.spec.replicas?1}", width: 8 }
+      - { name: AGE,   value: "{.metadata.creationTimestamp|age}" }
+```
+
+See the `tables:` comment in `kubelens.default.yaml` for the full transform list.
 
 ## Dev
 
