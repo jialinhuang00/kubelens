@@ -1,9 +1,12 @@
-# kubelens default config — the neutral base `kubelens init` builds on.
-# Built-in Kubernetes kinds only (universal to any cluster). No cluster-specific
-# CRDs. `kubelens init` reads this, detects your cluster's CRDs via
-# `kubectl api-resources`, and writes a complete kubelens.config.yaml.
+# kubelens seed config — the neutral base `kubelens init` builds on.
+# This file is NOT read at runtime. Only `kubelens init` reads it: it takes the
+# built-in kinds + the universal `templates`/`tables` below, detects your
+# cluster's CRDs via `kubectl api-resources`, and writes a complete, self-
+# sufficient kubelens.config.yaml (which is the only file the app loads).
+# Built-in Kubernetes kinds only — no cluster-specific CRDs.
 #
-# Field reference: see kubelens.config.yaml.
+# Edit the templates/tables here, then `npm run init -- --merge` to propagate
+# them into kubelens.config.yaml. Field reference: see kubelens.config.yaml.
 
 version: '1'
 

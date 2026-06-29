@@ -75,3 +75,390 @@ discovery:
       - events
       - endpoints
       - controllerrevisions
+
+# --- Copied from kubelens.default.yaml by init (the seed). Edit the seed
+# --- and re-run `pnpm run init -- --merge` to refresh these.
+templates:
+  Deployment:
+    - name: Rollout Status
+      command: kubectl rollout status deployment/{name} -n {namespace}
+    - name: History
+      command: kubectl rollout history deployment/{name} -n {namespace}
+    - name: Details
+      command: kubectl describe deployment {name} -n {namespace}
+  Pod:
+    - name: Logs
+      command: kubectl logs {name} -n {namespace} --tail=50 -f
+    - name: Previous Logs
+      command: kubectl logs {name} -n {namespace} --previous --tail=100
+    - name: Details
+      command: kubectl describe pod {name} -n {namespace}
+    - name: YAML
+      command: kubectl get pod {name} -n {namespace} -o yaml
+    - name: Exec Shell
+      command: kubectl exec -it {name} -n {namespace} -- /bin/sh
+      disabled: true
+    - name: Delete
+      command: kubectl delete pod {name} -n {namespace}
+  Service:
+    - name: Details
+      command: kubectl describe service {name} -n {namespace}
+    - name: Endpoints
+      command: kubectl get endpoints {name} -n {namespace} -o wide
+    - name: Port Forward
+      command: kubectl port-forward service/{name} 8080:80 -n {namespace}
+    - name: YAML
+      command: kubectl get service {name} -n {namespace} -o yaml
+    - name: Change to NodePort
+      command: kubectl patch service {name} -n {namespace} -p '{"spec":{"type":"NodePort"}}'
+    - name: Change to ClusterIP
+      command: kubectl patch service {name} -n {namespace} -p '{"spec":{"type":"ClusterIP"}}'
+  CronJob:
+    - name: Details
+      command: kubectl describe cronjob {name} -n {namespace}
+    - name: YAML
+      command: kubectl get cronjob {name} -n {namespace} -o yaml
+    - name: Suspend
+      command: kubectl patch cronjob {name} -n {namespace} -p '{"spec":{"suspend":true}}'
+    - name: Resume
+      command: kubectl patch cronjob {name} -n {namespace} -p '{"spec":{"suspend":false}}'
+    - name: Trigger Now
+      command: kubectl create job {name}-manual --from=cronjob/{name} -n {namespace}
+  StatefulSet:
+    - name: Details
+      command: kubectl describe statefulset {name} -n {namespace}
+    - name: YAML
+      command: kubectl get statefulset {name} -n {namespace} -o yaml
+    - name: Rollout Status
+      command: kubectl rollout status statefulset/{name} -n {namespace}
+    - name: Restart
+      command: kubectl rollout restart statefulset/{name} -n {namespace}
+    - name: Scale
+      command: kubectl scale statefulset {name} --replicas= -n {namespace}
+      requiresInput: true
+  Job:
+    - name: Details
+      command: kubectl describe job {name} -n {namespace}
+    - name: Logs
+      command: kubectl logs job/{name} -n {namespace} --tail=50
+    - name: YAML
+      command: kubectl get job {name} -n {namespace} -o yaml
+    - name: Delete
+      command: kubectl delete job {name} -n {namespace}
+  ConfigMap:
+    - name: Details
+      command: kubectl describe configmap {name} -n {namespace}
+    - name: YAML
+      command: kubectl get configmap {name} -n {namespace} -o yaml
+    - name: Data (JSON)
+      command: kubectl get configmap {name} -n {namespace} -o jsonpath="{.data}"
+  Secret:
+    - name: Details
+      command: kubectl describe secret {name} -n {namespace}
+    - name: YAML
+      command: kubectl get secret {name} -n {namespace} -o yaml
+    - name: Decode
+      command: 'kubectl get secret {name} -n {namespace} -o jsonpath="{.data}" | jq ''to_entries[] | {key: .key, value: (.value | @base64d)}'''
+  PersistentVolumeClaim:
+    - name: Details
+      command: kubectl describe pvc {name} -n {namespace}
+    - name: YAML
+      command: kubectl get pvc {name} -n {namespace} -o yaml
+  ServiceAccount:
+    - name: Details
+      command: kubectl describe serviceaccount {name} -n {namespace}
+    - name: YAML
+      command: kubectl get serviceaccount {name} -n {namespace} -o yaml
+  Ingress:
+    - name: Details
+      command: kubectl describe ingress {name} -n {namespace}
+    - name: YAML
+      command: kubectl get ingress {name} -n {namespace} -o yaml
+    - name: Endpoints
+      command: kubectl get endpoints -n {namespace}
+  DaemonSet:
+    - name: Details
+      command: kubectl describe daemonset {name} -n {namespace}
+    - name: YAML
+      command: kubectl get daemonset {name} -n {namespace} -o yaml
+    - name: Rollout Status
+      command: kubectl rollout status daemonset/{name} -n {namespace}
+    - name: Restart
+      command: kubectl rollout restart daemonset/{name} -n {namespace}
+  ReplicaSet:
+    - name: Details
+      command: kubectl describe replicaset {name} -n {namespace}
+    - name: YAML
+      command: kubectl get replicaset {name} -n {namespace} -o yaml
+    - name: Scale
+      command: kubectl scale replicaset {name} --replicas= -n {namespace}
+      requiresInput: true
+  HorizontalPodAutoscaler:
+    - name: Details
+      command: kubectl describe hpa {name} -n {namespace}
+    - name: YAML
+      command: kubectl get hpa {name} -n {namespace} -o yaml
+    - name: Status
+      command: kubectl get hpa {name} -n {namespace} -o wide
+  NetworkPolicy:
+    - name: Details
+      command: kubectl describe networkpolicy {name} -n {namespace}
+    - name: YAML
+      command: kubectl get networkpolicy {name} -n {namespace} -o yaml
+  Role:
+    - name: Details
+      command: kubectl describe role {name} -n {namespace}
+    - name: YAML
+      command: kubectl get role {name} -n {namespace} -o yaml
+  RoleBinding:
+    - name: Details
+      command: kubectl describe rolebinding {name} -n {namespace}
+    - name: YAML
+      command: kubectl get rolebinding {name} -n {namespace} -o yaml
+  Application:
+    - name: Summary
+      command: >-
+        kubectl get applications.argoproj.io {name} -n {namespace} -o
+        custom-columns="SYNC:.status.sync.status,HEALTH:.status.health.status,REPO:.spec.source.repoURL,PATH:.spec.source.path,REVISION:.spec.source.targetRevision,DEST_NS:.spec.destination.namespace"
+    - name: Resources
+      command: kubectl get applications.argoproj.io {name} -n {namespace} -o jsonpath="{range .status.resources[*]}{.kind}/{.name} {.status} {.health.status}{'\n'}{end}"
+    - name: Details
+      command: kubectl describe applications.argoproj.io {name} -n {namespace}
+    - name: YAML
+      command: kubectl get applications.argoproj.io {name} -n {namespace} -o yaml
+tables:
+  Deployment:
+    columns:
+      - name: NAME
+        value: '{.metadata.name}'
+        width: 38
+      - name: READY
+        value: '{.status.readyReplicas?0}/{.spec.replicas?1}'
+        width: 8
+      - name: UP-TO-DATE
+        value: '{.status.updatedReplicas?0}'
+        width: 13
+      - name: AVAILABLE
+        value: '{.status.availableReplicas?0}'
+        width: 12
+      - name: AGE
+        value: '{.metadata.creationTimestamp|age}'
+  Service:
+    columns:
+      - name: NAME
+        value: '{.metadata.name}'
+        width: 32
+      - name: TYPE
+        value: '{.spec.type?ClusterIP}'
+        width: 12
+      - name: CLUSTER-IP
+        value: '{.spec.clusterIP?<none>}'
+        width: 17
+      - name: EXTERNAL-IP
+        value: '{.spec.externalIPs|join?<none>}'
+        width: 14
+      - name: PORT(S)
+        value: '{.spec.ports|ports?<none>}'
+        width: 29
+      - name: AGE
+        value: '{.metadata.creationTimestamp|age}'
+  CronJob:
+    columns:
+      - name: NAME
+        value: '{.metadata.name}'
+        width: 31
+      - name: SCHEDULE
+        value: '{.spec.schedule?* * * * *}'
+        width: 15
+      - name: SUSPEND
+        value: '{.spec.suspend|bool}'
+        width: 10
+      - name: ACTIVE
+        value: '{.status.active|count}'
+        width: 9
+      - name: LAST SCHEDULE
+        value: '{.status.lastScheduleTime|age?<none>}'
+        width: 16
+      - name: AGE
+        value: '{.metadata.creationTimestamp|age}'
+  StatefulSet:
+    columns:
+      - name: NAME
+        value: '{.metadata.name}'
+        width: 22
+      - name: READY
+        value: '{.status.readyReplicas?0}/{.spec.replicas?1}'
+        width: 8
+      - name: AGE
+        value: '{.metadata.creationTimestamp|age}'
+  Job:
+    columns:
+      - name: NAME
+        value: '{.metadata.name}'
+        width: 35
+      - name: COMPLETIONS
+        value: '{.status.succeeded?0}/{.spec.completions?1}'
+        width: 14
+      - name: DURATION
+        value: '{|jobDuration}'
+        width: 11
+      - name: AGE
+        value: '{.metadata.creationTimestamp|age}'
+  ConfigMap:
+    columns:
+      - name: NAME
+        value: '{.metadata.name}'
+        width: 34
+      - name: DATA
+        value: '{.data|keys}'
+        width: 7
+      - name: AGE
+        value: '{.metadata.creationTimestamp|age}'
+  Endpoints:
+    columns:
+      - name: NAME
+        value: '{.metadata.name}'
+        width: 32
+      - name: ENDPOINTS
+        value: '{|endpoints}'
+        width: 35
+      - name: AGE
+        value: '{.metadata.creationTimestamp|age}'
+  Secret:
+    columns:
+      - name: NAME
+        value: '{.metadata.name}'
+        width: 44
+      - name: TYPE
+        value: '{.type?Opaque}'
+        width: 36
+      - name: DATA
+        value: '{.data|keys}'
+        width: 7
+      - name: AGE
+        value: '{.metadata.creationTimestamp|age}'
+  PersistentVolumeClaim:
+    columns:
+      - name: NAME
+        value: '{.metadata.name}'
+        width: 28
+      - name: STATUS
+        value: '{.status.phase?<unknown>}'
+        width: 9
+      - name: VOLUME
+        value: '{.spec.volumeName}'
+        width: 38
+      - name: CAPACITY
+        value: '{.status.capacity.storage}'
+        width: 11
+      - name: ACCESS MODES
+        value: '{.spec.accessModes|accessModes?<none>}'
+        width: 15
+      - name: STORAGECLASS
+        value: '{.spec.storageClassName?<none>}'
+        width: 15
+      - name: AGE
+        value: '{.metadata.creationTimestamp|age}'
+  ServiceAccount:
+    columns:
+      - name: NAME
+        value: '{.metadata.name}'
+        width: 38
+      - name: SECRETS
+        value: '{.secrets|count}'
+        width: 10
+      - name: AGE
+        value: '{.metadata.creationTimestamp|age}'
+  DaemonSet:
+    columns:
+      - name: NAME
+        value: '{.metadata.name}'
+        width: 22
+      - name: DESIRED
+        value: '{.status.desiredNumberScheduled?0}'
+        width: 9
+      - name: CURRENT
+        value: '{.status.currentNumberScheduled?0}'
+        width: 9
+      - name: READY
+        value: '{.status.numberReady?0}'
+        width: 7
+      - name: UP-TO-DATE
+        value: '{.status.updatedNumberScheduled?0}'
+        width: 12
+      - name: AVAILABLE
+        value: '{.status.numberAvailable?0}'
+        width: 11
+      - name: NODE SELECTOR
+        value: '{.spec.template.spec.nodeSelector|kv?<none>}'
+        width: 20
+      - name: AGE
+        value: '{.metadata.creationTimestamp|age}'
+  Ingress:
+    columns:
+      - name: NAME
+        value: '{.metadata.name}'
+        width: 20
+      - name: CLASS
+        value: '{.spec.ingressClassName?<none>}'
+        width: 16
+      - name: HOSTS
+        value: '{|ingressHosts}'
+        width: 30
+      - name: ADDRESS
+        value: '{|ingressAddress}'
+        width: 20
+      - name: PORTS
+        value: '{|ingressPorts}'
+        width: 10
+      - name: AGE
+        value: '{.metadata.creationTimestamp|age}'
+  HorizontalPodAutoscaler:
+    columns:
+      - name: NAME
+        value: '{.metadata.name}'
+        width: 20
+      - name: REFERENCE
+        value: '{.spec.scaleTargetRef|ref}'
+        width: 28
+      - name: TARGETS
+        value: '{|hpaTargets}'
+        width: 16
+      - name: MINPODS
+        value: '{.spec.minReplicas?1}'
+        width: 9
+      - name: MAXPODS
+        value: '{.spec.maxReplicas?1}'
+        width: 9
+      - name: REPLICAS
+        value: '{.status.currentReplicas?0}'
+        width: 10
+      - name: AGE
+        value: '{.metadata.creationTimestamp|age}'
+  Role:
+    columns:
+      - name: NAME
+        value: '{.metadata.name}'
+        width: 40
+      - name: CREATED AT
+        value: '{.metadata.creationTimestamp?<unknown>}'
+  RoleBinding:
+    columns:
+      - name: NAME
+        value: '{.metadata.name}'
+        width: 40
+      - name: ROLE
+        value: '{.roleRef|ref:Role}'
+        width: 36
+      - name: AGE
+        value: '{.metadata.creationTimestamp|age}'
+  NetworkPolicy:
+    columns:
+      - name: NAME
+        value: '{.metadata.name}'
+        width: 24
+      - name: POD-SELECTOR
+        value: '{.spec.podSelector.matchLabels|kv?<none>}'
+        width: 40
+      - name: AGE
+        value: '{.metadata.creationTimestamp|age}'

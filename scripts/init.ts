@@ -6,10 +6,13 @@
  *   npm run init -- --force      # regenerate from scratch
  *   npm run init -- --merge      # refresh CRDs, keep your edits
  *
- * Reads kubelens.default.yaml (universal built-ins), detects cluster type +
- * registry from kubeconfig/images, lists CRDs via `kubectl api-resources`, and
- * writes a complete config. Discovered CRDs ship `default: []` (off; enable in
- * the visibility panel). Detection logic lives in api/utils/init-detect.ts.
+ * Reads kubelens.default.yaml (the seed: universal built-ins + panel command
+ * templates + snapshot table layouts), detects cluster type + registry from
+ * kubeconfig/images, lists CRDs via `kubectl api-resources`, and writes a
+ * complete, self-sufficient config — built-ins + discovered CRDs + the seed's
+ * templates/tables copied in verbatim. The runtime reads only this file; the
+ * seed is never loaded at runtime. Discovered CRDs ship `default: []` (off;
+ * enable in the visibility panel). Detection logic lives in api/utils/init-detect.ts.
  */
 
 import fs from 'fs';
@@ -78,6 +81,11 @@ function main(): void {
     registry: { type: registry.type },
     resources,
     discovery: base.discovery,
+    // Copy the universal panel commands + snapshot table layouts straight from
+    // the seed so the generated config is self-sufficient — the runtime reads
+    // only kubelens.config.yaml, never the seed.
+    templates: base.templates,
+    tables: base.tables,
   };
 
   const header =

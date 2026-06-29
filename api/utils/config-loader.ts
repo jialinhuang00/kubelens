@@ -42,7 +42,6 @@ export interface TableSpec {
 }
 
 const CONFIG_PATH = path.join(__dirname, '../..', 'kubelens.config.yaml');
-const DEFAULT_PATH = path.join(__dirname, '../..', 'kubelens.default.yaml');
 
 interface ConfigDoc {
   resources?: ResourceConfig[];
@@ -52,9 +51,10 @@ interface ConfigDoc {
 }
 
 let docCache: ConfigDoc | null = null;
-let defaultDocCache: ConfigDoc | null = null;
 
-/** Read and cache the whole kubelens.config.yaml. */
+/** Read and cache the whole kubelens.config.yaml. This is the only config the
+ *  runtime reads — kubelens.default.yaml is a seed consumed solely by
+ *  `npm run init`, which copies its templates/tables into kubelens.config.yaml. */
 function loadDoc(): ConfigDoc {
   if (docCache) return docCache;
   try {
@@ -66,32 +66,20 @@ function loadDoc(): ConfigDoc {
   return docCache;
 }
 
-/** Read and cache kubelens.default.yaml (holds the universal per-kind command templates). */
-function loadDefaultDoc(): ConfigDoc {
-  if (defaultDocCache) return defaultDocCache;
-  try {
-    defaultDocCache = (yaml.load(fs.readFileSync(DEFAULT_PATH, 'utf8')) as ConfigDoc) ?? {};
-  } catch (e) {
-    console.error('Failed to load kubelens.default.yaml:', (e as Error).message);
-    defaultDocCache = {};
-  }
-  return defaultDocCache;
-}
-
 export function loadResources(): ResourceConfig[] {
   return loadDoc().resources ?? [];
 }
 
-/** Per-kind command templates (universal), keyed by Kind. From kubelens.default.yaml;
- *  config.yaml may override per kind. */
+/** Per-kind command templates (universal), keyed by Kind. From kubelens.config.yaml
+ *  (init copies them in from kubelens.default.yaml). */
 export function loadTemplates(): Record<string, TemplateDef[]> {
-  return { ...loadDefaultDoc().templates, ...loadDoc().templates };
+  return loadDoc().templates ?? {};
 }
 
 /** Per-kind snapshot `kubectl get` table specs, keyed by Kind. From
- *  kubelens.default.yaml; config.yaml may override per kind. */
+ *  kubelens.config.yaml (init copies them in from kubelens.default.yaml). */
 export function loadTables(): Record<string, TableSpec> {
-  return { ...loadDefaultDoc().tables, ...loadDoc().tables };
+  return loadDoc().tables ?? {};
 }
 
 /** Table spec for a Kind (e.g. 'Deployment'), or undefined if none is declared. */
