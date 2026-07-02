@@ -21,7 +21,7 @@ const (
 // nsBatches mirrors the NS_BATCHES array in k8s-export.sh.
 // Each element is a comma-separated list of resource types for one kubectl call.
 var nsBatches = []string{
-	"deployments,statefulsets,daemonsets,cronjobs,jobs",
+	"deployments,replicasets,statefulsets,daemonsets,cronjobs,jobs",
 	"services,ingresses,endpoints",
 	"configmaps,secrets,serviceaccounts",
 	"persistentvolumeclaims,roles,rolebindings",

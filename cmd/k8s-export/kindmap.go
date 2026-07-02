@@ -6,6 +6,7 @@ import "strings"
 // Keep in sync with scripts/kind-map.json when adding new resource types.
 var kindMap = map[string]string{
 	"Deployment":              "deployments",
+	"ReplicaSet":              "replicasets",
 	"Service":                 "services",
 	"ConfigMap":               "configmaps",
 	"Secret":                  "secrets",

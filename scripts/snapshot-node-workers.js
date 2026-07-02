@@ -32,7 +32,7 @@ const yaml = require('js-yaml');
 const fs = require('fs').promises;
 
 const NS_BATCHES = [
-  ['deployments', 'statefulsets', 'daemonsets', 'cronjobs', 'jobs'],
+  ['deployments', 'replicasets', 'statefulsets', 'daemonsets', 'cronjobs', 'jobs'],
   ['services', 'ingresses', 'endpoints'],
   ['configmaps', 'secrets', 'serviceaccounts'],
   ['persistentvolumeclaims', 'roles', 'rolebindings'],

@@ -1,5 +1,6 @@
 {
   "Deployment": "deployments",
+  "ReplicaSet": "replicasets",
   "Service": "services",
   "ConfigMap": "configmaps",
   "Secret": "secrets",

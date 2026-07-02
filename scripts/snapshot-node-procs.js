@@ -50,7 +50,7 @@ for (let i = 0; i < args.length; i++) {
 // ============================================================================
 
 const NS_BATCHES = [
-  ['deployments', 'statefulsets', 'daemonsets', 'cronjobs', 'jobs'],
+  ['deployments', 'replicasets', 'statefulsets', 'daemonsets', 'cronjobs', 'jobs'],
   ['services', 'ingresses', 'endpoints'],
   ['configmaps', 'secrets', 'serviceaccounts'],
   ['persistentvolumeclaims', 'roles', 'rolebindings'],

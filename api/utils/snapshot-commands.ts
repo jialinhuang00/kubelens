@@ -56,7 +56,6 @@ const SPECIAL_NULL: Record<string, null> = {
   pods: null, pod: null, po: null,
   nodes: null, node: null, no: null,
   namespaces: null, namespace: null, ns: null,
-  replicasets: null, replicaset: null, rs: null,
   events: null, event: null,
 };
 
@@ -285,7 +284,12 @@ function handleGet(parsed: ParsedCommand): CommandResult {
     return handleGetPods(parsed);
   }
 
-  if (['replicasets', 'replicaset', 'rs'].includes(parsed.resource!)) {
+  // Old snapshots have no replicasets.yaml — fall back to synthesizing RS rows
+  // from deployments. New exports take the generic file-backed path below.
+  if (
+    ['replicasets', 'replicaset', 'rs'].includes(parsed.resource!) &&
+    !loadYaml('replicasets.yaml', parsed.namespace)
+  ) {
     return handleGetReplicasets(parsed);
   }
 
@@ -780,9 +784,24 @@ function handleDescribe(parsed: ParsedCommand): CommandResult {
     };
   }
 
-  // ReplicaSets aren't exported as their own file — they're synthesized from the
-  // owning Deployment (matching `handleGetReplicasets`'s `<deployment>-<generation>` name).
   if (['replicaset', 'replicasets', 'rs'].includes(resource!)) {
+    // New exports carry real ReplicaSets — describe the actual object
+    // (generateReplicaSetDescribe reads generic workload fields, so an RS works).
+    const rsData = loadYaml('replicasets.yaml', parsed.namespace);
+    if (rsData) {
+      if (name) {
+        const rs = findItem(rsData, name);
+        if (!rs) return { success: false, error: `Error from server (NotFound): replicasets.apps "${name}" not found` };
+        return { success: true, stdout: generateReplicaSetDescribe(rs, name) };
+      }
+      return {
+        success: true,
+        stdout: (rsData.items || []).map(rs => generateReplicaSetDescribe(rs, rs.metadata.name)).join('\n\n---\n\n')
+      };
+    }
+
+    // Old snapshots have no replicasets.yaml — synthesize from the owning
+    // Deployment (matching legacy `handleGetReplicasets`'s `<deployment>-<generation>` name).
     const data = loadYaml('deployments.yaml', parsed.namespace);
     if (!data) return { success: false, error: 'No replicaset data' };
     const deployments = data.items || [];
@@ -828,6 +847,59 @@ function handleDescribe(parsed: ParsedCommand): CommandResult {
 
 // --- ROLLOUT handler ---
 
+/**
+ * Rebuild a deployment's real revision history from the snapshot's ReplicaSets.
+ * Each RS owned by the deployment carries `deployment.kubernetes.io/revision`
+ * (and optionally `kubernetes.io/change-cause`) — the same data real
+ * `kubectl rollout history` reads. Returns [] when the snapshot has no
+ * replicasets.yaml (exports made before ReplicaSet was in the kind list).
+ */
+function collectDeploymentRevisions(
+  deploymentName: string,
+  namespace?: string
+): Array<{ revision: number; changeCause: string; rs: K8sItem }> {
+  const rsData = loadYaml('replicasets.yaml', namespace);
+  if (!rsData) return [];
+  return (rsData.items || [])
+    .filter(rs =>
+      (rs.metadata.ownerReferences || []).some(o => o.kind === 'Deployment' && o.name === deploymentName)
+    )
+    .map(rs => {
+      const anno = rs.metadata.annotations || {};
+      return {
+        revision: parseInt(anno['deployment.kubernetes.io/revision'] || '0', 10),
+        changeCause: anno['kubernetes.io/change-cause'] || '<none>',
+        rs,
+      };
+    })
+    .filter(r => r.revision > 0)
+    .sort((a, b) => a.revision - b.revision);
+}
+
+/** Render a pod template the way `kubectl rollout history --revision=N` does. */
+function formatPodTemplate(deploymentName: string, revision: string, source: K8sItem): string {
+  const spec = (source.spec || {}) as Record<string, unknown>;
+  const template = (spec.template || {}) as Record<string, unknown>;
+  const templateMeta = (template.metadata || {}) as Record<string, unknown>;
+  const labels = (templateMeta.labels || {}) as Record<string, string>;
+  const templateSpec = (template.spec || {}) as Record<string, unknown>;
+  const containers = (templateSpec.containers || []) as Array<Record<string, unknown>>;
+
+  const labelStr =
+    Object.entries(labels).map(([k, v]) => `${k}=${v}`).join('\n\t') || `app=${deploymentName}`;
+  const containerBlocks = containers
+    .map(c => {
+      const ports =
+        ((c.ports as Array<Record<string, unknown>>) || [])
+          .map(p => `${p.containerPort}/${p.protocol || 'TCP'}`)
+          .join(', ') || '<none>';
+      return `   ${c.name}:\n    Image:\t${c.image}\n    Port:\t${ports}\n    Environment:\t<none>\n    Mounts:\t<none>`;
+    })
+    .join('\n');
+
+  return `deployment.apps/${deploymentName} with revision #${revision}\nPod Template:\n  Labels:\t${labelStr}\n  Containers:\n${containerBlocks}\n  Volumes:\t<none>`;
+}
+
 function handleRollout(parsed: ParsedCommand): CommandResult {
   const deployment = parsed.resource;
   let deploymentName = deployment!;
@@ -854,22 +926,34 @@ function handleRollout(parsed: ParsedCommand): CommandResult {
     case 'history': {
       const revision = parsed.flags.revision as string | undefined;
       const item = data ? findItem(data, deploymentName) : null;
-      const spec = (item?.spec || {}) as Record<string, unknown>;
-      const template = (spec.template || {}) as Record<string, unknown>;
-      const templateSpec = (template.spec || {}) as Record<string, unknown>;
-      const containers = (templateSpec.containers || []) as Array<Record<string, unknown>>;
-      const containerName = (containers[0]?.name as string) || deploymentName;
-      const image = (containers[0]?.image as string) || 'unknown:latest';
-      if (revision) {
-        return {
-          success: true,
-          stdout: `deployment.apps/${deploymentName} with revision #${revision}\nPod Template:\n  Labels:  app=${deploymentName}\n  Containers:\n   ${containerName}:\n    Image: ${image}\n    Port:  <none>\n    Host Port: <none>\n    Environment: <none>\n    Mounts: <none>\n  Volumes: <none>`
-        };
+      if (!item) {
+        return { success: false, error: `Error from server (NotFound): deployments.apps "${deploymentName}" not found` };
       }
-      return {
-        success: true,
-        stdout: `deployment.apps/${deploymentName}\nREVISION  CHANGE-CAUSE\n1         <none>\n2         <none>\n3         kubectl set image deployment/${deploymentName} ${containerName}=image:v2\n4         kubectl set image deployment/${deploymentName} ${containerName}=image:v3`
-      };
+      const revisions = collectDeploymentRevisions(deploymentName, parsed.namespace);
+
+      if (revision) {
+        const match = revisions.find(r => String(r.revision) === revision);
+        if (revisions.length > 0 && !match) {
+          return { success: false, error: `error: unable to find the specified revision` };
+        }
+        // With RS data, show that revision's pod template; without it (old
+        // snapshot), fall back to the deployment's current template.
+        const source = match?.rs || item;
+        return { success: true, stdout: formatPodTemplate(deploymentName, revision, source) };
+      }
+
+      let rows: string;
+      if (revisions.length > 0) {
+        rows = revisions.map(r => `${String(r.revision).padEnd(10)}${r.changeCause}`).join('\n');
+      } else {
+        // Old snapshot without replicasets.yaml — the deployment's own revision
+        // annotation is still real; show that single row instead of inventing history.
+        const anno = item.metadata.annotations || {};
+        const rev = anno['deployment.kubernetes.io/revision'] || '1';
+        const cause = anno['kubernetes.io/change-cause'] || '<none>';
+        rows = `${rev.padEnd(10)}${cause}`;
+      }
+      return { success: true, stdout: `deployment.apps/${deploymentName}\nREVISION  CHANGE-CAUSE\n${rows}` };
     }
     case 'undo':
       return { success: true, stdout: `deployment.apps/${deploymentName} rolled back` };
