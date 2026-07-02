@@ -155,8 +155,30 @@
   }
 
   .rollout-toggle {
-    padding: 4px 10px;
+    padding: 9px 10px;
+    margin: 0;
+    border-radius: 0;
     background: rgba(0, 0, 0, 0.08);
+    border-left: 2px solid transparent;
+
+    &.collapsed {
+      border-left-color: var(--t-accent);
+      animation: rollout-hint 2.4s ease-in-out infinite;
+    }
+
+    &:hover {
+      background: color-mix(in srgb, var(--t-accent) 12%, transparent);
+      animation: none;
+    }
+  }
+
+  .status-dot {
+    width: 11px;
+    height: 11px;
+  }
+
+  .status-lights {
+    gap: 4px;
   }
 
   .rollout-body {
@@ -339,4 +361,9 @@
 
 :host ::ng-deep .cdk-drag-placeholder {
   opacity: 0;
+}
+
+@keyframes rollout-hint {
+  0%, 100% { background: rgba(0, 0, 0, 0.08); }
+  50% { background: color-mix(in srgb, var(--t-accent) 10%, transparent); }
 }

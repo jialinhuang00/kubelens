@@ -11,7 +11,6 @@ import { RolloutConsoleComponent } from '../../../dashboard/components/sidebar/r
 import { CommandTemplate } from '../../../../shared/models/kubectl.models';
 import { DeploymentService } from '../../../k8s/services/deployment.service';
 import { RegistryService } from '../../../k8s/services/registry.service';
-import { RolloutStateService } from '../../../dashboard/services/rollout-state.service';
 import { RolloutService } from '../../../dashboard/services/rollout.service';
 import { TemplateService } from '../../../dashboard/services/template.service';
 
@@ -31,7 +30,6 @@ export class FloatingPanelComponent {
   private panelExecution = inject(PanelExecutionService);
   private deploymentService = inject(DeploymentService);
   private registryService = inject(RegistryService);
-  private rolloutStateService = inject(RolloutStateService);
   private rolloutService = inject(RolloutService);
   private templateService = inject(TemplateService);
 
@@ -40,6 +38,8 @@ export class FloatingPanelComponent {
   // Rollout state
   rolloutExpanded = signal(false);
   rolloutTemplates = signal<CommandTemplate[]>([]);
+  statusRefreshing = signal(false);
+  rolloutActionPending = signal<string | null>(null);
 
   isDeployment = computed(() => this.panel().resourceKind === 'Deployment');
   deploymentStatus = computed(() =>
@@ -286,15 +286,37 @@ export class FloatingPanelComponent {
     this.rolloutExpanded.update(v => !v);
     if (this.rolloutExpanded() && !this.hasFetchedStatus) {
       this.hasFetchedStatus = true;
-      const p = this.panel();
-      this.deploymentService.fetchRolloutStatus(p.resourceName, p.namespace);
+      this.refreshRolloutStatus();
+    }
+  }
+
+  private async refreshRolloutStatus(): Promise<void> {
+    const p = this.panel();
+    this.statusRefreshing.set(true);
+    try {
+      await this.deploymentService.fetchRolloutStatus(p.resourceName, p.namespace);
+    } finally {
+      this.statusRefreshing.set(false);
     }
   }
 
   onRolloutTemplateExecute(template: CommandTemplate): void {
     const p = this.panel();
     const command = this.panelExecution.substituteCommand(template.command, p.namespace, p.resourceName);
-    this.panelExecution.execute(p.id, command);
+    this.runRolloutAction(template.name, command);
+  }
+
+  // Run a rollout mutation, then refetch status once kubectl actually finishes
+  // (no fixed delay — the command can be slow against a remote cluster).
+  private async runRolloutAction(name: string, command: string): Promise<void> {
+    const p = this.panel();
+    this.rolloutActionPending.set(name);
+    try {
+      await this.panelExecution.execute(p.id, command);
+      await this.refreshRolloutStatus();
+    } finally {
+      this.rolloutActionPending.set(null);
+    }
   }
 
   onLoadTags(): void {
@@ -312,12 +334,10 @@ export class FloatingPanelComponent {
     const baseImage = image.replace(/:.*$/, '');
     const fullImage = `${baseImage}:${tag}`;
     const command = this.rolloutService.generateSetImageCommand(p.resourceName, container, p.namespace, fullImage);
-    this.panelExecution.execute(p.id, command);
-    this.rolloutStateService.triggerRolloutAction('tag-select');
+    this.runRolloutAction('Set Image', command);
   }
 
   onRefetchRolloutStatus(): void {
-    const p = this.panel();
-    this.deploymentService.fetchRolloutStatus(p.resourceName, p.namespace);
+    this.refreshRolloutStatus();
   }
 }

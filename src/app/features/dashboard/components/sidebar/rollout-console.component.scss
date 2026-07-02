@@ -156,6 +156,18 @@
       mat-icon { color: var(--text-secondary) !important; }
     }
   }
+
+  &.loading {
+    opacity: 1;
+
+    mat-icon {
+      animation: refetch-spin 0.8s linear infinite;
+    }
+  }
+}
+
+@keyframes refetch-spin {
+  to { transform: rotate(360deg); }
 }
 
 // Registry tag section

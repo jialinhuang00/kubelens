@@ -1,7 +1,7 @@
 @if (deploymentName) {
 <div class="rollout-console">
   <!-- Compact toggle row -->
-  <div class="rollout-toggle" (click)="onToggleExpanded()">
+  <div class="rollout-toggle" [class.collapsed]="!isExpanded" (click)="onToggleExpanded()">
     <span class="rollout-toggle-label">
       Rollout
       @if (deploymentStatus && buttonStates) {
@@ -24,27 +24,33 @@
     <!-- Player Controls -->
     <div class="player-row">
       <button class="player-btn rollback-btn"
-        [title]="getRollbackTooltip()" [disabled]="!buttonStates?.rollbackEnabled"
-        [class.disabled]="!buttonStates?.rollbackEnabled" (click)="onRollbackToPrevious()">
-        <mat-icon>skip_previous</mat-icon>
+        [title]="getRollbackTooltip()" [disabled]="!buttonStates?.rollbackEnabled || actionPending !== null"
+        [class.disabled]="!buttonStates?.rollbackEnabled" [class.loading]="actionPending === 'Undo Last'"
+        (click)="onRollbackToPrevious()">
+        <mat-icon>{{ actionPending === 'Undo Last' ? 'autorenew' : 'skip_previous' }}</mat-icon>
       </button>
       <button class="player-btn pause-btn"
-        [title]="getPauseTooltip()" [disabled]="!buttonStates?.pauseEnabled"
-        [class.disabled]="!buttonStates?.pauseEnabled" (click)="onPauseRollout()">
-        <mat-icon>pause</mat-icon>
+        [title]="getPauseTooltip()" [disabled]="!buttonStates?.pauseEnabled || actionPending !== null"
+        [class.disabled]="!buttonStates?.pauseEnabled" [class.loading]="actionPending === 'Pause'"
+        (click)="onPauseRollout()">
+        <mat-icon>{{ actionPending === 'Pause' ? 'autorenew' : 'pause' }}</mat-icon>
       </button>
       <button class="player-btn play-btn"
-        [title]="getResumeTooltip()" [disabled]="!buttonStates?.resumeEnabled"
-        [class.disabled]="!buttonStates?.resumeEnabled" (click)="onResumeRollout()">
-        <mat-icon>play_arrow</mat-icon>
+        [title]="getResumeTooltip()" [disabled]="!buttonStates?.resumeEnabled || actionPending !== null"
+        [class.disabled]="!buttonStates?.resumeEnabled" [class.loading]="actionPending === 'Resume'"
+        (click)="onResumeRollout()">
+        <mat-icon>{{ actionPending === 'Resume' ? 'autorenew' : 'play_arrow' }}</mat-icon>
       </button>
       <button class="player-btn restart-btn"
-        [title]="getRestartTooltip()" [disabled]="!buttonStates?.restartEnabled"
-        [class.disabled]="!buttonStates?.restartEnabled" (click)="onRestartDeployment()">
-        <mat-icon>refresh</mat-icon>
+        [title]="getRestartTooltip()" [disabled]="!buttonStates?.restartEnabled || actionPending !== null"
+        [class.disabled]="!buttonStates?.restartEnabled" [class.loading]="actionPending === 'Restart'"
+        (click)="onRestartDeployment()">
+        <mat-icon>{{ actionPending === 'Restart' ? 'autorenew' : 'refresh' }}</mat-icon>
       </button>
       <span class="player-spacer"></span>
-      <button class="player-btn refetch-btn" title="Refetch deployment status" (click)="refetchStatus.emit()">
+      <button class="player-btn refetch-btn" title="Refetch deployment status"
+        [class.loading]="statusLoading" [disabled]="statusLoading || actionPending !== null"
+        (click)="refetchStatus.emit()">
         <mat-icon>sync</mat-icon>
       </button>
     </div>
@@ -70,7 +76,9 @@
                 <option [value]="tag">{{ tag }}</option>
               }
             </select>
-            <button class="tag-btn" [disabled]="!selectedTag()" (click)="onSelectTag(selectedTag())">Set Image</button>
+            <button class="tag-btn" [disabled]="!selectedTag() || actionPending !== null" (click)="onSelectTag(selectedTag())">
+              {{ actionPending === 'Set Image' ? 'Setting...' : 'Set Image' }}
+            </button>
           }
         </div>
       </div>

@@ -1,9 +1,8 @@
-import { Component, Input, Output, EventEmitter, signal, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { CommandTemplate } from '../../../../shared/models/kubectl.models';
 import { DeploymentStatus, RolloutButtonStates } from '../../../k8s/services/deployment.service';
-import { RolloutStateService } from '../../services/rollout-state.service';
 
 @Component({
   selector: 'app-rollout-console',
@@ -12,8 +11,6 @@ import { RolloutStateService } from '../../services/rollout-state.service';
   styleUrl: './rollout-console.component.scss'
 })
 export class RolloutConsoleComponent {
-  private rolloutStateService = inject(RolloutStateService);
-
   @Input() deploymentName: string = '';
   @Input() isExpanded: boolean = false;
   @Input() rolloutTemplates: CommandTemplate[] = [];
@@ -25,6 +22,8 @@ export class RolloutConsoleComponent {
   @Input() tagsLoading = false;
   @Input() tagsError = '';
   @Input() deploymentImage = '';
+  @Input() statusLoading = false;
+  @Input() actionPending: string | null = null;
 
   @Output() toggleExpanded = new EventEmitter<void>();
   @Output() templateExecute = new EventEmitter<CommandTemplate>();
@@ -48,7 +47,6 @@ export class RolloutConsoleComponent {
     const undoTemplate = this.rolloutTemplates.find(t => t.name === 'Undo Last');
     if (undoTemplate) {
       this.onTemplateExecute(undoTemplate);
-      this.rolloutStateService.triggerRolloutAction('rollback');
     }
   }
 
@@ -56,7 +54,6 @@ export class RolloutConsoleComponent {
     const pauseTemplate = this.rolloutTemplates.find(t => t.name === 'Pause');
     if (pauseTemplate) {
       this.onTemplateExecute(pauseTemplate);
-      this.rolloutStateService.triggerRolloutAction('pause');
     }
   }
 
@@ -64,7 +61,6 @@ export class RolloutConsoleComponent {
     const resumeTemplate = this.rolloutTemplates.find(t => t.name === 'Resume');
     if (resumeTemplate) {
       this.onTemplateExecute(resumeTemplate);
-      this.rolloutStateService.triggerRolloutAction('resume');
     }
   }
 
@@ -72,7 +68,6 @@ export class RolloutConsoleComponent {
     const restartTemplate = this.rolloutTemplates.find(t => t.name === 'Restart');
     if (restartTemplate) {
       this.onTemplateExecute(restartTemplate);
-      this.rolloutStateService.triggerRolloutAction('restart');
     }
   }
 

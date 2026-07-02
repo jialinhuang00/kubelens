@@ -83,6 +83,8 @@
       [tagsLoading]="tagsLoading()"
       [tagsError]="tagsError()"
       [deploymentImage]="deploymentImage()"
+      [statusLoading]="statusRefreshing()"
+      [actionPending]="rolloutActionPending()"
       (toggleExpanded)="onToggleRollout()"
       (templateExecute)="onRolloutTemplateExecute($event)"
       (loadTags)="onLoadTags()"
