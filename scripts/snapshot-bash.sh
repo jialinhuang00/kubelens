@@ -32,7 +32,7 @@ BASE_DIR="${SCRIPT_DIR}/../k8s-snapshot"
 # Finer-grained batches prevent slow resources (e.g. many secrets) from blocking others
 # CRDs are included as fixed batches — if they don't exist, kubectl will return empty (no overhead)
 NS_BATCHES=(
-  "deployments,statefulsets,daemonsets,cronjobs,jobs"                                           # Batch 1: Workloads (5 types)
+  "deployments,replicasets,statefulsets,daemonsets,cronjobs,jobs"                               # Batch 1: Workloads (6 types)
   "services,ingresses,endpoints"                                                                # Batch 2: Networking core (3 types)
   "configmaps,secrets,serviceaccounts"                                                          # Batch 3: Config & auth (3 types)
   "persistentvolumeclaims,roles,rolebindings"                                                   # Batch 4: Storage & RBAC (3 types)
@@ -117,7 +117,15 @@ if [[ "$RESUME" == "true" ]]; then
     NAMESPACES=("${REMAINING[@]}")
   fi
 else
-  rm -rf "$BASE_DIR"
+  if [[ "$ALL_NS" == true ]]; then
+    rm -rf "$BASE_DIR"
+  else
+    # Scoped export (-n): only clear the requested namespaces,
+    # keep everything else from the previous snapshot intact.
+    for ns in "${NAMESPACES[@]}"; do
+      rm -rf "$BASE_DIR/$ns"
+    done
+  fi
 fi
 
 # --- Namespace export function ---
