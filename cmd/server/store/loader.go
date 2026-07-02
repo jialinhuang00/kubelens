@@ -34,7 +34,17 @@ const DefaultNamespace = "demo"
 
 // fileAliases maps resource names to candidate YAML filenames.
 // Derived from kubelens.config.yaml (CRDs whose files are group-qualified).
-var fileAliases = FileAliases()
+// Lazy: package-level init would run before main() chdirs to PROJECT_ROOT,
+// making the config unreadable (and the empty result cached forever).
+var (
+	fileAliasesOnce sync.Once
+	fileAliasesMap  map[string][]string
+)
+
+func fileAliases() map[string][]string {
+	fileAliasesOnce.Do(func() { fileAliasesMap = FileAliases() })
+	return fileAliasesMap
+}
 
 // cache stores parsed YAML lists and text file contents.
 // Key: "ns:filename" for YAML, "text:ns:filename" for text.
@@ -59,7 +69,7 @@ func ResolveFilePath(filename, namespace string) string {
 
 	// Alias match.
 	baseName := strings.TrimSuffix(filename, ".yaml")
-	if aliases, ok := fileAliases[baseName]; ok {
+	if aliases, ok := fileAliases()[baseName]; ok {
 		for _, alias := range aliases {
 			p = filepath.Join(nsDir, alias)
 			if _, err := os.Stat(p); err == nil {
