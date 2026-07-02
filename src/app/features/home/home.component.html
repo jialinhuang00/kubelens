@@ -174,7 +174,7 @@
   </div>
 
   @if (!exportService.isRunning() && !exportService.paused() && !exportService.done() && !showExport()) {
-    <button class="snapshot-update-link" (click)="showExport.set(true)">
+    <button class="snapshot-update-link" [class.hint-glow]="dataModeService.exportHint()" (click)="showExport.set(true)">
       {{ dataModeService.snapshotAvailable() ? 'update snapshot?' : 'export a snapshot?' }}
     </button>
   }

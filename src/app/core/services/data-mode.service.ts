@@ -96,4 +96,15 @@ export class DataModeService {
   private persistMode(): void {
     localStorage.setItem(DataModeService.STORAGE_KEY, this.isSnapshotMode() ? 'snapshot' : 'realtime');
   }
+
+  // The mode toggle's "no snapshot" popover turns this on before navigating
+  // home; Home binds it to spotlight the export link. Self-clears.
+  exportHint = signal(false);
+  private exportHintTimer: ReturnType<typeof setTimeout> | null = null;
+
+  requestExportHint(): void {
+    this.exportHint.set(true);
+    if (this.exportHintTimer) clearTimeout(this.exportHintTimer);
+    this.exportHintTimer = setTimeout(() => this.exportHint.set(false), 6000);
+  }
 }

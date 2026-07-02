@@ -525,6 +525,17 @@
     opacity: 1;
     color: var(--t-accent);
   }
+
+  &.hint-glow {
+    opacity: 1;
+    color: var(--t-accent);
+    animation: export-hint-glow 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes export-hint-glow {
+  0%, 100% { text-shadow: 0 0 2px transparent; }
+  50% { text-shadow: 0 0 10px var(--t-accent); }
 }
 
 .export-btn {
