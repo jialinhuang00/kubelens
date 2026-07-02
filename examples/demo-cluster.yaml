@@ -65,18 +65,20 @@ data:
       <script>
         const out=document.getElementById('out');
         const podOf=t=>(t.match(/Hostname:\s*(\S+)/)||[,t.trim()])[1];
+        const verOf=t=>(t.match(/version:\s*(\S+)/)||[])[1];
+        const tag=t=>{const v=verOf(t);return (v?v+'  ·  ':'')+podOf(t);};
         fetch('/whoami').then(r=>r.text()).then(t=>{document.getElementById('gw').textContent=t.trim();});
         async function call(path,label){
           out.textContent='…';
           const t=await (await fetch(path,{cache:'no-store'})).text();
-          out.textContent=label+'  ←  served by pod: '+podOf(t);
+          out.textContent=label+'  ←  '+tag(t);
         }
         async function loop(path,n){
           out.textContent='…';
           const tally={};
           for(let i=0;i<n;i++){
             const t=await (await fetch(path,{cache:'no-store'})).text();
-            const p=podOf(t); tally[p]=(tally[p]||0)+1;
+            const k=tag(t); tally[k]=(tally[k]||0)+1;
           }
           out.textContent=Object.entries(tally).map(([k,v])=>k+': '+v).join('\n');
         }
