@@ -1,0 +1,1287 @@
+apiVersion: v1
+kind: List
+items:
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '2'
+        deployment.kubernetes.io/max-replicas: '3'
+        deployment.kubernetes.io/revision: '1'
+      creationTimestamp: '2026-06-29T12:20:00.000Z'
+      generation: 3
+      labels:
+        app: gateway
+        pod-template-hash: 6c6585f5b5
+        tier: edge
+      name: gateway-6c6585f5b5
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: gateway
+          uid: 27702f4b-8f53-4ec1-81f1-735b0d97cd9e
+      resourceVersion: '2727'
+      uid: 9ae3e07f-7821-4251-9591-9cfe19513098
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: gateway
+          pod-template-hash: 6c6585f5b5
+      template:
+        metadata:
+          labels:
+            app: gateway
+            pod-template-hash: 6c6585f5b5
+            tier: edge
+        spec:
+          containers:
+            - envFrom:
+                - configMapRef:
+                    name: app-config
+                - secretRef:
+                    name: app-secrets
+              image: nginx:alpine
+              imagePullPolicy: IfNotPresent
+              name: gateway
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+                - mountPath: /etc/nginx/conf.d
+                  name: nginx-conf
+          dnsPolicy: ClusterFirst
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+          volumes:
+            - configMap:
+                defaultMode: 420
+                name: gateway-nginx
+              name: nginx-conf
+    status:
+      observedGeneration: 3
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '2'
+        deployment.kubernetes.io/max-replicas: '3'
+        deployment.kubernetes.io/revision: '2'
+      creationTimestamp: '2026-06-29T12:45:16.000Z'
+      generation: 4
+      labels:
+        app: gateway
+        pod-template-hash: 7689b6ffb5
+        tier: edge
+      name: gateway-7689b6ffb5
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: gateway
+          uid: 27702f4b-8f53-4ec1-81f1-735b0d97cd9e
+      resourceVersion: '145045'
+      uid: 3519476f-bc29-43da-8c18-d5d0b6c9dcc8
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: gateway
+          pod-template-hash: 7689b6ffb5
+      template:
+        metadata:
+          labels:
+            app: gateway
+            pod-template-hash: 7689b6ffb5
+            tier: edge
+        spec:
+          containers:
+            - envFrom:
+                - configMapRef:
+                    name: app-config
+                - secretRef:
+                    name: app-secrets
+              image: nginx:alpine
+              imagePullPolicy: IfNotPresent
+              name: gateway
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+                - mountPath: /etc/nginx/conf.d/default.conf
+                  name: gw
+                  subPath: default.conf
+                - mountPath: /usr/share/nginx/html/index.html
+                  name: gw
+                  subPath: index.html
+          dnsPolicy: ClusterFirst
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+          volumes:
+            - configMap:
+                defaultMode: 420
+                name: gateway-nginx
+              name: gw
+    status:
+      observedGeneration: 4
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '2'
+        deployment.kubernetes.io/max-replicas: '3'
+        deployment.kubernetes.io/revision: '3'
+      creationTimestamp: '2026-07-02T13:37:12.000Z'
+      generation: 2
+      labels:
+        app: gateway
+        pod-template-hash: '999576696'
+        tier: edge
+      name: gateway-999576696
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: gateway
+          uid: 27702f4b-8f53-4ec1-81f1-735b0d97cd9e
+      resourceVersion: '145032'
+      uid: 038b7b8d-a862-48d9-9239-7801842ea648
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: gateway
+          pod-template-hash: '999576696'
+      template:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/restartedAt: '2026-07-02T21:37:12+08:00'
+          labels:
+            app: gateway
+            pod-template-hash: '999576696'
+            tier: edge
+        spec:
+          containers:
+            - envFrom:
+                - configMapRef:
+                    name: app-config
+                - secretRef:
+                    name: app-secrets
+              image: nginx:alpine
+              imagePullPolicy: IfNotPresent
+              name: gateway
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+                - mountPath: /etc/nginx/conf.d/default.conf
+                  name: gw
+                  subPath: default.conf
+                - mountPath: /usr/share/nginx/html/index.html
+                  name: gw
+                  subPath: index.html
+          dnsPolicy: ClusterFirst
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+          volumes:
+            - configMap:
+                defaultMode: 420
+                name: gateway-nginx
+              name: gw
+    status:
+      availableReplicas: 2
+      fullyLabeledReplicas: 2
+      observedGeneration: 2
+      readyReplicas: 2
+      replicas: 2
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '1'
+        deployment.kubernetes.io/max-replicas: '2'
+        deployment.kubernetes.io/revision: '2'
+      creationTimestamp: '2026-06-29T14:47:02.000Z'
+      generation: 2
+      labels:
+        app: inventory
+        pod-template-hash: 68f664444f
+        tier: backend
+      name: inventory-68f664444f
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: inventory
+          uid: 06ff4c46-5467-4408-a85c-92904fffe3f2
+      resourceVersion: '12564'
+      uid: 0eceb620-525e-44da-b976-eb4cf51a81bd
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: inventory
+          pod-template-hash: 68f664444f
+      template:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/restartedAt: '2026-06-29T22:47:02+08:00'
+          labels:
+            app: inventory
+            pod-template-hash: 68f664444f
+            tier: backend
+        spec:
+          containers:
+            - image: traefik/whoami
+              imagePullPolicy: Always
+              name: inventory
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      observedGeneration: 2
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '1'
+        deployment.kubernetes.io/max-replicas: '2'
+        deployment.kubernetes.io/revision: '6'
+      creationTimestamp: '2026-07-02T00:50:51.000Z'
+      generation: 2
+      labels:
+        app: inventory
+        pod-template-hash: 6c5b56846
+        tier: backend
+      name: inventory-6c5b56846
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: inventory
+          uid: 06ff4c46-5467-4408-a85c-92904fffe3f2
+      resourceVersion: '83857'
+      uid: 711ede21-018b-47ff-89b3-c2b78e363c6b
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: inventory
+          pod-template-hash: 6c5b56846
+      template:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/restartedAt: '2026-06-29T22:47:55+08:00'
+          labels:
+            app: inventory
+            pod-template-hash: 6c5b56846
+            tier: backend
+        spec:
+          containers:
+            - image: >-
+                asia-east1-docker.pkg.dev/gooooogle-270214/kubelens-demo/order-service:v1
+              imagePullPolicy: Always
+              name: inventory
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          imagePullSecrets:
+            - name: gar-pull
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      observedGeneration: 2
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '1'
+        deployment.kubernetes.io/max-replicas: '2'
+        deployment.kubernetes.io/revision: '3'
+        deployment.kubernetes.io/revision-history: '1'
+      creationTimestamp: '2026-06-29T12:20:00.000Z'
+      generation: 4
+      labels:
+        app: inventory
+        pod-template-hash: 768f74559c
+        tier: backend
+      name: inventory-768f74559c
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: inventory
+          uid: 06ff4c46-5467-4408-a85c-92904fffe3f2
+      resourceVersion: '12647'
+      uid: 21ff5e1d-a4e2-4061-a219-0e151cb107c3
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: inventory
+          pod-template-hash: 768f74559c
+      template:
+        metadata:
+          labels:
+            app: inventory
+            pod-template-hash: 768f74559c
+            tier: backend
+        spec:
+          containers:
+            - image: traefik/whoami
+              imagePullPolicy: Always
+              name: inventory
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      observedGeneration: 4
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '1'
+        deployment.kubernetes.io/max-replicas: '2'
+        deployment.kubernetes.io/revision: '5'
+      creationTimestamp: '2026-06-29T14:47:55.000Z'
+      generation: 2
+      labels:
+        app: inventory
+        pod-template-hash: 76cc5fd59c
+        tier: backend
+      name: inventory-76cc5fd59c
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: inventory
+          uid: 06ff4c46-5467-4408-a85c-92904fffe3f2
+      resourceVersion: '83025'
+      uid: 336c5fe6-abe3-4de1-8552-a49fc237960a
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: inventory
+          pod-template-hash: 76cc5fd59c
+      template:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/restartedAt: '2026-06-29T22:47:55+08:00'
+          labels:
+            app: inventory
+            pod-template-hash: 76cc5fd59c
+            tier: backend
+        spec:
+          containers:
+            - image: traefik/whoami
+              imagePullPolicy: Always
+              name: inventory
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      observedGeneration: 2
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '1'
+        deployment.kubernetes.io/max-replicas: '2'
+        deployment.kubernetes.io/revision: '11'
+      creationTimestamp: '2026-07-02T14:17:06.000Z'
+      generation: 1
+      labels:
+        app: inventory
+        pod-template-hash: 784cfc49b5
+        tier: backend
+      name: inventory-784cfc49b5
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: inventory
+          uid: 06ff4c46-5467-4408-a85c-92904fffe3f2
+      resourceVersion: '148529'
+      uid: 1b5cddfd-4d39-41f1-a548-ce789858efe6
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: inventory
+          pod-template-hash: 784cfc49b5
+      template:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/restartedAt: '2026-06-29T22:47:55+08:00'
+          labels:
+            app: inventory
+            pod-template-hash: 784cfc49b5
+            tier: backend
+        spec:
+          containers:
+            - image: >-
+                asia-east1-docker.pkg.dev/gooooogle-270214/kubelens-demo/order-service:gcp-v5
+              imagePullPolicy: Always
+              name: inventory
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          imagePullSecrets:
+            - name: gar-pull
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      availableReplicas: 1
+      fullyLabeledReplicas: 1
+      observedGeneration: 1
+      readyReplicas: 1
+      replicas: 1
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '1'
+        deployment.kubernetes.io/max-replicas: '2'
+        deployment.kubernetes.io/revision: '8'
+      creationTimestamp: '2026-07-02T13:31:16.000Z'
+      generation: 2
+      labels:
+        app: inventory
+        pod-template-hash: 7fc5fb485f
+        tier: backend
+      name: inventory-7fc5fb485f
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: inventory
+          uid: 06ff4c46-5467-4408-a85c-92904fffe3f2
+      resourceVersion: '144882'
+      uid: 20fc18d5-4c0a-4cb7-82fa-f11e6cd1719f
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: inventory
+          pod-template-hash: 7fc5fb485f
+      template:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/restartedAt: '2026-06-29T22:47:55+08:00'
+          labels:
+            app: inventory
+            pod-template-hash: 7fc5fb485f
+            tier: backend
+        spec:
+          containers:
+            - image: traefik/whoami
+              imagePullPolicy: Always
+              name: inventory
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          imagePullSecrets:
+            - name: gar-pull
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      observedGeneration: 2
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '1'
+        deployment.kubernetes.io/max-replicas: '2'
+        deployment.kubernetes.io/revision: '10'
+      creationTimestamp: '2026-07-02T14:15:57.000Z'
+      generation: 2
+      labels:
+        app: inventory
+        pod-template-hash: 86f774f596
+        tier: backend
+      name: inventory-86f774f596
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: inventory
+          uid: 06ff4c46-5467-4408-a85c-92904fffe3f2
+      resourceVersion: '148541'
+      uid: 1536a31a-dd17-4359-8023-ac124660d90b
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: inventory
+          pod-template-hash: 86f774f596
+      template:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/restartedAt: '2026-06-29T22:47:55+08:00'
+          labels:
+            app: inventory
+            pod-template-hash: 86f774f596
+            tier: backend
+        spec:
+          containers:
+            - image: >-
+                asia-east1-docker.pkg.dev/gooooogle-270214/kubelens-demo/order-service:gcp-v4
+              imagePullPolicy: Always
+              name: inventory
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          imagePullSecrets:
+            - name: gar-pull
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      observedGeneration: 2
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '1'
+        deployment.kubernetes.io/max-replicas: '2'
+        deployment.kubernetes.io/revision: '4'
+      creationTimestamp: '2026-06-29T14:47:44.000Z'
+      generation: 2
+      labels:
+        app: inventory
+        pod-template-hash: cb5b4b77b
+        tier: backend
+      name: inventory-cb5b4b77b
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: inventory
+          uid: 06ff4c46-5467-4408-a85c-92904fffe3f2
+      resourceVersion: '12701'
+      uid: a38e1a35-d3e1-478a-808d-2068ae1c3023
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: inventory
+          pod-template-hash: cb5b4b77b
+      template:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/restartedAt: '2026-06-29T22:47:43+08:00'
+          labels:
+            app: inventory
+            pod-template-hash: cb5b4b77b
+            tier: backend
+        spec:
+          containers:
+            - image: traefik/whoami
+              imagePullPolicy: Always
+              name: inventory
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      observedGeneration: 2
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '1'
+        deployment.kubernetes.io/max-replicas: '2'
+        deployment.kubernetes.io/revision: '9'
+        deployment.kubernetes.io/revision-history: '7'
+      creationTimestamp: '2026-07-02T00:59:42.000Z'
+      generation: 4
+      labels:
+        app: inventory
+        pod-template-hash: ddbf65689
+        tier: backend
+      name: inventory-ddbf65689
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: inventory
+          uid: 06ff4c46-5467-4408-a85c-92904fffe3f2
+      resourceVersion: '148267'
+      uid: 88b75576-f7ca-486e-855b-26662d680913
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: inventory
+          pod-template-hash: ddbf65689
+      template:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/restartedAt: '2026-06-29T22:47:55+08:00'
+          labels:
+            app: inventory
+            pod-template-hash: ddbf65689
+            tier: backend
+        spec:
+          containers:
+            - image: >-
+                asia-east1-docker.pkg.dev/gooooogle-270214/kubelens-demo/order-service:gcp-v1
+              imagePullPolicy: Always
+              name: inventory
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          imagePullSecrets:
+            - name: gar-pull
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      observedGeneration: 4
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '2'
+        deployment.kubernetes.io/max-replicas: '3'
+        deployment.kubernetes.io/revision: '6'
+        deployment.kubernetes.io/revision-history: '4'
+      creationTimestamp: '2026-07-02T00:59:42.000Z'
+      generation: 8
+      labels:
+        app: orders
+        pod-template-hash: 57d4946447
+        tier: backend
+      name: orders-57d4946447
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: orders
+          uid: b9e1ac59-6e18-4e62-8daf-045105978125
+      resourceVersion: '84904'
+      uid: 3090f6ea-af91-4585-a6cc-eea2d1a08add
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: orders
+          pod-template-hash: 57d4946447
+      template:
+        metadata:
+          labels:
+            app: orders
+            pod-template-hash: 57d4946447
+            tier: backend
+        spec:
+          containers:
+            - image: >-
+                263386971159.dkr.ecr.us-east-1.amazonaws.com/order-service:aws-v1
+              imagePullPolicy: Always
+              name: orders
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          imagePullSecrets:
+            - name: ecr-pull
+            - name: gar-pull
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      observedGeneration: 8
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '2'
+        deployment.kubernetes.io/max-replicas: '3'
+        deployment.kubernetes.io/revision: '5'
+      creationTimestamp: '2026-07-02T01:01:58.000Z'
+      generation: 4
+      labels:
+        app: orders
+        pod-template-hash: 5f7fb8957d
+        tier: backend
+      name: orders-5f7fb8957d
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: orders
+          uid: b9e1ac59-6e18-4e62-8daf-045105978125
+      resourceVersion: '84704'
+      uid: a3fb1dc0-47b3-44d0-8ece-6e5aab89c4f1
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: orders
+          pod-template-hash: 5f7fb8957d
+      template:
+        metadata:
+          labels:
+            app: orders
+            pod-template-hash: 5f7fb8957d
+            tier: backend
+        spec:
+          containers:
+            - image: >-
+                asia-east1-docker.pkg.dev/gooooogle-270214/kubelens-demo/order-service:gcp-v1
+              imagePullPolicy: Always
+              name: orders
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          imagePullSecrets:
+            - name: ecr-pull
+            - name: gar-pull
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      observedGeneration: 4
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '2'
+        deployment.kubernetes.io/max-replicas: '3'
+        deployment.kubernetes.io/revision: '10'
+      creationTimestamp: '2026-07-02T13:38:30.000Z'
+      generation: 4
+      labels:
+        app: orders
+        pod-template-hash: 644796dcbf
+        tier: backend
+      name: orders-644796dcbf
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: orders
+          uid: b9e1ac59-6e18-4e62-8daf-045105978125
+      resourceVersion: '148566'
+      uid: adc6a6cd-f257-4efb-a596-3760d51d9ee5
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: orders
+          pod-template-hash: 644796dcbf
+      template:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/restartedAt: '2026-07-02T09:09:18+08:00'
+          labels:
+            app: orders
+            pod-template-hash: 644796dcbf
+            tier: backend
+        spec:
+          containers:
+            - image: >-
+                263386971159.dkr.ecr.us-east-1.amazonaws.com/order-service:aws-v5
+              imagePullPolicy: Always
+              name: orders
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          imagePullSecrets:
+            - name: ecr-pull
+            - name: gar-pull
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      observedGeneration: 4
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '2'
+        deployment.kubernetes.io/max-replicas: '3'
+        deployment.kubernetes.io/revision: '1'
+      creationTimestamp: '2026-06-29T12:20:00.000Z'
+      generation: 3
+      labels:
+        app: orders
+        pod-template-hash: 666bd4cb7
+        tier: backend
+      name: orders-666bd4cb7
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: orders
+          uid: b9e1ac59-6e18-4e62-8daf-045105978125
+      resourceVersion: '81998'
+      uid: 51c23aca-8fcb-4f24-b9e9-2856cd0c4d54
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: orders
+          pod-template-hash: 666bd4cb7
+      template:
+        metadata:
+          labels:
+            app: orders
+            pod-template-hash: 666bd4cb7
+            tier: backend
+        spec:
+          containers:
+            - image: traefik/whoami
+              imagePullPolicy: Always
+              name: orders
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      observedGeneration: 3
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '2'
+        deployment.kubernetes.io/max-replicas: '3'
+        deployment.kubernetes.io/revision: '3'
+      creationTimestamp: '2026-07-02T00:52:55.000Z'
+      generation: 4
+      labels:
+        app: orders
+        pod-template-hash: 6df7dbf4f5
+        tier: backend
+      name: orders-6df7dbf4f5
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: orders
+          uid: b9e1ac59-6e18-4e62-8daf-045105978125
+      resourceVersion: '83943'
+      uid: 2fe2a6b5-9544-4dc8-a81c-87c8a63d4045
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: orders
+          pod-template-hash: 6df7dbf4f5
+      template:
+        metadata:
+          labels:
+            app: orders
+            pod-template-hash: 6df7dbf4f5
+            tier: backend
+        spec:
+          containers:
+            - image: 263386971159.dkr.ecr.us-east-1.amazonaws.com/order-service:v1
+              imagePullPolicy: Always
+              name: orders
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          imagePullSecrets:
+            - name: ecr-pull
+            - name: gar-pull
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      observedGeneration: 4
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '2'
+        deployment.kubernetes.io/max-replicas: '3'
+        deployment.kubernetes.io/revision: '8'
+      creationTimestamp: '2026-07-02T13:31:16.000Z'
+      generation: 4
+      labels:
+        app: orders
+        pod-template-hash: 7b494c55bb
+        tier: backend
+      name: orders-7b494c55bb
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: orders
+          uid: b9e1ac59-6e18-4e62-8daf-045105978125
+      resourceVersion: '144905'
+      uid: 5b5ab692-3682-4f46-8841-9e7674e766be
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: orders
+          pod-template-hash: 7b494c55bb
+      template:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/restartedAt: '2026-07-02T09:09:18+08:00'
+          labels:
+            app: orders
+            pod-template-hash: 7b494c55bb
+            tier: backend
+        spec:
+          containers:
+            - image: traefik/whoami
+              imagePullPolicy: Always
+              name: orders
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          imagePullSecrets:
+            - name: ecr-pull
+            - name: gar-pull
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      observedGeneration: 4
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '2'
+        deployment.kubernetes.io/max-replicas: '3'
+        deployment.kubernetes.io/revision: '2'
+        kubernetes.io/change-cause: kubectl set image deployment/orders orders=order-service:v1
+      creationTimestamp: '2026-07-02T00:31:57.000Z'
+      generation: 4
+      labels:
+        app: orders
+        pod-template-hash: 7fcddfc598
+        tier: backend
+      name: orders-7fcddfc598
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: orders
+          uid: b9e1ac59-6e18-4e62-8daf-045105978125
+      resourceVersion: '83267'
+      uid: f0d9cbb2-4e78-41c5-97b1-c490ab705ae8
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: orders
+          pod-template-hash: 7fcddfc598
+      template:
+        metadata:
+          labels:
+            app: orders
+            pod-template-hash: 7fcddfc598
+            tier: backend
+        spec:
+          containers:
+            - image: 263386971159.dkr.ecr.us-east-1.amazonaws.com/order-service:v1
+              imagePullPolicy: Always
+              name: orders
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          imagePullSecrets:
+            - name: ecr-pull
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      observedGeneration: 4
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '2'
+        deployment.kubernetes.io/max-replicas: '3'
+        deployment.kubernetes.io/revision: '9'
+        deployment.kubernetes.io/revision-history: '7'
+      creationTimestamp: '2026-07-02T01:09:18.000Z'
+      generation: 8
+      labels:
+        app: orders
+        pod-template-hash: 9d754665
+        tier: backend
+      name: orders-9d754665
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: orders
+          uid: b9e1ac59-6e18-4e62-8daf-045105978125
+      resourceVersion: '145351'
+      uid: 42ad0c98-e8fa-40e7-85d9-4da4793636d2
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: orders
+          pod-template-hash: 9d754665
+      template:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/restartedAt: '2026-07-02T09:09:18+08:00'
+          labels:
+            app: orders
+            pod-template-hash: 9d754665
+            tier: backend
+        spec:
+          containers:
+            - image: >-
+                263386971159.dkr.ecr.us-east-1.amazonaws.com/order-service:aws-v1
+              imagePullPolicy: Always
+              name: orders
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          imagePullSecrets:
+            - name: ecr-pull
+            - name: gar-pull
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      observedGeneration: 8
+      replicas: 0
+    kind: ReplicaSet
+    apiVersion: apps/v1
+  - metadata:
+      annotations:
+        deployment.kubernetes.io/desired-replicas: '2'
+        deployment.kubernetes.io/max-replicas: '3'
+        deployment.kubernetes.io/revision: '11'
+      creationTimestamp: '2026-07-02T14:16:45.000Z'
+      generation: 2
+      labels:
+        app: orders
+        pod-template-hash: cf4dd46db
+        tier: backend
+      name: orders-cf4dd46db
+      namespace: demo
+      ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: orders
+          uid: b9e1ac59-6e18-4e62-8daf-045105978125
+      resourceVersion: '148555'
+      uid: c07985f1-608a-4981-8e03-24b9a4497c62
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: orders
+          pod-template-hash: cf4dd46db
+      template:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/restartedAt: '2026-07-02T09:09:18+08:00'
+          labels:
+            app: orders
+            pod-template-hash: cf4dd46db
+            tier: backend
+        spec:
+          containers:
+            - image: >-
+                263386971159.dkr.ecr.us-east-1.amazonaws.com/order-service:aws-v2
+              imagePullPolicy: Always
+              name: orders
+              ports:
+                - containerPort: 80
+                  protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          imagePullSecrets:
+            - name: ecr-pull
+            - name: gar-pull
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+    status:
+      availableReplicas: 2
+      fullyLabeledReplicas: 2
+      observedGeneration: 2
+      readyReplicas: 2
+      replicas: 2
+    kind: ReplicaSet
+    apiVersion: apps/v1

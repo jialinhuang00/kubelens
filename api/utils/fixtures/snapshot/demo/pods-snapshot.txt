@@ -1,0 +1,6 @@
+NAME                         READY   STATUS    RESTARTS   AGE   IP            NODE                          NOMINATED NODE   READINESS GATES
+gateway-999576696-2wrjq      1/1     Running   0          1h    10.244.0.39   kubelens-demo-control-plane   <none>           <none>         
+gateway-999576696-rvbfr      1/1     Running   0          1h    10.244.0.40   kubelens-demo-control-plane   <none>           <none>         
+inventory-784cfc49b5-ghdpl   1/1     Running   0          20m   10.244.0.45   kubelens-demo-control-plane   <none>           <none>         
+orders-cf4dd46db-5cf2f       1/1     Running   0          19m   10.244.0.46   kubelens-demo-control-plane   <none>           <none>         
+orders-cf4dd46db-cdxrm       1/1     Running   0          21m   10.244.0.44   kubelens-demo-control-plane   <none>           <none>         

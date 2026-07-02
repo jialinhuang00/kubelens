@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: List
+items:
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: seed-data
+      namespace: demo
+      creationTimestamp: "2026-06-01T00:00:00Z"
+    spec:
+      completions: 1
+      template:
+        metadata:
+          labels:
+            job-name: seed-data
+        spec:
+          containers:
+            - name: seed-data
+              image: busybox
+    status:
+      succeeded: 1
+      startTime: "2026-06-01T00:00:00Z"
+      completionTime: "2026-06-01T00:00:42Z"

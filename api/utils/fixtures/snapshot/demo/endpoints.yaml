@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: List
+items:
+  - metadata:
+      creationTimestamp: '2026-06-29T12:20:00.000Z'
+      labels:
+        app: gateway
+        endpoints.kubernetes.io/managed-by: endpoint-controller
+      name: gateway
+      namespace: demo
+      resourceVersion: '145040'
+      uid: 4d4839e1-2866-4dba-9502-2d2a29cc3946
+    subsets:
+      - addresses:
+          - ip: 10.244.0.39
+            nodeName: kubelens-demo-control-plane
+            targetRef:
+              kind: Pod
+              name: gateway-999576696-2wrjq
+              namespace: demo
+              uid: d2d6ffda-72e2-43d3-9e29-4b292ec3d9c7
+          - ip: 10.244.0.40
+            nodeName: kubelens-demo-control-plane
+            targetRef:
+              kind: Pod
+              name: gateway-999576696-rvbfr
+              namespace: demo
+              uid: bc234082-9880-4c5d-8d9a-d6f3862abee0
+        ports:
+          - port: 80
+            protocol: TCP
+    kind: Endpoints
+    apiVersion: v1
+  - metadata:
+      creationTimestamp: '2026-06-29T12:20:00.000Z'
+      labels:
+        app: inventory
+        endpoints.kubernetes.io/managed-by: endpoint-controller
+      name: inventory
+      namespace: demo
+      resourceVersion: '148539'
+      uid: 609ff55c-71c3-4b51-8b94-aca86d71a1d7
+    subsets:
+      - addresses:
+          - ip: 10.244.0.45
+            nodeName: kubelens-demo-control-plane
+            targetRef:
+              kind: Pod
+              name: inventory-784cfc49b5-ghdpl
+              namespace: demo
+              uid: ba1c65de-0903-4927-95e4-1c2146766725
+        ports:
+          - port: 80
+            protocol: TCP
+    kind: Endpoints
+    apiVersion: v1
+  - metadata:
+      creationTimestamp: '2026-06-29T12:20:00.000Z'
+      labels:
+        app: orders
+        endpoints.kubernetes.io/managed-by: endpoint-controller
+      name: orders
+      namespace: demo
+      resourceVersion: '148563'
+      uid: 24dd9c5d-5bab-4f4e-b91d-fffd7160a979
+    subsets:
+      - addresses:
+          - ip: 10.244.0.44
+            nodeName: kubelens-demo-control-plane
+            targetRef:
+              kind: Pod
+              name: orders-cf4dd46db-cdxrm
+              namespace: demo
+              uid: 27a40d3d-ada9-4e11-aa62-d46a91515396
+          - ip: 10.244.0.46
+            nodeName: kubelens-demo-control-plane
+            targetRef:
+              kind: Pod
+              name: orders-cf4dd46db-5cf2f
+              namespace: demo
+              uid: d796ad67-c9cc-4786-9248-cb415a28a1ff
+        ports:
+          - port: 80
+            protocol: TCP
+    kind: Endpoints
+    apiVersion: v1

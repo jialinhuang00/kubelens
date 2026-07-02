@@ -1,0 +1,6 @@
+POD                          IMAGE                                                                        
+gateway-999576696-2wrjq      nginx:alpine                                                                 
+gateway-999576696-rvbfr      nginx:alpine                                                                 
+inventory-784cfc49b5-ghdpl   asia-east1-docker.pkg.dev/gooooogle-270214/kubelens-demo/order-service:gcp-v5
+orders-cf4dd46db-5cf2f       263386971159.dkr.ecr.us-east-1.amazonaws.com/order-service:aws-v2            
+orders-cf4dd46db-cdxrm       263386971159.dkr.ecr.us-east-1.amazonaws.com/order-service:aws-v2            

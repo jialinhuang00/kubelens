@@ -1,0 +1,171 @@
+apiVersion: v1
+kind: List
+items:
+  - data:
+      CORS_ALLOWED_ORIGINS: http://localhost:4200
+      INVENTORY_URL: http://inventory.demo.svc.cluster.local
+      LOG_LEVEL: info
+      ORDERS_URL: http://orders.demo.svc.cluster.local
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/last-applied-configuration: >
+          {"apiVersion":"v1","data":{"CORS_ALLOWED_ORIGINS":"http://localhost:4200","INVENTORY_URL":"http://inventory.demo.svc.cluster.local","LOG_LEVEL":"info","ORDERS_URL":"http://orders.demo.svc.cluster.local"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"app-config","namespace":"demo"}}
+      creationTimestamp: '2026-06-29T12:20:00.000Z'
+      name: app-config
+      namespace: demo
+      resourceVersion: '521'
+      uid: 9cee7d87-fef3-4bf9-bd60-25ebc7d136e1
+    kind: ConfigMap
+    apiVersion: v1
+  - data:
+      default.conf: |
+        server {
+          listen 80;
+          keepalive_timeout 0;
+          resolver 10.96.0.10 valid=10s;
+          location = /whoami {
+            default_type text/plain;
+            add_header Access-Control-Allow-Origin "*" always;
+            return 200 "served by gateway pod: $hostname\n";
+          }
+          location /orders/ {
+            proxy_pass http://orders.demo.svc.cluster.local/;
+          }
+          location /inventory/ {
+            proxy_pass http://inventory.demo.svc.cluster.local/;
+          }
+          location / {
+            root /usr/share/nginx/html;
+            index index.html;
+          }
+        }
+      index.html: |
+        <!doctype html>
+        <html><head><meta charset="utf-8"><title>kubelens demo — gateway</title>
+        <style>
+          body{font-family:'JetBrains Mono',monospace;background:#2e3440;color:#d8dee9;padding:2rem;max-width:640px;margin:auto}
+          h2{color:#88c0d0}
+          button{background:#88c0d0;color:#2e3440;border:0;padding:.6rem 1rem;margin:.3rem .3rem 0 0;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:700}
+          button:hover{background:#8fbcbb}
+          pre{background:#3b4252;padding:1rem;border-radius:6px;white-space:pre-wrap;min-height:3rem}
+          .dim{color:#81a1c1}
+        </style></head><body>
+          <h2>gateway (A)</h2>
+          <p class="dim" id="gw">gateway pod: …</p>
+          <button onclick="call('/orders/','B (orders)')">Call B (orders)</button>
+          <button onclick="call('/inventory/','C (inventory)')">Call C (inventory)</button>
+          <button onclick="loop('/orders/',20)">Hit B ×20 (watch LB)</button>
+          <pre id="out">click a button…</pre>
+          <script>
+            const out=document.getElementById('out');
+            const podOf=t=>(t.match(/Hostname:\s*(\S+)/)||[,t.trim()])[1];
+            const verOf=t=>(t.match(/version:\s*(\S+)/)||[])[1];
+            const tag=t=>{const v=verOf(t);return (v?v+'  ·  ':'')+podOf(t);};
+            fetch('/whoami').then(r=>r.text()).then(t=>{document.getElementById('gw').textContent=t.trim();});
+            async function call(path,label){
+              out.textContent='…';
+              const t=await (await fetch(path,{cache:'no-store'})).text();
+              out.textContent=label+'  ←  '+tag(t);
+            }
+            async function loop(path,n){
+              out.textContent='…';
+              const tally={};
+              for(let i=0;i<n;i++){
+                const t=await (await fetch(path,{cache:'no-store'})).text();
+                const k=tag(t); tally[k]=(tally[k]||0)+1;
+              }
+              out.textContent=Object.entries(tally).map(([k,v])=>k+': '+v).join('\n');
+            }
+          </script>
+        </body></html>
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/last-applied-configuration: >
+          {"apiVersion":"v1","data":{"default.conf":"server {\n  listen 80;\n 
+          keepalive_timeout 0;\n  resolver 10.96.0.10 valid=10s;\n  location =
+          /whoami {\n    default_type text/plain;\n    add_header
+          Access-Control-Allow-Origin \"*\" always;\n    return 200 \"served by
+          gateway pod: $hostname\\n\";\n  }\n  location /orders/ {\n   
+          proxy_pass http://orders.demo.svc.cluster.local/;\n  }\n  location
+          /inventory/ {\n    proxy_pass
+          http://inventory.demo.svc.cluster.local/;\n  }\n  location / {\n   
+          root /usr/share/nginx/html;\n    index index.html;\n 
+          }\n}\n","index.html":"\u003c!doctype
+          html\u003e\n\u003chtml\u003e\u003chead\u003e\u003cmeta
+          charset=\"utf-8\"\u003e\u003ctitle\u003ekubelens demo —
+          gateway\u003c/title\u003e\n\u003cstyle\u003e\n 
+          body{font-family:'JetBrains
+          Mono',monospace;background:#2e3440;color:#d8dee9;padding:2rem;max-width:640px;margin:auto}\n 
+          h2{color:#88c0d0}\n 
+          button{background:#88c0d0;color:#2e3440;border:0;padding:.6rem
+          1rem;margin:.3rem .3rem 0
+          0;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:700}\n 
+          button:hover{background:#8fbcbb}\n 
+          pre{background:#3b4252;padding:1rem;border-radius:6px;white-space:pre-wrap;min-height:3rem}\n 
+          .dim{color:#81a1c1}\n\u003c/style\u003e\u003c/head\u003e\u003cbody\u003e\n 
+          \u003ch2\u003egateway (A)\u003c/h2\u003e\n  \u003cp class=\"dim\"
+          id=\"gw\"\u003egateway pod: …\u003c/p\u003e\n  \u003cbutton
+          onclick=\"call('/orders/','B (orders)')\"\u003eCall B
+          (orders)\u003c/button\u003e\n  \u003cbutton
+          onclick=\"call('/inventory/','C (inventory)')\"\u003eCall C
+          (inventory)\u003c/button\u003e\n  \u003cbutton
+          onclick=\"loop('/orders/',20)\"\u003eHit B ×20 (watch
+          LB)\u003c/button\u003e\n  \u003cpre id=\"out\"\u003eclick a
+          button…\u003c/pre\u003e\n  \u003cscript\u003e\n    const
+          out=document.getElementById('out');\n    const
+          podOf=t=\u003e(t.match(/Hostname:\\s*(\\S+)/)||[,t.trim()])[1];\n   
+          const verOf=t=\u003e(t.match(/version:\\s*(\\S+)/)||[])[1];\n    const
+          tag=t=\u003e{const v=verOf(t);return (v?v+'  ·  ':'')+podOf(t);};\n   
+          fetch('/whoami').then(r=\u003er.text()).then(t=\u003e{document.getElementById('gw').textContent=t.trim();});\n   
+          async function call(path,label){\n      out.textContent='…';\n     
+          const t=await (await fetch(path,{cache:'no-store'})).text();\n     
+          out.textContent=label+'  ←  '+tag(t);\n    }\n    async function
+          loop(path,n){\n      out.textContent='…';\n      const
+          tally={};\n      for(let i=0;i\u003cn;i++){\n        const t=await
+          (await fetch(path,{cache:'no-store'})).text();\n        const
+          k=tag(t); tally[k]=(tally[k]||0)+1;\n      }\n     
+          out.textContent=Object.entries(tally).map(([k,v])=\u003ek+':
+          '+v).join('\\n');\n    }\n 
+          \u003c/script\u003e\n\u003c/body\u003e\u003c/html\u003e\n"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"gateway-nginx","namespace":"demo"}}
+      creationTimestamp: '2026-06-29T12:20:00.000Z'
+      name: gateway-nginx
+      namespace: demo
+      resourceVersion: '144132'
+      uid: 7bcf2571-453c-4e9a-af0a-c22eea3ebe0a
+    kind: ConfigMap
+    apiVersion: v1
+  - data:
+      ca.crt: |
+        -----BEGIN CERTIFICATE-----
+        MIIDBTCCAe2gAwIBAgIINBO968cmoUcwDQYJKoZIhvcNAQELBQAwFTETMBEGA1UE
+        AxMKa3ViZXJuZXRlczAeFw0yNjA2MjkxMjEzNDhaFw0zNjA2MjYxMjE4NDhaMBUx
+        EzARBgNVBAMTCmt1YmVybmV0ZXMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+        AoIBAQCaU85CgMxUQaECPGYiWYgAwH0r5TsMfmufOiZ/15BA9USjrdK6wNHrvAGf
+        z0Dv/BsgrbdgxoOCR+EDT6xAP1+hfZqpwv2GVUlVtyr3ES/erYenfjaqJFbSko7n
+        IEa2mkYqI3q1/YBiyRkwWPU6hYl6nKWVPWwMQTA3LEziM7VlYVw7/yHO/aR+OCq3
+        9xOS9oD76lsNHkm/+ORvNfzLCxwehmNW9mhBLthG4s54nKo8U53PJsR07YcGl6m5
+        w1L1drpovIETuX4+Nm2eybP+SS59J+eG0LMEIADNnIupMWTTlTQMwhVZvm6TEuPM
+        jHoB1asxQpF5IAgIdhOSgB2zcrN9AgMBAAGjWTBXMA4GA1UdDwEB/wQEAwICpDAP
+        BgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBS7JqSmXRyV2XlgqANg4gP582VJEjAV
+        BgNVHREEDjAMggprdWJlcm5ldGVzMA0GCSqGSIb3DQEBCwUAA4IBAQBaXEYReD/3
+        qHzUXuFesOM0h0izsP1C+idqw12YTkinx1Z4tfOGi6cOZjJa6zZGd+h5AqMgWhcz
+        1QgdPpLAZoSfP24QySVPBONrSFz0S7RBrtrDK2WKKgb4kb4B8xudMhFkIBbbJHmM
+        GKpBGn4FquZk+Q7NS+BobAKRVhcdwBbsDBOyyYOhZ0AKdP+8MWI9FImcLQqJgFsI
+        quV0NE8jDVejq37O94YGpUaUIvZ30MOfkMqBBx8vKcsLFO3kpxz4yv690C8s6bFa
+        BhCVh4fc73XJtHgeCD7NHisx35wY9wmR6IvwkbSiTLsn+F254a+PYwxvBxfveUPi
+        qlGcqY/PTnWU
+        -----END CERTIFICATE-----
+    metadata:
+      annotations:
+        kubernetes.io/description: >-
+          Contains a CA bundle that can be used to verify the kube-apiserver
+          when using internal endpoints such as the internal service IP or
+          kubernetes.default.svc. No other usage is guaranteed across
+          distributions of Kubernetes clusters.
+      creationTimestamp: '2026-06-29T12:20:00.000Z'
+      name: kube-root-ca.crt
+      namespace: demo
+      resourceVersion: '520'
+      uid: e22fd805-17e0-4f04-8662-6d528a7a9895
+    kind: ConfigMap
+    apiVersion: v1
