@@ -131,6 +131,12 @@ router.post('/snapshot', async (req, res) => {
   let spawnCmd, args;
   if (mode === 'go') {
     spawnCmd = path.join(__dirname, '../..', 'cmd', 'k8s-export', 'k8s-export');
+    // The Go binary is gitignored — a fresh clone only has sources.
+    if (!fs.existsSync(spawnCmd)) {
+      exportState.running = false;
+      exportState.error = 'go exporter not built. Run: cd cmd/k8s-export && go build -o k8s-export . — or pick another mode.';
+      return res.status(400).json({ error: exportState.error });
+    }
     args = [];
     if (workers) args.push('-jobs', String(workers));
   } else if (mode === 'parallel') {
