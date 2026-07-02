@@ -21,12 +21,45 @@ type ResourceConfig struct {
 	Color        string   `yaml:"color" json:"color"`
 	Priority     bool     `yaml:"priority" json:"priority"`
 	Show         []string `yaml:"show" json:"show"`
+	Default      []string `yaml:"default" json:"default,omitempty"`
+	Aliases      []string `yaml:"aliases" json:"aliases,omitempty"`
+}
+
+// TemplateEntry is one panel command button from kubelens.config.yaml.
+type TemplateEntry struct {
+	Name          string `yaml:"name" json:"name"`
+	Command       string `yaml:"command" json:"command"`
+	RequiresInput bool   `yaml:"requiresInput" json:"requiresInput,omitempty"`
+	Disabled      bool   `yaml:"disabled" json:"disabled,omitempty"`
 }
 
 var (
 	resourceCache []ResourceConfig
 	resourceOnce  sync.Once
+
+	templateCache map[string][]TemplateEntry
+	templateOnce  sync.Once
 )
+
+// LoadTemplates reads and caches the per-kind panel command templates.
+func LoadTemplates() map[string][]TemplateEntry {
+	templateOnce.Do(func() {
+		data, err := os.ReadFile("kubelens.config.yaml")
+		if err != nil {
+			log.Printf("failed to read kubelens.config.yaml: %v", err)
+			return
+		}
+		var parsed struct {
+			Templates map[string][]TemplateEntry `yaml:"templates"`
+		}
+		if err := yaml.Unmarshal(data, &parsed); err != nil {
+			log.Printf("failed to parse kubelens.config.yaml: %v", err)
+			return
+		}
+		templateCache = parsed.Templates
+	})
+	return templateCache
+}
 
 // LoadResources reads and caches kubelens.config.yaml. CWD is PROJECT_ROOT
 // (set in main), so a relative path resolves to the repo root.

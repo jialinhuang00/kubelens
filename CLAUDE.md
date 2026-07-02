@@ -18,7 +18,7 @@
 - Image tag lookups are registry-agnostic: `/api/registry/tags` detects ECR/GCR/ACR from the image URL and shells out to `aws`/`gcloud`/`az`.
 - Snapshot mode replays from the same objects real kubectl reads (e.g. rollout history rebuilds from exported ReplicaSets' revision annotations; old snapshots without `replicasets.yaml` fall back to synthesized rows). Still canned/fake: `get events`, and `get namespaces` when the snapshot dir is missing — don't trust those outputs.
 - The export kind list lives in FIVE places that must stay in sync: bash `NS_BATCHES`, `snapshot-node.js` / `-workers` / `-procs` `NS_BATCHES`, Go `nsBatches` (+ `kind-map.json` / `kindmap.go` for filenames).
-- `cmd/server`: package-level `var`s init BEFORE `main()` chdirs to `PROJECT_ROOT` — never resolve config/files in a package-level initializer (that's why `fileAliases` is lazy).
+- `cmd/server`: package-level `var`s init BEFORE `main()` chdirs to `PROJECT_ROOT` — never resolve config/files in a package-level initializer (that's why `fileAliases` is lazy). Also: Node passes config YAML through as-is, but Go re-declares typed structs — a config field/section not mirrored in `store/config.go` silently vanishes from `/api/config`.
 
 ## File Structure
 ```
