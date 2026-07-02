@@ -2,6 +2,11 @@
 
 Browser-based Kubernetes visualization. GPU-accelerated resource graph + multi-window kubectl terminal. Runs against a live cluster or offline from exported snapshots.
 
+- **Universe** — the whole cluster as an interactive WebGL graph: workloads, network path, config references
+- **Terminal** — floating panels per resource, one-click contextual commands, streaming for long-running ones
+- **Registry-aware rollouts** — the deployment panel lists image tags straight from **ECR / Artifact Registry (GCR) / ACR** (detected from the image URL) and swaps versions in one click
+- **Snapshot mode** — export once, browse the whole cluster offline; no agents, nothing installed in the cluster
+
 ![K8s Universe — resource topology graph with a selected resource's relationships](./docs/02-universe-target-ns.png)
 
 ![K8s Terminal — a deployment's rollout panel (rollout status, history, details) in a floating window, across renamable multi-desktop workspaces](./docs/03-terminal.gif)
@@ -68,6 +73,8 @@ resources:
 
 - `show` — capability: which views this kind *can* appear in (`tree`, `graph`).
 - `default` — default-on views (subset of `show`); omit to default to `show`. `default: []` ships a kind capable-but-off; it appears in the visibility panel to switch on.
+
+The example above *is* a hand-added CRD: copy the shape, set `resourceType` to the **group-qualified** plural (`virtualservices.networking.istio.io`, not just `virtualservices`) — that's how kubelens tells CRDs from built-ins. `pnpm run init` autodetects all of this for every CRD in your cluster.
 
 **Panel commands** (`templates`) — the buttons on each resource window, keyed by Kind. `{name}` / `{namespace}` resolve at run time:
 
