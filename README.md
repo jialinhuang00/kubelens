@@ -103,10 +103,24 @@ See the `tables:` comment in `kubelens.default.yaml` for the full transform list
 ## Dev
 
 ```bash
-pnpm run dev      # frontend + backend
-pnpm run build    # production build
-pnpm test         # unit tests
+pnpm run dev         # frontend + backend
+pnpm run build       # production build
+pnpm test            # unit tests (Karma)
+pnpm run test:utils  # backend unit tests (node:test)
+pnpm run test:e2e    # browser tests (Playwright)
 ```
+
+`test:e2e` starts the dev server itself and drives a real browser, so the first
+run needs Playwright's bundled Chromium:
+
+```bash
+npx playwright install chromium   # ~130MB, once per Playwright version
+```
+
+Already have Google Chrome and would rather not download another browser? Add
+`channel: 'chrome'` to the project's `use` block in `playwright.config.ts` and
+Playwright launches yours instead. Chrome auto-updates, so the browser under
+test drifts with it; the bundled build is pinned and reproducible.
 
 ## Stack
 

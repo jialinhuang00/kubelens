@@ -108,6 +108,8 @@ Control: `POST /api/execute/stream/stop` (kill process), `POST /api/execute/stre
 - `npm run dev` — frontend (4200) + backend (3042), proxy forwards `/api`
 - `bash scripts/snapshot-bash.sh` — CLI export (independent of server)
 - `ng test` — Unit tests
+- `npm run test:utils` — Backend unit tests. Points `K8S_SNAPSHOT_PATH` at a nonexistent path so nothing reads a real export; `snapshot-commands.spec.ts` seeds `snapshot-loader`'s in-memory cache with fixtures instead.
+- `npm run test:e2e` — Playwright. Starts the dev server itself; first run needs `npx playwright install chromium` (or add `channel: 'chrome'` to use the system browser).
 
 ## Deploy (EC2)
 
