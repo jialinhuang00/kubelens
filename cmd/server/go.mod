@@ -1,4 +1,4 @@
-module kubecmds-viz/server
+module kubelens/server
 
 go 1.22.1
 

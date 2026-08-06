@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"kubecmds-viz/server/store"
+	"kubelens/server/store"
 )
 
 func registerExecute(mux *http.ServeMux) {

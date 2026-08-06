@@ -101,7 +101,10 @@ export class SnapshotService {
       this.startPolling();
       this.startTipRotation();
     } catch (err: any) {
-      this.error.set(err.message || 'Failed to start export');
+      // The server's own message lives in the response body. err.message is
+      // Angular's generic "Http failure response for <url>: 400 Bad Request",
+      // which told the user nothing about what actually went wrong.
+      this.error.set(err.error?.error || err.message || 'Failed to start export');
     }
   }
 

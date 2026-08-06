@@ -1,0 +1,22 @@
+// Compiles the server's TypeScript to JavaScript beside each source file, so the
+// published package runs on plain node. In the repo `tsx` transpiles these on the
+// fly; shipping that to users costs ~10MB of esbuild binary for a step that only
+// needs to happen once, here, before publishing.
+//
+// No outDir: the emitted .js has to sit next to the .js files that require it —
+// api/routes/graph.js does `require('../utils/graph-builder')`, and node resolves
+// that to graph-builder.js only if it is in the same directory.
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "declaration": false,
+    "sourceMap": false
+  },
+  "include": ["api/**/*.ts", "scripts/init.ts", "shared/graph-types.ts"],
+  "exclude": ["node_modules", "src", "dist", "api/**/*.spec.ts", "api/utils/test-fixtures.ts"]
+}

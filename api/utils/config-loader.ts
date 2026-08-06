@@ -1,6 +1,6 @@
 import * as fs from 'fs';
-import * as path from 'path';
 import * as yaml from 'js-yaml';
+import { resolveDataPath } from './paths';
 
 export interface ResourceConfig {
   kind: string;
@@ -41,7 +41,7 @@ export interface TableSpec {
   columns: TableColumn[];
 }
 
-const CONFIG_PATH = path.join(__dirname, '../..', 'kubelens.config.yaml');
+const CONFIG_PATH = resolveDataPath('kubelens.config.yaml');
 
 interface ConfigDoc {
   resources?: ResourceConfig[];

@@ -49,9 +49,16 @@ const distPath = path.join(__dirname, '..', 'dist', 'kubelens', 'browser');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
   app.get('/{*splat}', (req, res) => {
-    if (!req.path.startsWith('/api/')) {
-      res.sendFile(path.join(distPath, 'index.html'));
+    // An /api/ path that reached here matched no route. Say so; falling through
+    // without a response left the request open until the client gave up.
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({ error: `No such endpoint: ${req.path}` });
     }
+    // Filename plus root, not one joined absolute path. sendFile runs the path
+    // it is given through send, which refuses any segment starting with a dot —
+    // and under npx the package lives in ~/.npm/_npx/<hash>/, so the joined form
+    // made every deep link 404 while / kept working.
+    res.sendFile('index.html', { root: distPath });
   });
 }
 

@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"kubecmds-viz/server/store"
+	"kubelens/server/store"
 )
 
 // K8sItem is an alias for the store type.

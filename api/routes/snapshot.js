@@ -6,7 +6,13 @@ const fsp = fs.promises;
 
 const router = express.Router();
 
-const snapshotDir = path.join(__dirname, '../..', 'k8s-snapshot');
+const { PKG_ROOT, resolveDataPath } = require('../utils/paths');
+
+// Where snapshots are read from and written to. The export child runs with this
+// directory's parent as its cwd, so the scripts' relative 'k8s-snapshot' lands
+// in the same place the loader reads from.
+const snapshotDir = resolveDataPath('k8s-snapshot');
+const snapshotParent = path.dirname(snapshotDir);
 
 let exportState = {
   running: false,
@@ -130,45 +136,52 @@ router.post('/snapshot', async (req, res) => {
 
   let spawnCmd, args;
   if (mode === 'go') {
-    spawnCmd = path.join(__dirname, '../..', 'cmd', 'k8s-export', 'k8s-export');
-    // The Go binary is gitignored — a fresh clone only has sources.
+    const goSrcDir = path.join(PKG_ROOT, 'cmd', 'k8s-export');
+    spawnCmd = path.join(goSrcDir, 'k8s-export');
     if (!fs.existsSync(spawnCmd)) {
       exportState.running = false;
-      exportState.error = 'go exporter not built. Run: cd cmd/k8s-export && go build -o k8s-export . — or pick another mode.';
+      // Two different situations. From a clone the sources are here and the
+      // binary is gitignored, so building it is the fix. Installed from npm
+      // there is no cmd/ at all — the compiled exporter is ~40MB per platform,
+      // so it is not in the package — and telling that user to cd into
+      // cmd/k8s-export sends them to a directory that does not exist.
+      exportState.error = fs.existsSync(path.join(goSrcDir, 'main.go'))
+        ? 'go exporter not built. Run: cd cmd/k8s-export && go build -o k8s-export . — or pick another mode.'
+        : 'The go exporter ships with the source, not with the npm package. Pick bash or node, or clone the repo to build it.';
       return res.status(400).json({ error: exportState.error });
     }
     args = [];
     if (workers) args.push('-jobs', String(workers));
   } else if (mode === 'parallel') {
     spawnCmd = 'bash';
-    args = [path.join(__dirname, '../..', 'scripts', 'snapshot-bash.sh')];
+    args = [path.join(PKG_ROOT, 'scripts', 'snapshot-bash.sh')];
     if (workers) args.push('--jobs', String(workers));
   } else if (mode === 'workers') {
     spawnCmd = process.execPath;
-    args = [path.join(__dirname, '../..', 'scripts', 'snapshot-node-workers.js')];
+    args = [path.join(PKG_ROOT, 'scripts', 'snapshot-node-workers.js')];
     if (workers) args.push('--workers', String(workers));
   } else if (mode === 'procs') {
     spawnCmd = process.execPath;
-    args = [path.join(__dirname, '../..', 'scripts', 'snapshot-node-procs.js')];
+    args = [path.join(PKG_ROOT, 'scripts', 'snapshot-node-procs.js')];
     if (workers) args.push('--procs', String(workers));
   } else if (mode === 'node') {
     spawnCmd = process.execPath;
-    args = [path.join(__dirname, '../..', 'scripts', 'snapshot-node.js')];
+    args = [path.join(PKG_ROOT, 'scripts', 'snapshot-node.js')];
     if (workers) args.push('--jobs', String(workers));
   } else if (mode === 'bash-parallel') {
     spawnCmd = 'bash';
-    args = [path.join(__dirname, '../..', 'scripts', 'snapshot-bash.sh')];
+    args = [path.join(PKG_ROOT, 'scripts', 'snapshot-bash.sh')];
     if (workers) args.push('--jobs', String(workers));
   } else {
     // bash — sequential (jobs=1) or batch (jobs>1), auto-detects GNU parallel
     spawnCmd = 'bash';
-    args = [path.join(__dirname, '../..', 'scripts', 'snapshot-bash.sh')];
+    args = [path.join(PKG_ROOT, 'scripts', 'snapshot-bash.sh')];
     if (workers) args.push('--jobs', String(workers));
   }
   if (resume) args.push('--resume');
 
   const child = spawn(spawnCmd, args, {
-    cwd: path.join(__dirname, '../..'),
+    cwd: snapshotParent,
     env: { ...process.env },
     detached: true,  // new process group — enables group kill on pause
   });

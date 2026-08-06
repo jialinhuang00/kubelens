@@ -3,7 +3,7 @@ package routes
 import (
 	"net/http"
 
-	"kubecmds-viz/server/store"
+	"kubelens/server/store"
 )
 
 func registerConfig(mux *http.ServeMux) {
