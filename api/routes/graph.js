@@ -7,6 +7,7 @@ const execFileAsync = util.promisify(execFile);
 
 const { discoverNamespaces, getItemsFromSnapshot, buildGraph } = require('../utils/graph-builder');
 const { getGraphResources, isCrd } = require('../utils/config-loader');
+const { resolveDataPath } = require('../utils/paths');
 
 const router = express.Router();
 
@@ -87,11 +88,10 @@ router.get('/graph', async (req, res) => {
 
   try {
     if (isSnapshot) {
-      const rootDir = path.join(__dirname, '../..');
-      const localBackup = path.join(rootDir, 'k8s-snapshot');
-      const fallbackPath = process.env.K8S_SNAPSHOT_PATH || localBackup;
-
-      const dataPath = fs.existsSync(localBackup) ? localBackup : fallbackPath;
+      // The user's directory, not the package's — same resolution the loader
+      // and the export use, so all three agree on where a snapshot lives.
+      const localBackup = resolveDataPath('k8s-snapshot');
+      const dataPath = process.env.K8S_SNAPSHOT_PATH || localBackup;
 
       const namespaceDirs = discoverNamespaces(dataPath);
       const namespaceList = [...namespaceDirs.keys()];

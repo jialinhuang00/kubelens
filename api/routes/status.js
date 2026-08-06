@@ -5,6 +5,8 @@ const path = require('path');
 const fs = require('fs');
 const fsp = fs.promises;
 
+const { resolveDataPath } = require('../utils/paths');
+
 const execFileAsync = util.promisify(execFile);
 
 const router = express.Router();
@@ -64,7 +66,11 @@ router.get('/export/ping', async (req, res) => {
 
 // GET /api/snapshot/ping
 router.get('/snapshot/ping', async (req, res) => {
-  const backupDir = path.join(__dirname, '../..', 'k8s-snapshot');
+  // Same directory the export writes to and the loader reads from. Resolving
+  // this against the package instead left the toggle greyed out after a
+  // successful export: the snapshot was in the user's directory, this looked
+  // for it inside node_modules.
+  const backupDir = resolveDataPath('k8s-snapshot');
   let available = false;
 
   try {
