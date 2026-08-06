@@ -16,7 +16,7 @@ import * as fs from 'fs';
 
 export const PKG_ROOT: string = path.join(__dirname, '..', '..');
 
-export const USER_ROOT: string = process.env.KUBELENS_HOME || process.cwd();
+export const USER_ROOT: string = process.cwd();
 
 /**
  * Resolve a config/data entry against USER_ROOT, falling back to PKG_ROOT when
