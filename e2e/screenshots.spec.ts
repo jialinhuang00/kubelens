@@ -3,10 +3,10 @@ import * as path from 'path';
 
 const OUT = path.resolve(__dirname, '../docs');
 
-async function applyOssyria(page: any) {
+/** Screenshots are taken offline so they don't depend on a live cluster. */
+async function useSnapshotMode(page: any) {
   await page.addInitScript(() => {
     localStorage.setItem('kubecmds-data-mode', 'snapshot');
-    localStorage.setItem('kubecmds-theme', 'ossyria');
   });
 }
 
@@ -23,7 +23,7 @@ test.describe('Documentation screenshots — Ossyria', () => {
 
   // 1. Universe overview
   test('01 universe overview', async ({ page }) => {
-    await applyOssyria(page);
+    await useSnapshotMode(page);
     await page.goto('/universe');
     await waitForGraph(page);
     await page.screenshot({ path: path.join(OUT, '01-universe-overview.png') });
@@ -31,7 +31,7 @@ test.describe('Documentation screenshots — Ossyria', () => {
 
   // 2. Universe — maple-staging namespace selected
   test('02 universe maple-staging', async ({ page }) => {
-    await applyOssyria(page);
+    await useSnapshotMode(page);
     await page.goto('/universe');
     await waitForGraph(page);
     const chip = page.locator('app-namespace-chips button', { hasText: 'maple-staging' });
@@ -43,7 +43,7 @@ test.describe('Documentation screenshots — Ossyria', () => {
 
   // 3. Terminal — maple-staging, 2 deployments + 2 pods open
   test('03 terminal', async ({ page }) => {
-    await applyOssyria(page);
+    await useSnapshotMode(page);
     await page.goto('/terminal');
     await page.waitForLoadState('networkidle');
 
@@ -114,7 +114,7 @@ test.describe('Documentation screenshots — Ossyria', () => {
 
   // 4. Export panel
   test('04 export', async ({ page }) => {
-    await applyOssyria(page);
+    await useSnapshotMode(page);
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     const exportBtn = page.getByRole('button', { name: /Export Snapshot/i });
@@ -128,7 +128,7 @@ test.describe('Documentation screenshots — Ossyria', () => {
 
   // 5. Home
   test('05 home', async ({ page }) => {
-    await applyOssyria(page);
+    await useSnapshotMode(page);
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     await page.screenshot({ path: path.join(OUT, '05-home.png') });

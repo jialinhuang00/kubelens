@@ -28,8 +28,4 @@ test.describe('Home page', () => {
     await page.locator('a.card', { hasText: 'Graph' }).click();
     await expect(page).toHaveURL(/\/universe/);
   });
-
-  test('theme switcher is visible', async ({ page }) => {
-    await expect(page.locator('.theme-switcher')).toBeVisible();
-  });
 });
