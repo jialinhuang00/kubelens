@@ -17,6 +17,11 @@ const snapshotParent = path.dirname(snapshotDir);
 let exportState = {
   running: false,
   paused: false,
+  // "I know there's a half-finished export; let me use the app anyway." The GET
+  // handler recomputes `paused` from disk every poll, so clearing the flag above
+  // is not enough — the partial files are still there and the next poll would
+  // put the modal straight back. This one is only ever set by the user.
+  pausedDismissed: false,
   pid: null,
   startedAt: null,
   elapsedSeconds: null,
@@ -85,14 +90,34 @@ router.post('/snapshot', async (req, res) => {
     }
   }
 
-  // --- CLEAR --- (dismiss a finished/failed state so it doesn't survive a reload)
+  // --- CLEAR --- (dismiss a finished/failed/paused state so it stops blocking)
   if (command === 'clear') {
     if (exportState.running) {
       return res.status(409).json({ error: 'Export running' });
     }
     exportState.error = null;
     exportState.paused = false;
+    exportState.pausedDismissed = true;
     return res.json({ cleared: true });
+  }
+
+  // --- DISCARD --- (throw the partial export away and start from nothing)
+  if (command === 'discard') {
+    if (exportState.running) {
+      return res.status(409).json({ error: 'Export running' });
+    }
+    try {
+      await fsp.rm(snapshotDir, { recursive: true, force: true });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    exportState.paused = false;
+    exportState.pausedDismissed = false;
+    exportState.error = null;
+    exportState.fileCount = 0;
+    exportState.totalNamespaces = 0;
+    exportState.completedNamespaces = 0;
+    return res.json({ discarded: true });
   }
 
   // --- START ---
@@ -121,6 +146,7 @@ router.post('/snapshot', async (req, res) => {
   exportState = {
     running: true,
     paused: false,
+    pausedDismissed: false,
     pid: null,
     startedAt: Date.now(),
     elapsedSeconds: null,
@@ -293,7 +319,8 @@ router.get('/snapshot', async (req, res) => {
   const paused = !exportState.running
     && !hasCompleteMarker
     && liveCount > 0
-    && !exportState.error;
+    && !exportState.error
+    && !exportState.pausedDismissed;
 
   // ETA: elapsed / doneNs * remainingNs — clamped to only decrease
   let etaSeconds = null;

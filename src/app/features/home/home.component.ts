@@ -18,6 +18,8 @@ export class HomeComponent implements OnInit {
   exportService = inject(SnapshotService);
   showExport = signal(false);
   showModeDropdown = signal(false);
+  // Deleting a half-finished export is not undoable, so the button asks once.
+  confirmDiscard = signal(false);
 
   workerLabel(): string {
     const labels: Record<string, string> = {
@@ -58,6 +60,16 @@ export class HomeComponent implements OnInit {
 
   pauseExport() {
     this.exportService.pauseExport();
+  }
+
+  discardAndRestart() {
+    this.confirmDiscard.set(false);
+    this.exportService.discardAndRestart();
+  }
+
+  keepPartial() {
+    this.confirmDiscard.set(false);
+    this.exportService.dismissError();
   }
 
   setMode(mode: ExportMode) {

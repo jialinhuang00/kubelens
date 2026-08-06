@@ -92,7 +92,20 @@
           </div>
         }
       </div>
-      <button class="export-btn" (click)="resumeExport()">Resume</button>
+      @if (confirmDiscard()) {
+        <p class="hint hint-error">Deletes all {{ exportService.fileCount() }} exported files, then exports again from scratch.</p>
+        <div class="export-actions">
+          <button class="export-btn export-btn-danger" (click)="discardAndRestart()">Delete and export</button>
+          <button class="export-btn export-btn-ghost" (click)="confirmDiscard.set(false)">Back</button>
+        </div>
+      } @else {
+        <p class="hint">Resume picks up at the namespace it stopped on. Switched clusters since? Start over instead — resuming would mix both into one snapshot.</p>
+        <div class="export-actions">
+          <button class="export-btn" (click)="resumeExport()">Resume</button>
+          <button class="export-btn export-btn-ghost" (click)="confirmDiscard.set(true)">Start over</button>
+        </div>
+        <button class="snapshot-update-link" (click)="keepPartial()">Leave it for now and use kubelens</button>
+      }
     </div>
   } @else if (exportService.done()) {
     <div class="export-backdrop"></div>

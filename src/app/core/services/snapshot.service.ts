@@ -122,6 +122,27 @@ export class SnapshotService {
     this.paused.set(true);
   }
 
+  /** Throw away a partial export and start a fresh one. The half-exported files
+   *  are deleted first, so the new run can't inherit namespaces from whichever
+   *  cluster the interrupted run was reading. */
+  async discardAndRestart(): Promise<void> {
+    try {
+      await firstValueFrom(
+        this.http.post(`${API_BASE}/snapshot`, { command: 'discard' })
+      );
+    } catch (err: any) {
+      this.paused.set(false);
+      this.error.set(err.error?.error || err.message || 'Failed to discard snapshot');
+      return;
+    }
+    this.fileCount.set(0);
+    this.completedNs.set(0);
+    this.totalNs.set(0);
+    this.progress.set(0);
+    this.currentNamespace.set('');
+    await this.startExport(false);
+  }
+
   /** Dismiss a finished/failed/paused export so it stops blocking — clears the
    *  local state and the server's, so a reload doesn't resurrect the modal. */
   async dismissError(): Promise<void> {

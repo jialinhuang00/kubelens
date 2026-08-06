@@ -557,6 +557,33 @@
   }
 }
 
+.export-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.export-btn-ghost {
+  color: var(--t-text-secondary);
+  background: transparent;
+  border: 1px solid var(--t-border);
+
+  &:hover {
+    color: var(--t-accent);
+    background: transparent;
+    border-color: var(--t-accent);
+  }
+}
+
+.export-btn-danger {
+  background: var(--t-error);
+
+  &:hover {
+    background: var(--t-error);
+    filter: brightness(1.15);
+  }
+}
+
 .card.disabled {
   opacity: 0.35;
   pointer-events: none;
