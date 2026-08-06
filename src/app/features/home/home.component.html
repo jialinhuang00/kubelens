@@ -99,7 +99,7 @@
           <button class="export-btn export-btn-ghost" (click)="confirmDiscard.set(false)">Back</button>
         </div>
       } @else {
-        <p class="hint">Resume picks up at the namespace it stopped on. Switched clusters since? Start over instead — resuming would mix both into one snapshot.</p>
+        <p class="hint">Resume finishes the remaining namespaces against whatever cluster kubectl is set to right now. If that is no longer the cluster this export started on, the directory ends up with half of each. Start over deletes it all and exports again.</p>
         <div class="export-actions">
           <button class="export-btn" (click)="resumeExport()">Resume</button>
           <button class="export-btn export-btn-ghost" (click)="confirmDiscard.set(true)">Start over</button>
