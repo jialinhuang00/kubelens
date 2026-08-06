@@ -62,6 +62,19 @@ export const KNOWN_CRDS: Record<string, KnownCrd> = {
   'argoproj.io/Application':             { label: 'Applications', color: '#e07850', show: ['tree'] },
 };
 
+/** Parse `kubectl get crd -o jsonpath=...` output (one `group/Kind` per line)
+ *  into the set buildCrdEntries filters on. An empty result is meaningful: the
+ *  cluster has no CRDs at all. Callers must distinguish that from a failed call
+ *  and pass null in the failure case. */
+export function parseCrdIds(stdout: string): Set<string> {
+  const ids = new Set<string>();
+  for (const raw of stdout.split('\n')) {
+    const line = raw.trim();
+    if (line.includes('/')) ids.add(line);
+  }
+  return ids;
+}
+
 export interface ResourceEntry {
   kind: string; key: string; resourceType: string; namePrefix: string; group: string;
   label: string; color: string; show: ('tree' | 'graph')[]; default: ('tree' | 'graph')[];
@@ -71,13 +84,24 @@ export interface ResourceEntry {
  *  label/colour/views, unknown ones get a neutral tree entry. All ship
  *  `default: []` (capable but off) so a fresh config has no surprise fetches.
  *  `baseIds` is the set of `group/Kind` already in the base config (built-ins) —
- *  skip those. Don't use an "official group" heuristic: Gateway API lives under
- *  *.k8s.io yet is an installable CRD that must be discovered. */
+ *  skip those.
+ *
+ *  `crdIds` is the set of `group/Kind` the cluster reports as actual
+ *  CustomResourceDefinitions. Pass it and only those kinds become entries; pass
+ *  null when the CRD list could not be read and every non-built-in kind is kept,
+ *  which over-reports rather than dropping a real CRD. Without it a plain kind
+ *  cluster produced six "CRDs" — LimitRange, PodTemplate, ReplicationController,
+ *  ResourceQuota, PodDisruptionBudget, CSIStorageCapacity — all core Kubernetes
+ *  kinds that kubelens.default.yaml simply does not list.
+ *
+ *  This is a lookup, not a heuristic, and it has to be: Gateway API lives under
+ *  *.k8s.io yet is an installable CRD, so no group-name rule can separate them. */
 export function buildCrdEntries(
   discovered: ApiResource[],
   baseIds: Set<string>,
   excludeGroups: string[] = [],
   excludeResources: string[] = [],
+  crdIds: ReadonlySet<string> | null = null,
 ): ResourceEntry[] {
   const exG = new Set(excludeGroups);
   const exR = new Set(excludeResources);
@@ -86,6 +110,7 @@ export function buildCrdEntries(
   for (const r of discovered) {
     const id = `${r.group}/${r.kind}`;
     if (baseIds.has(id)) continue;                 // already a built-in in kubelens.default.yaml
+    if (crdIds && !crdIds.has(id)) continue;       // the cluster says this is not a CRD
     if (exG.has(r.group) || exR.has(r.name)) continue;
     if (seen.has(id)) continue;
     seen.add(id);

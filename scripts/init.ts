@@ -20,7 +20,7 @@ import path from 'path';
 import yaml from 'js-yaml';
 import { execFileSync } from 'child_process';
 import { parseApiResources } from '../api/utils/api-resources';
-import { detectCluster, classifyRegistry, buildCrdEntries, type ResourceEntry } from '../api/utils/init-detect';
+import { detectCluster, classifyRegistry, buildCrdEntries, parseCrdIds, type ResourceEntry } from '../api/utils/init-detect';
 
 const ROOT = path.join(__dirname, '..');
 const CONFIG = path.join(ROOT, 'kubelens.config.yaml');
@@ -32,6 +32,18 @@ function kubectl(args: string[]): string {
     return execFileSync('kubectl', args, { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
   } catch (e: any) {
     return (e.stdout || '').toString();
+  }
+}
+
+/** Same, but reports whether the call actually succeeded. Needed where an empty
+ *  result and a failed call mean different things — a cluster with zero CRDs
+ *  prints nothing and exits 0, while no RBAC to list CRDs exits non-zero. */
+function kubectlChecked(args: string[]): { ok: boolean; stdout: string } {
+  try {
+    const stdout = execFileSync('kubectl', args, { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
+    return { ok: true, stdout };
+  } catch {
+    return { ok: false, stdout: '' };
   }
 }
 
@@ -61,10 +73,14 @@ function main(): void {
   const images = kubectl(['get', 'deploy', '-A', '-o', 'jsonpath={..image}']).split(/\s+/).filter(Boolean).slice(0, 30);
   const registry = classifyRegistry(images);
 
-  // 3. CRDs the cluster actually has (skip kinds already in the base built-ins)
+  // 3. CRDs the cluster actually has (skip kinds already in the base built-ins).
+  //    api-resources lists everything the API server serves, built-ins included,
+  //    so ask for the CustomResourceDefinition list too and keep only those.
   const baseIds = new Set<string>((base.resources ?? []).map((r: any) => `${r.group}/${r.kind}`));
   const discovered = parseApiResources(kubectl(['api-resources', '--verbs=list', '--namespaced=true']));
-  const crdEntries = buildCrdEntries(discovered, baseIds, exclude.groups ?? [], exclude.resources ?? []);
+  const crdList = kubectlChecked(['get', 'crd', '-o', 'jsonpath={range .items[*]}{.spec.group}/{.spec.names.kind}{"\\n"}{end}']);
+  const crdIds = crdList.ok ? parseCrdIds(crdList.stdout) : null;
+  const crdEntries = buildCrdEntries(discovered, baseIds, exclude.groups ?? [], exclude.resources ?? [], crdIds);
 
   // 4. assemble: built-ins + discovered CRDs
   let resources: ResourceEntry[] = [...(base.resources ?? []), ...crdEntries];
@@ -100,6 +116,9 @@ function main(): void {
   console.log(`registry: ${registry.type} (sampled ${images.length} images)`);
   console.log(`CRDs:     ${crdEntries.length} detected (off by default; enable in the panel)`);
   for (const e of crdEntries) console.log(`            - ${e.resourceType}`);
+  if (!crdList.ok) {
+    console.log(`          (could not list CustomResourceDefinitions — the above may include built-in kinds)`);
+  }
   console.log(`\nwrote ${path.basename(CONFIG)}`);
 }
 

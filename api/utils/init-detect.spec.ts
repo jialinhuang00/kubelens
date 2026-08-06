@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { detectCluster, classifyRegistry, buildCrdEntries } from './init-detect';
+import { detectCluster, classifyRegistry, buildCrdEntries, parseCrdIds } from './init-detect';
 import { parseApiResources } from './api-resources';
 
 describe('detectCluster', () => {
@@ -63,5 +63,37 @@ leases                         coordination.k8s.io/v1         true         Lease
   });
   it('honours excludeGroups', () => {
     assert.ok(!buildCrdEntries(discovered, baseIds, ['networking.istio.io']).some(e => e.kind === 'VirtualService'));
+  });
+
+  it('keeps only kinds the cluster reports as CRDs', () => {
+    const crdIds = new Set(['argoproj.io/Application', 'networking.istio.io/VirtualService']);
+    const kinds = buildCrdEntries(discovered, baseIds, [], [], crdIds).map(e => e.kind);
+    assert.deepEqual(kinds.sort(), ['Application', 'VirtualService']);
+  });
+
+  it('drops built-in kinds missing from the base config when the CRD list is empty', () => {
+    // A plain kind cluster: api-resources lists core kinds default.yaml omits,
+    // and `kubectl get crd` returns nothing. None of them is a CRD.
+    const core = parseApiResources(`NAME             SHORTNAMES   APIVERSION   NAMESPACED   KIND
+limitranges      limits       v1           true         LimitRange
+podtemplates                  v1           true         PodTemplate`);
+    assert.deepEqual(buildCrdEntries(core, baseIds, [], [], new Set()), []);
+  });
+
+  it('keeps every non-built-in kind when the CRD list could not be read', () => {
+    const kinds = buildCrdEntries(discovered, baseIds, [], [], null).map(e => e.kind);
+    assert.ok(kinds.includes('VirtualService'));
+    assert.ok(kinds.includes('Lease'));
+  });
+});
+
+describe('parseCrdIds', () => {
+  it('reads group/Kind lines', () => {
+    const ids = parseCrdIds('argoproj.io/Application\ngateway.networking.k8s.io/HTTPRoute\n');
+    assert.equal(ids.size, 2);
+    assert.ok(ids.has('argoproj.io/Application'));
+  });
+  it('returns an empty set for a cluster with no CRDs', () => {
+    assert.equal(parseCrdIds('').size, 0);
   });
 });
