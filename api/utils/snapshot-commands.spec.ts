@@ -1,7 +1,12 @@
-import { describe, it } from 'node:test';
+import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseKubectlCommand, handleCommand } from './snapshot-commands';
 import { cache } from './snapshot-loader';
+import {
+  makeList, makeDeploymentItem, makeServiceItem, makeConfigMapItem, makeSecretItem,
+  makeStatefulSetItem, makeCronJobItem, makeJobItem, makeEndpointsItem, makeReplicaSetItem,
+  makePodsSnapshotText, makePodsImagesText,
+} from './test-fixtures';
 
 describe('parseKubectlCommand', () => {
   it('returns null for non-kubectl commands', () => {
@@ -161,9 +166,57 @@ describe('parseKubectlCommand', () => {
   });
 });
 
-// --- handleCommand (integration tests using real k8s-snapshot/demo dump) ---
+// --- handleCommand ---
+//
+// These used to read whoever's k8s-snapshot/ happened to be on the machine and
+// assumed it held a namespace called `demo` with a deployment called
+// `api-server`. Nobody else's export looks like that, and k8s-snapshot/ is
+// gitignored, so on any other checkout the whole block failed.
+//
+// snapshot-loader checks its in-memory cache before touching disk
+// (`if (cache[cacheKey]) return ...`), so seeding the cache is enough to make
+// these run against fixtures instead. Keys are `${namespace}:${file}` for YAML
+// and `text:${namespace}:${file}` for text; `_` is the no-namespace bucket.
+// The npm script also points K8S_SNAPSHOT_PATH at a path that does not exist,
+// which keeps the filesystem out of it for anything the cache does not cover.
 
 const NS = 'demo';
+
+const POD_NAME = 'task-runner-74d7bff595-nq667';
+
+before(() => {
+  cache[`${NS}:deployments.yaml`] = makeList([
+    makeDeploymentItem('api-server', { replicas: 3, image: 'api-server:v2' }),
+    makeDeploymentItem('task-runner', { replicas: 1 }),
+  ]);
+  cache[`${NS}:services.yaml`] = makeList([makeServiceItem('api-server-svc')]);
+  cache[`${NS}:configmaps.yaml`] = makeList([makeConfigMapItem('config', { 'app.yaml': 'debug: false' })]);
+  cache[`${NS}:secrets.yaml`] = makeList([makeSecretItem('api-token', { token: 'c2VjcmV0' })]);
+  cache[`${NS}:statefulsets.yaml`] = makeList([makeStatefulSetItem('scanner-worker', { replicas: 2 })]);
+  cache[`${NS}:cronjobs.yaml`] = makeList([makeCronJobItem('check-vault', { schedule: '*/15 * * * *' })]);
+  cache[`${NS}:jobs.yaml`] = makeList([makeJobItem('check-vault-28934', { completions: 1, succeeded: 1 })]);
+  cache[`${NS}:endpoints.yaml`] = makeList([makeEndpointsItem('api-server-svc', ['10.0.0.5', '10.0.0.6'])]);
+  cache[`${NS}:replicasets.yaml`] = makeList([
+    makeReplicaSetItem('api-server-6d4f', 'api-server', 1, { changeCause: 'initial rollout' }),
+  ]);
+
+  cache[`text:${NS}:pods-snapshot.txt`] = makePodsSnapshotText([
+    { name: POD_NAME, ip: '10.0.0.9', node: 'node-1' },
+    { name: 'api-server-6d4f-2xk9', ip: '10.0.0.10', node: 'node-2' },
+  ]);
+  cache[`text:${NS}:pods-images.txt`] = makePodsImagesText([
+    { name: POD_NAME, image: 'task-runner:v1' },
+    { name: 'api-server-6d4f-2xk9', image: 'api-server:v2' },
+  ]);
+
+  // `rollout history deployment/web` carries no -n, so the loader looks in the
+  // no-namespace bucket. Two ReplicaSets give it a revision 2 to find.
+  cache['_:deployments.yaml'] = makeList([makeDeploymentItem('web', { replicas: 2 })]);
+  cache['_:replicasets.yaml'] = makeList([
+    makeReplicaSetItem('web-5f8c', 'web', 1, { changeCause: 'initial rollout' }),
+    makeReplicaSetItem('web-7b2d', 'web', 2, { changeCause: 'kubectl set image', image: 'web:v2' }),
+  ]);
+});
 
 describe('handleCommand — get', () => {
   it('get deployments returns table with header', () => {
@@ -294,10 +347,13 @@ describe('handleCommand — get', () => {
   });
 
   it('get all returns combined output', () => {
+    // Sections are labelled the way the emulator writes them — `=== Deployment ===`,
+    // not an all-caps column header. Real kubectl has no such separator at all.
     const r = handleCommand(`kubectl get all -n ${NS}`);
     assert.equal(r.success, true);
-    assert.ok(r.stdout!.includes('DEPLOYMENT'));
-    assert.ok(r.stdout!.includes('SERVICE'));
+    assert.ok(r.stdout!.includes('=== Deployment ==='));
+    assert.ok(r.stdout!.includes('=== Service ==='));
+    assert.ok(r.stdout!.includes('api-server'));
   });
 
   it('get replicasets returns table', () => {
