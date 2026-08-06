@@ -10,8 +10,9 @@ test.describe('Home page', () => {
   });
 
   test('shows mode toggle buttons', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'Realtime' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Snapshot' })).toBeVisible();
+    // exact, or 'Snapshot' also matches the 'update snapshot?' button below the cards.
+    await expect(page.getByRole('button', { name: 'Realtime', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Snapshot', exact: true })).toBeVisible();
   });
 
   test('shows navigation cards', async ({ page }) => {

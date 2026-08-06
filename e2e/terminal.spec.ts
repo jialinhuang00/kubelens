@@ -12,15 +12,19 @@ test.describe('Terminal page', () => {
   });
 
   test('mode toggle is present', async ({ page }) => {
-    await expect(page.locator('app-mode-toggle, .mode-toggle')).toBeVisible();
+    // Not 'app-mode-toggle, .mode-toggle' — a comma is a union, and .mode-toggle
+    // is the component's own root div, so that matched twice and tripped strict mode.
+    await expect(page.locator('app-mode-toggle')).toBeVisible();
   });
 
   test('namespace chips area is present', async ({ page }) => {
     await expect(page.locator('app-namespace-chips')).toBeVisible();
   });
 
-  test('back link navigates home', async ({ page }) => {
-    await page.locator('app-back-link a, .back-link').first().click();
-    await expect(page).toHaveURL(/\//);
+  // app-back-link is gone — top-nav replaced the hub-and-spoke model, so every
+  // view is reachable directly and getting home means clicking the brand.
+  test('brand link navigates home', async ({ page }) => {
+    await page.locator('.top-nav .brand').click();
+    await expect(page).toHaveURL(/\/$/);
   });
 });

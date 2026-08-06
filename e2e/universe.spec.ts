@@ -30,8 +30,10 @@ test.describe('Universe (graph) page', () => {
     expect(count).toBeGreaterThan(0);
   });
 
-  test('back link navigates home', async ({ page }) => {
-    await page.locator('app-back-link a, .back-link').first().click();
-    await expect(page).toHaveURL(/\//);
+  // app-back-link is gone — top-nav replaced the hub-and-spoke model, so every
+  // view is reachable directly and getting home means clicking the brand.
+  test('brand link navigates home', async ({ page }) => {
+    await page.locator('.top-nav .brand').click();
+    await expect(page).toHaveURL(/\/$/);
   });
 });
