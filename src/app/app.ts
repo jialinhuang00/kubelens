@@ -1,7 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { DataModeService } from './core/services/data-mode.service';
-import { ThemeService } from './core/services/theme.service';
 import { TopNavComponent } from './shared/components/top-nav/top-nav.component';
 
 @Component({
@@ -20,9 +19,6 @@ import { TopNavComponent } from './shared/components/top-nav/top-nav.component';
 })
 export class App implements OnInit {
   private readonly dataModeService = inject(DataModeService);
-  // Instantiate ThemeService at the root so it applies the theme on load (nothing
-  // else injects it now that the theme-switcher is gone).
-  private readonly themeService = inject(ThemeService);
 
   ngOnInit(): void {
     this.dataModeService.checkAvailability();
