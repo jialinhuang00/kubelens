@@ -136,11 +136,18 @@ router.post('/snapshot', async (req, res) => {
 
   let spawnCmd, args;
   if (mode === 'go') {
-    spawnCmd = path.join(PKG_ROOT, 'cmd', 'k8s-export', 'k8s-export');
-    // The Go binary is gitignored — a fresh clone only has sources.
+    const goSrcDir = path.join(PKG_ROOT, 'cmd', 'k8s-export');
+    spawnCmd = path.join(goSrcDir, 'k8s-export');
     if (!fs.existsSync(spawnCmd)) {
       exportState.running = false;
-      exportState.error = 'go exporter not built. Run: cd cmd/k8s-export && go build -o k8s-export . — or pick another mode.';
+      // Two different situations. From a clone the sources are here and the
+      // binary is gitignored, so building it is the fix. Installed from npm
+      // there is no cmd/ at all — the compiled exporter is ~40MB per platform,
+      // so it is not in the package — and telling that user to cd into
+      // cmd/k8s-export sends them to a directory that does not exist.
+      exportState.error = fs.existsSync(path.join(goSrcDir, 'main.go'))
+        ? 'go exporter not built. Run: cd cmd/k8s-export && go build -o k8s-export . — or pick another mode.'
+        : 'The go exporter ships with the source, not with the npm package. Pick bash or node, or clone the repo to build it.';
       return res.status(400).json({ error: exportState.error });
     }
     args = [];
