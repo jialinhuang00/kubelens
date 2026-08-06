@@ -25,7 +25,9 @@ CLUSTER_SCOPED=false
 RESUME=false
 PARALLEL_NS=3
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BASE_DIR="${SCRIPT_DIR}/../k8s-snapshot"
+# Output goes to the working directory, matching the node exporters. Run from
+# the project root, or set K8S_SNAPSHOT_DIR. (The server sets the child's cwd.)
+BASE_DIR="${K8S_SNAPSHOT_DIR:-$PWD/k8s-snapshot}"
 
 # Namespaced resource types to export — split into parallel batches
 # Pods are handled separately (usually the most objects)

@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import { getFileAliases } from './config-loader';
+import { resolveDataPath } from './paths';
 
 /** Standard K8s object metadata. */
 export interface K8sMetadata {
@@ -46,7 +47,7 @@ export interface K8sList {
 }
 
 /** Root directory for snapshot YAML files. Override with K8S_SNAPSHOT_PATH env var. */
-export const BACKUP_PATH: string = process.env.K8S_SNAPSHOT_PATH || path.join(__dirname, '..', '..', 'k8s-snapshot');
+export const BACKUP_PATH: string = process.env.K8S_SNAPSHOT_PATH || resolveDataPath('k8s-snapshot');
 
 /** Fallback namespace when none is specified. */
 export const DEFAULT_NAMESPACE = 'demo';
