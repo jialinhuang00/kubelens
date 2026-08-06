@@ -10,6 +10,13 @@ cmd/k8s-export/k8s-export
 /out-tsc
 /bazel-out
 
+# `npm run build:server` emits these beside their .ts sources so the published
+# package runs without tsx. Build artifacts, not sources — the package.json
+# `files` list still ships them.
+api/utils/*.js
+scripts/init.js
+shared/*.js
+
 # Node
 /node_modules
 npm-debug.log

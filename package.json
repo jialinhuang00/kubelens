@@ -31,8 +31,7 @@
     "kubelens.default.yaml",
     "README.md",
     "LICENSE",
-    "!api/**/*.spec.ts",
-    "!api/utils/test-fixtures.ts",
+    "!**/*.ts",
     "!scripts/README.md"
   ],
   "scripts": {
@@ -42,6 +41,7 @@
     "build:export": "cd cmd/k8s-export && go build -o k8s-export .",
     "dev:go": "npm run build:export && concurrently \"PROJECT_ROOT=$PWD PORT=3042 go -C cmd/server run .\" \"ng serve\"",
     "build": "ng build",
+    "build:server": "tsc -p tsconfig.publish.json",
     "init": "tsx scripts/init.ts",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
@@ -50,6 +50,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "screenshot": "playwright test e2e/screenshots.spec.ts",
+    "prepack": "npm run build:server",
     "prepublishOnly": "npm run build"
   },
   "prettier": {
@@ -69,7 +70,6 @@
     "dotenv": "^17.3.1",
     "express": "^5.1.0",
     "js-yaml": "^4.1.0",
-    "tsx": "^4.21.0",
     "ws": "^8.19.0"
   },
   "devDependencies": {
@@ -102,6 +102,7 @@
     "rxjs": "~7.8.0",
     "tailwindcss": "^4.1.12",
     "tslib": "^2.3.0",
+    "tsx": "^4.21.0",
     "typescript": "~5.9.2",
     "zone.js": "~0.15.0"
   }

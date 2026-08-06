@@ -60,12 +60,23 @@ function seedConfig() {
   }
 }
 
-// api/utils and scripts/init are TypeScript — register tsx's CommonJS hook first.
-require('tsx/cjs');
+// The published package ships api/utils and scripts/init already compiled, so
+// plain node can require them. Running this file straight from a clone, those
+// .js files are absent — fall back to tsx, which is a devDependency there.
+if (!fs.existsSync(path.join(pkgRoot, 'api', 'utils', 'paths.js'))) {
+  try {
+    require('tsx/cjs');
+  } catch {
+    console.error('Server sources are not compiled and tsx is unavailable.');
+    console.error('From a clone, run `pnpm run build:server` first.');
+    process.exit(1);
+  }
+}
 
 if (argv[0] === 'init') {
-  process.argv = [process.argv[0], path.join(pkgRoot, 'scripts', 'init.ts'), ...argv.slice(1)];
-  require(path.join(pkgRoot, 'scripts', 'init.ts'));
+  const initEntry = path.join(pkgRoot, 'scripts', 'init');
+  process.argv = [process.argv[0], initEntry, ...argv.slice(1)];
+  require(initEntry);
 } else {
   const portFlag = argv.indexOf('--port');
   if (portFlag !== -1 && argv[portFlag + 1]) {
