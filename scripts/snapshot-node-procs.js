@@ -153,6 +153,15 @@ function makeFetchers(clients) {
 // Fetch helpers
 // ============================================================================
 
+// @kubernetes/client-node 1.x throws ApiException, which carries the HTTP status
+// on `code`. Reading only `statusCode` left every status undefined, so the
+// "skip a kind this cluster doesn't have" branch below never fired: on a kind
+// cluster without Gateway API installed, a skippable 404 for `gateways` ended
+// the whole export. Older client shapes stay as a fallback.
+function httpStatus(e) {
+  return e?.code ?? e?.response?.statusCode ?? e?.statusCode;
+}
+
 async function fetchOne(fetchers, ns, resourceType) {
   const fn = fetchers[resourceType];
   if (!fn) return [];
@@ -163,7 +172,7 @@ async function fetchOne(fetchers, ns, resourceType) {
     if (!meta) return items;
     return items.map(item => ({ ...item, kind: meta.kind, apiVersion: meta.apiVersion }));
   } catch (e) {
-    const code = e?.response?.statusCode ?? e?.statusCode;
+    const code = httpStatus(e);
     if (code === 404 || code === 405) return [];
     throw e;
   }
@@ -174,7 +183,7 @@ async function fetchCRD(customObjs, ns, { group, version, plural, kind }) {
     const res = await customObjs.listNamespacedCustomObject({ group, version, namespace: ns, plural });
     return (res.items ?? []).map(item => ({ ...item, kind, apiVersion: `${group}/${version}` }));
   } catch (e) {
-    const code = e?.response?.statusCode ?? e?.statusCode;
+    const code = httpStatus(e);
     if (code === 404 || code === 405) return [];
     throw e;
   }
