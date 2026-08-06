@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"kubecmds-viz/server/store"
+	"kubelens/server/store"
 )
 
 var upgrader = websocket.Upgrader{

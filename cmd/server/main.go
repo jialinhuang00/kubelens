@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"kubecmds-viz/server/routes"
+	"kubelens/server/routes"
 )
 
 func main() {
@@ -30,7 +30,7 @@ func main() {
 	mux := http.NewServeMux()
 	routes.Register(mux)
 
-	fmt.Printf("kubecmds-viz Go server running on http://localhost:%s\n", port)
+	fmt.Printf("kubelens Go server running on http://localhost:%s\n", port)
 	fmt.Printf("Realtime ping: http://localhost:%s/api/realtime/ping\n", port)
 	fmt.Printf("Graph endpoint: http://localhost:%s/api/graph\n", port)
 

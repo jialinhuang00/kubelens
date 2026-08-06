@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"kubecmds-viz/server/graph"
-	"kubecmds-viz/server/store"
+	"kubelens/server/graph"
+	"kubelens/server/store"
 )
 
 func registerGraph(mux *http.ServeMux) {
