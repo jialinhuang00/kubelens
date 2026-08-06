@@ -35,6 +35,31 @@ if (argv.includes('--version') || argv.includes('-v')) {
   process.exit(0);
 }
 
+/**
+ * A clone ships kubelens.config.yaml in the repo, so `pnpm run dev` shows the
+ * built-in kinds without any setup. Installed from npm that file is absent —
+ * it describes the user's cluster, not the package — and an empty config means
+ * an empty tree and an empty graph. Copy the neutral seed into the working
+ * directory on first run so the two entry points behave the same. `init` stays
+ * opt-in: it needs a reachable cluster, which a snapshot-only user may not have.
+ */
+function seedConfig() {
+  const target = path.join(process.cwd(), 'kubelens.config.yaml');
+  if (fs.existsSync(target)) return;
+
+  const seed = path.join(pkgRoot, 'kubelens.default.yaml');
+  if (!fs.existsSync(seed)) return;
+
+  try {
+    fs.copyFileSync(seed, target);
+    console.log(`Wrote ${target} from the built-in defaults.`);
+    console.log('Run `kubelens init` to detect your cluster\'s CRDs and image registry.');
+  } catch (e) {
+    console.warn(`Could not write kubelens.config.yaml: ${e.message}`);
+    console.warn('The tree and graph will be empty. Run kubelens from a writable directory.');
+  }
+}
+
 // api/utils and scripts/init are TypeScript — register tsx's CommonJS hook first.
 require('tsx/cjs');
 
@@ -53,5 +78,6 @@ if (argv[0] === 'init') {
     process.exit(1);
   }
 
+  seedConfig();
   require(path.join(pkgRoot, 'api', 'index.js'));
 }
