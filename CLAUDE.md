@@ -131,6 +131,21 @@ pm2 restart kubelens
 Frontend: `npm run build` → `dist/kubelens/browser/` (static files). Backend: no build, tsx runs directly.
 Production mode: Express serves `dist/` + API on one port. Dev mode: `dist/` absent → static serve skipped.
 
+## Release to npm
+
+Published as [`kubelens`](https://www.npmjs.com/package/kubelens). `npm publish` needs a 2FA one-time password, so that step is run by hand.
+
+```
+npm version <patch|minor|major> --no-git-tag-version
+git commit + git push                    # chore(release): x.y.z
+npm publish --otp=<code>                 # prepublishOnly runs ng build; prepack runs build:server
+rm -rf ~/.npm/_npx && npx kubelens        # verify from the registry, not a local tarball
+```
+
+- Verify by publishing then running `npx`, not by installing a tarball. Four bugs shipped in 0.1.0 that `npm install <tgz>` could not reach — deep links 404'd because the npx cache path contains a dot, and a finished export left the UI unusable. See `bin/kubelens.js`, `api/index.js` SPA fallback, `api/routes/status.js`, `api/routes/graph.js`.
+- To remove a version, publish the replacement **first**. `npm unpublish` on the last remaining version locks the package name for 24 hours. A version number is burned permanently once unpublished; it can never be reused.
+- `npx --package=<path-to-tgz> kubelens` exercises the npx cache path without publishing — the closest dry run available.
+
 ## Important Constraints
 - bash scripts must work on macOS bash 3.2 (no `declare -A`, empty arrays + `set -u` crash)
 - `snapshot-loader.ts` uses in-memory cache — only blocks on first call per resource
