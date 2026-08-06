@@ -87,9 +87,11 @@ export class TopNavComponent {
     { initialValue: this.router.url },
   );
 
-  // Knowledge + Benchmark are static pages with no cluster data; Realtime/Snapshot is meaningless there.
+  // Hidden on Knowledge + Benchmark, which are static pages with no cluster data,
+  // and on Home, which draws its own large Realtime/Snapshot toggle — two of them
+  // on one screen is two controls for one piece of state.
   protected showModeToggle = computed(() => {
-    const u = this.url();
-    return !u.startsWith('/knowledge') && !u.startsWith('/benchmark');
+    const path = this.url().split(/[?#]/)[0];
+    return path !== '/' && !path.startsWith('/knowledge') && !path.startsWith('/benchmark');
   });
 }
