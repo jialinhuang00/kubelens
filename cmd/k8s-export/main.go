@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/fs"
@@ -129,8 +130,7 @@ func main() {
 	// Run export.
 	exportAllNamespaces(k8sClient, dynClient, namespaces, baseDir, *jobs, *resume)
 
-	// Touch .export-complete.
-	touchFile(filepath.Join(baseDir, ".export-complete"))
+	writeCompleteMarker(baseDir, ctxName, "go")
 
 	// Summary.
 	elapsed := int(time.Since(startTime).Seconds())
@@ -155,6 +155,22 @@ func touchFile(path string) {
 	}
 	f.Close()
 	os.Chtimes(path, time.Now(), time.Now())
+}
+
+// The completion marker records which cluster the snapshot came from. Every
+// reader so far only checks that the file exists, so the contents change
+// nothing for them; a snapshot exported before this reads back as unknown.
+func writeCompleteMarker(baseDir, ctxName, exporter string) {
+	body, err := json.Marshal(map[string]string{
+		"context":    ctxName,
+		"exportedAt": time.Now().UTC().Format(time.RFC3339),
+		"exporter":   exporter,
+	})
+	if err != nil {
+		touchFile(filepath.Join(baseDir, ".export-complete"))
+		return
+	}
+	os.WriteFile(filepath.Join(baseDir, ".export-complete"), append(body, '\n'), 0644)
 }
 
 func cleanTmpFiles(dir string) {

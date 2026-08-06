@@ -272,7 +272,11 @@ if [[ "$CLUSTER_SCOPED" == "true" ]]; then
 fi
 
 # --- Mark complete ---
-touch "${BASE_DIR}/.export-complete"
+# The marker records which cluster this snapshot came from. Every reader so far
+# only checks that the file exists, so putting JSON inside it changes nothing
+# for them, and a snapshot exported before this reads back as unknown context.
+printf '{"context":"%s","exportedAt":"%s","exporter":"bash"}\n' \
+  "$CONTEXT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "${BASE_DIR}/.export-complete"
 
 # --- Summary ---
 EXPORT_END=$(date +%s)

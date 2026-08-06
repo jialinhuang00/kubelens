@@ -184,6 +184,14 @@ async function touchFile(fpath) {
   }
 }
 
+// The completion marker records which cluster the snapshot came from. Every
+// reader so far only checks that the file exists, so the contents change
+// nothing for them; a snapshot exported before this reads back as unknown.
+async function writeCompleteMarker(baseDir, context, exporter) {
+  const body = { context, exportedAt: new Date().toISOString(), exporter };
+  await fs.writeFile(path.join(baseDir, '.export-complete'), JSON.stringify(body) + '\n');
+}
+
 // Group items by kind, write one YAML file per kind.
 async function writeBatchResults(nsDir, items, doResume) {
   const byKind = {};
@@ -436,7 +444,7 @@ async function main() {
     exportOneNamespace(clients, ns, baseDir, resume)
   );
 
-  await touchFile(path.join(baseDir, '.export-complete'));
+  await writeCompleteMarker(baseDir, ctxName, 'node');
 
   // Summary
   const elapsed = Math.round((Date.now() - start) / 1000);

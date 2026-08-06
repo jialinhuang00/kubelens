@@ -195,6 +195,14 @@ async function touchFile(fpath) {
   try { await fs.utimes(fpath, now, now); } catch { await fs.writeFile(fpath, ''); }
 }
 
+// The completion marker records which cluster the snapshot came from. Every
+// reader so far only checks that the file exists, so the contents change
+// nothing for them; a snapshot exported before this reads back as unknown.
+async function writeCompleteMarker(baseDir, context, exporter) {
+  const body = { context, exportedAt: new Date().toISOString(), exporter };
+  await fs.writeFile(path.join(baseDir, '.export-complete'), JSON.stringify(body) + '\n');
+}
+
 async function fileExists(fpath) {
   try { await fs.access(fpath); return true; } catch { return false; }
 }
@@ -438,7 +446,7 @@ async function main() {
     });
   })));
 
-  await touchFile(path.join(baseDir, '.export-complete'));
+  await writeCompleteMarker(baseDir, ctxName, 'node-workers');
 
   // Summary
   const elapsed = Math.round((Date.now() - start) / 1000);
