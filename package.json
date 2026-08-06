@@ -1,7 +1,40 @@
 {
   "name": "kubelens",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "license": "MIT",
+  "description": "Browser-based Kubernetes visualization: WebGL resource graph + multi-window kubectl terminal, live or from offline snapshots",
+  "keywords": [
+    "kubernetes",
+    "kubectl",
+    "k8s",
+    "dashboard",
+    "visualization",
+    "cli"
+  ],
+  "homepage": "https://github.com/jialinhuang00/kubelens",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jialinhuang00/kubelens.git"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "kubelens": "./bin/kubelens.js"
+  },
+  "files": [
+    "bin/",
+    "api/",
+    "scripts/",
+    "shared/",
+    "dist/kubelens/browser/",
+    "kubelens.default.yaml",
+    "README.md",
+    "LICENSE",
+    "!api/**/*.spec.ts",
+    "!api/utils/test-fixtures.ts",
+    "!scripts/README.md"
+  ],
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -16,7 +49,8 @@
     "test:utils:cov": "K8S_SNAPSHOT_PATH=/nonexistent-kubelens-test-snapshot npx c8 --include='api/utils/*.ts' --exclude='api/utils/*.spec.ts' --exclude='api/utils/test-fixtures.ts' tsx --test 'api/utils/**/*.spec.ts'",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "screenshot": "playwright test e2e/screenshots.spec.ts"
+    "screenshot": "playwright test e2e/screenshots.spec.ts",
+    "prepublishOnly": "npm run build"
   },
   "prettier": {
     "printWidth": 100,
@@ -30,35 +64,30 @@
       }
     ]
   },
-  "private": true,
   "dependencies": {
+    "@kubernetes/client-node": "^1.4.0",
+    "dotenv": "^17.3.1",
+    "express": "^5.1.0",
+    "js-yaml": "^4.1.0",
+    "tsx": "^4.21.0",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
     "@angular/animations": "^20.2.4",
+    "@angular/build": "^20.2.2",
     "@angular/cdk": "^20.2.1",
+    "@angular/cli": "^20.2.2",
     "@angular/common": "^20.2.4",
     "@angular/compiler": "^20.2.4",
+    "@angular/compiler-cli": "^20.2.4",
     "@angular/core": "^20.2.4",
     "@angular/forms": "^20.2.4",
     "@angular/material": "^20.2.2",
     "@angular/platform-browser": "^20.2.4",
     "@angular/router": "^20.2.4",
     "@cosmograph/cosmos": "^1.6.1",
-    "@kubernetes/client-node": "^1.4.0",
-    "@tailwindcss/postcss": "^4.1.12",
-    "dotenv": "^17.3.1",
-    "express": "^5.1.0",
-    "js-yaml": "^4.1.0",
-    "postcss": "^8.5.6",
-    "rxjs": "~7.8.0",
-    "tailwindcss": "^4.1.12",
-    "tslib": "^2.3.0",
-    "ws": "^8.19.0",
-    "zone.js": "~0.15.0"
-  },
-  "devDependencies": {
-    "@angular/build": "^20.2.2",
-    "@angular/cli": "^20.2.2",
-    "@angular/compiler-cli": "^20.2.4",
     "@playwright/test": "^1.58.2",
+    "@tailwindcss/postcss": "^4.1.12",
     "@types/jasmine": "~5.1.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.2.3",
@@ -69,7 +98,11 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
-    "tsx": "^4.21.0",
-    "typescript": "~5.9.2"
+    "postcss": "^8.5.6",
+    "rxjs": "~7.8.0",
+    "tailwindcss": "^4.1.12",
+    "tslib": "^2.3.0",
+    "typescript": "~5.9.2",
+    "zone.js": "~0.15.0"
   }
 }
