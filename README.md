@@ -11,31 +11,46 @@ Browser-based Kubernetes visualization. GPU-accelerated resource graph + multi-w
 
 ![K8s Terminal — a deployment's rollout panel (rollout status, history, details) in a floating window, across renamable multi-desktop workspaces](./docs/03-terminal.gif)
 
-## Prerequisites
-
-- Node.js 18+
-- pnpm (the repo ships a `pnpm-lock.yaml`; install with `npm i -g pnpm` or via Corepack)
-- `kubectl` configured with a valid kubeconfig (required for Realtime mode)
-- Snapshot mode works offline — no cluster needed
-
-Optional (only for image tag lookups in the rollout panel):
-- `aws` CLI for ECR, `gcloud` for Artifact Registry / GCR, `az` for ACR — the registry is detected from the image URL
-- `ECR_PROFILE_MAP` in `.env` — maps AWS account IDs to SSO profile names (ECR only). Copy `.env.example` to get started.
-
 ## Quick Start
 
-You need `kubectl` already pointed at a cluster (see Prerequisites).
+```bash
+npx kubelens
+```
+
+Open `http://localhost:3042`. On first run kubelens writes a `kubelens.config.yaml`
+next to you with the built-in resource kinds; `npx kubelens init` replaces it with
+one built from your own cluster, CRDs and image registry included.
+
+Everything it stores — that config, and any snapshot you export — lands in the
+directory you ran it from, so a version bump never loses your setup.
+
+No cluster to point at? [`examples/`](./examples/README.md) spins up a throwaway
+[kind](https://kind.sigs.k8s.io/) cluster with a small 3-service demo app, so you
+have something real to explore in a couple of commands.
+
+### From a clone
+
+Working on kubelens itself, or want the dev server:
 
 ```bash
 pnpm install
 pnpm run dev
 ```
 
-Frontend at `http://localhost:4200`, backend at port 3042. The landing page is where you pick a mode and, for offline use, export a snapshot.
+Frontend at `http://localhost:4200` with hot reload, backend at 3042, and the
+Angular dev server proxies `/api` across. The published package has no proxy:
+one port serves the built frontend and the API together.
 
-No cluster to point at? [`examples/`](./examples/README.md) spins up a throwaway
-[kind](https://kind.sigs.k8s.io/) cluster with a small 3-service demo app, so you
-have something real to explore in a couple of commands.
+## Prerequisites
+
+- Node.js 18+
+- `kubectl` configured with a valid kubeconfig (required for Realtime mode)
+- Snapshot mode works offline — no cluster needed
+- pnpm, for the clone path only (the repo ships a `pnpm-lock.yaml`; install with `npm i -g pnpm` or via Corepack)
+
+Optional (only for image tag lookups in the rollout panel):
+- `aws` CLI for ECR, `gcloud` for Artifact Registry / GCR, `az` for ACR — the registry is detected from the image URL
+- `ECR_PROFILE_MAP` in `.env` — maps AWS account IDs to SSO profile names (ECR only). Copy `.env.example` to get started.
 
 ## Modes
 
@@ -44,7 +59,7 @@ have something real to explore in a couple of commands.
 
 ## Configuration
 
-Everything the app shows is driven by config, not hardcoded. The committed config works out of the box; it's also where you customize.
+Everything the app shows comes from `kubelens.config.yaml`, not from hardcoded lists. A clone has that file committed; `npx kubelens` writes one on first run. It works untouched, and editing it is how you change what appears.
 
 Two files, clear roles:
 
