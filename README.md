@@ -49,7 +49,7 @@ Everything the app shows is driven by config, not hardcoded. The committed confi
 Two files, clear roles:
 
 - **`kubelens.config.yaml`** — the only file the app reads (at startup, via `/api/config`). Edit it directly to customize your setup.
-- **`kubelens.default.yaml`** — a neutral seed (built-in kinds, no CRDs) that `init` builds from. Never read at runtime.
+- **`kubelens.default.yaml`** — a neutral seed (built-in kinds, no CRDs) that `init` builds from. The server never reads it; the `kubelens` CLI copies it to `kubelens.config.yaml` when the working directory has none, so a first run has something to show.
 
 Fit it to your own cluster:
 

@@ -69,7 +69,7 @@
 │       ├── benchmark/         #   Export optimization story
 │       └── k8s/               #   K8s resource views
 ├── kubelens.config.yaml       # Source of truth for resource kinds (tree + graph)
-├── kubelens.default.yaml      # Neutral built-ins base for `kubelens init`
+├── kubelens.default.yaml      # Neutral built-ins base for `kubelens init`; the CLI also copies it to config.yaml on first run
 └── k8s-snapshot/              # Exported cluster data (gitignored)
 ```
 
