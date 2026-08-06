@@ -6,7 +6,7 @@ const OUT = path.resolve(__dirname, '../docs');
 /** Screenshots are taken offline so they don't depend on a live cluster. */
 async function useSnapshotMode(page: any) {
   await page.addInitScript(() => {
-    localStorage.setItem('kubecmds-data-mode', 'snapshot');
+    localStorage.setItem('kubelens-data-mode', 'snapshot');
   });
 }
 

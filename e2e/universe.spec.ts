@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Universe (graph) page', () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => localStorage.setItem('kubecmds-data-mode', 'snapshot'));
+    await page.addInitScript(() => localStorage.setItem('kubelens-data-mode', 'snapshot'));
     await page.goto('/universe');
   });
 

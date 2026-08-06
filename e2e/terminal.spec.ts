@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Terminal page', () => {
   test.beforeEach(async ({ page }) => {
     // Inject before navigation so no live cluster is needed
-    await page.addInitScript(() => localStorage.setItem('kubecmds-data-mode', 'snapshot'));
+    await page.addInitScript(() => localStorage.setItem('kubelens-data-mode', 'snapshot'));
     await page.goto('/terminal');
   });
 

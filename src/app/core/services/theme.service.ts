@@ -12,7 +12,7 @@ const VALID_THEMES = new Set<string>(['default', 'lith-harbor', 'ellinia', 'peri
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
-  private readonly STORAGE_KEY = 'kubecmds-theme';
+  private readonly STORAGE_KEY = 'kubelens-theme';
 
   readonly themes: ThemeOption[] = [
     { id: 'default', label: 'Henesys', preview: '#d08840' },

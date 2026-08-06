@@ -6,7 +6,7 @@ import { API_BASE } from '../constants/api';
 
 @Injectable({ providedIn: 'root' })
 export class DataModeService {
-  private static readonly STORAGE_KEY = 'kubecmds-data-mode';
+  private static readonly STORAGE_KEY = 'kubelens-data-mode';
 
   private http = inject(HttpClient);
   private exportService = inject(SnapshotService);
