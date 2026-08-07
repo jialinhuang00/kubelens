@@ -115,8 +115,9 @@ Control: `POST /api/execute/stream/stop` (kill process), `POST /api/execute/stre
 - `npm run dev:go` — same ports, Go backend instead of Node
 - `bash scripts/snapshot-bash.sh` — CLI export (independent of server)
 - `ng test` — Unit tests
-- `npm run test:utils` — Backend unit tests. Points `K8S_SNAPSHOT_PATH` at a nonexistent path so nothing reads a real export; `snapshot-commands.spec.ts` seeds `snapshot-loader`'s in-memory cache with fixtures instead.
-- `npm run test:go` — Go backend tests (`net/http/httptest`, no cluster needed). The Node routes under `api/routes/` have no equivalent yet.
+- `npm run test:utils` — Backend unit tests: `api/utils/**/*.spec.ts` + `api/routes/**/*.spec.ts`. Points `K8S_SNAPSHOT_PATH` at a nonexistent path so nothing reads a real export; `snapshot-commands.spec.ts` seeds `snapshot-loader`'s in-memory cache with fixtures instead. `routes/snapshot.spec.ts` starts a real Express app on an ephemeral port and drives it with Node's `fetch`; it chdirs to a temp dir before requiring the route, because `snapshotDir` is resolved from `process.cwd()` at require time.
+- `npm run test:go` — Go backend tests (`net/http/httptest`, no cluster needed).
+- No test drives `command: 'start'` on either backend — every mode spawns a real exporter against the live kubeconfig. Go covers the mode-to-command mapping by keeping it in a pure `exporterCommand`; the Node handler still has that switch inline.
 - `npm run test:e2e` — Playwright. Starts the dev server itself; first run needs `npx playwright install chromium` (or add `channel: 'chrome'` to use the system browser).
 
 ## Deploy (EC2)
