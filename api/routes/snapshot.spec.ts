@@ -31,6 +31,7 @@ let snapshotDir: string;
 let prevCwd: string;
 let server: Server;
 let baseUrl: string;
+let prevSnapshotEnv: string | undefined;
 /** Set per test; the real kubectl is never reached. */
 let stubbedContext: string | null = null;
 
@@ -65,6 +66,12 @@ before(async () => {
   snapshotDir = path.join(tmpRoot, 'k8s-snapshot');
   fs.mkdirSync(snapshotDir, { recursive: true });
   process.chdir(tmpRoot);
+
+  // `test:utils` points this at a nonexistent path so nothing reads a real
+  // export, and the app honours it above the working directory. Aim it at the
+  // temp directory instead: chdir alone no longer decides where the route looks.
+  prevSnapshotEnv = process.env.K8S_SNAPSHOT_PATH;
+  process.env.K8S_SNAPSHOT_PATH = snapshotDir;
 
   // Replace the live-cluster lookup before the route can call it. Left alone it
   // shells out to whatever kubeconfig this machine has: unassertable, and a unit
@@ -113,6 +120,8 @@ before(async () => {
 after(() => {
   server?.close();
   process.chdir(prevCwd);
+  if (prevSnapshotEnv === undefined) delete process.env.K8S_SNAPSHOT_PATH;
+  else process.env.K8S_SNAPSHOT_PATH = prevSnapshotEnv;
   fs.rmSync(tmpRoot, { recursive: true, force: true });
 });
 

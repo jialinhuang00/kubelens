@@ -6,7 +6,7 @@ import { promisify } from 'util';
 import { discoverNamespaces, getItemsFromSnapshot, buildGraph } from '../utils/graph-builder';
 import type { K8sItem } from '../utils/snapshot-loader';
 import { getGraphResources, isCrd } from '../utils/config-loader';
-import { resolveDataPath } from '../utils/paths';
+import { snapshotDir } from '../utils/paths';
 
 const execFileAsync = promisify(execFile);
 
@@ -101,10 +101,10 @@ router.get('/graph', async (req: Request, res: Response) => {
 
   try {
     if (isSnapshot) {
-      // The user's directory, not the package's — same resolution the loader
-      // and the export use, so all three agree on where a snapshot lives.
-      const localBackup = resolveDataPath('k8s-snapshot');
-      const dataPath = process.env.K8S_SNAPSHOT_PATH || localBackup;
+      // One helper for the whole app, so the export, the loader and this route
+      // cannot disagree about where a snapshot lives. It already honours
+      // K8S_SNAPSHOT_PATH.
+      const dataPath = snapshotDir();
 
       const namespaceDirs = discoverNamespaces(dataPath);
       const namespaceList = [...namespaceDirs.keys()];

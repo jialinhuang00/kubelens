@@ -5,7 +5,7 @@ import { promisify } from 'util';
 import * as path from 'path';
 import { promises as fsp } from 'fs';
 
-import { resolveDataPath } from '../utils/paths';
+import { snapshotDir } from '../utils/paths';
 
 const execFileAsync = promisify(execFile);
 
@@ -73,10 +73,9 @@ router.get('/export/ping', async (req: Request, res: Response) => {
 // GET /api/snapshot/ping
 router.get('/snapshot/ping', async (req: Request, res: Response) => {
   // Same directory the export writes to and the loader reads from. Resolving
-  // this against the package instead left the toggle greyed out after a
-  // successful export: the snapshot was in the user's directory, this looked
-  // for it inside node_modules.
-  const backupDir = resolveDataPath('k8s-snapshot');
+  // this separately is what let the toggle report a snapshot that the export
+  // route had never written to.
+  const backupDir = snapshotDir();
   let available = false;
 
   try {

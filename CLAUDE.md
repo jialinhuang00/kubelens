@@ -21,10 +21,15 @@
 - `cmd/server`: package-level `var`s init BEFORE `main()` chdirs to `PROJECT_ROOT` — never resolve config/files in a package-level initializer (that's why `fileAliases` is lazy). Also: Node passes config YAML through as-is, but Go re-declares typed structs — a config field/section not mirrored in `store/config.go` silently vanishes from `/api/config`.
 - Go route parity is by hand and drifts silently. Renaming a Node route without renaming the Go one leaves `dev:go` answering 404 with nothing in the logs (that's how `/api/snapshot` sat broken from 2026-03-07 to 2026-08-07), and a field added to a Node JSON response is absent in Go until someone adds it to `writeJSON`'s map. Change one side, change both, then `npm run test:go`.
 - Export state (`paused`, `pausedDismissed`) lives in server memory on both backends but `paused` is recomputed from disk every poll — files present with no `.export-complete`. Clearing an in-memory flag alone gets undone one second later; that's why dismiss needs `pausedDismissed`, ANDed into the derived value and reset by any new export.
+- One helper resolves `k8s-snapshot` for the whole app: `snapshotDir()` in `api/utils/paths.ts`, honouring `K8S_SNAPSHOT_PATH` and otherwise always `<cwd>/k8s-snapshot`. No package fallback, and no constant read at import. A separate read path is how an export from a subdirectory landed in `api/k8s-snapshot` while Snapshot mode kept reading the checkout's copy; a frozen constant is how a lazily-resolved delete found the package's own directory after the user's went away.
 - The paused panel reads `.export-context`, never `.export-complete`: "paused" means the completion marker is missing, so it can't be the thing that records the cluster. `GET /api/snapshot` returns `snapshotContext` + `currentContext` only while paused — a running export polls every second and each lookup spawns kubectl.
 
 ## File Structure
 ```
+├── bin/kubelens.js            # CLI entry. Runs api/index.ts in a clone (tsx),
+│                              #   api/index.js from the package — decided by
+│                              #   whether the .ts is present, not by whether a
+│                              #   build exists
 ├── api/                       # All TypeScript; build:server emits .js twins (gitignored)
 │   ├── index.ts               # Express entry point
 │   ├── routes/

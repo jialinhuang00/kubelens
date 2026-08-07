@@ -60,21 +60,43 @@ function seedConfig() {
   }
 }
 
-// The published package ships api/utils and scripts/init already compiled, so
-// plain node can require them. Running this file straight from a clone, those
-// .js files are absent — fall back to tsx, which is a devDependency there.
-if (!fs.existsSync(path.join(pkgRoot, 'api', 'utils', 'paths.js'))) {
+/**
+ * Which copy of the server to run: the TypeScript source, or the .js that
+ * `build:server` compiled from it.
+ *
+ * Decided by whether the source is here at all. The published package excludes
+ * every .ts, so there only the compiled files exist; a clone has the sources,
+ * and a clone is where someone is editing them.
+ *
+ * The old test was "is the compiled output missing?", which is a different
+ * question and gave the wrong answer to this one. `prepack` runs build:server,
+ * so any clone that has ever been packed or published has compiled output
+ * sitting beside the sources — and the extensionless `require('api/index')`
+ * below resolves .js before .ts even with the tsx hook loaded. Someone editing
+ * api/routes/snapshot.ts and running `node bin/kubelens.js` to check it "the way
+ * a user would" got the previous build, with nothing on screen to say so.
+ */
+const TS_ENTRY = path.join(pkgRoot, 'api', 'index.ts');
+const fromSource = fs.existsSync(TS_ENTRY);
+
+if (fromSource) {
   try {
     require('tsx/cjs');
   } catch {
-    console.error('Server sources are not compiled and tsx is unavailable.');
-    console.error('From a clone, run `pnpm run build:server` first.');
+    console.error('Running from a clone needs tsx, which is a devDependency here.');
+    console.error('Run `pnpm install`, or use the published package.');
     process.exit(1);
   }
 }
 
+/** Resolve an entry point to the source in a clone, the compiled file otherwise. */
+function entryPoint(...segments) {
+  const base = path.join(pkgRoot, ...segments);
+  return fromSource ? `${base}.ts` : `${base}.js`;
+}
+
 if (argv[0] === 'init') {
-  const initEntry = path.join(pkgRoot, 'scripts', 'init');
+  const initEntry = entryPoint('scripts', 'init');
   process.argv = [process.argv[0], initEntry, ...argv.slice(1)];
   require(initEntry);
 } else {
@@ -90,7 +112,5 @@ if (argv[0] === 'init') {
   }
 
   seedConfig();
-  // No extension: the package ships api/index.js (compiled), a clone has only
-  // api/index.ts and the tsx hook above resolves it.
-  require(path.join(pkgRoot, 'api', 'index'));
+  require(entryPoint('api', 'index'));
 }

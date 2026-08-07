@@ -7,7 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import { getFileAliases } from './config-loader';
-import { resolveDataPath } from './paths';
+import { snapshotDir } from './paths';
 
 /** Standard K8s object metadata. */
 export interface K8sMetadata {
@@ -46,8 +46,16 @@ export interface K8sList {
   items: K8sItem[];
 }
 
-/** Root directory for snapshot YAML files. Override with K8S_SNAPSHOT_PATH env var. */
-export const BACKUP_PATH: string = process.env.K8S_SNAPSHOT_PATH || resolveDataPath('k8s-snapshot');
+/**
+ * Root directory for snapshot YAML files. Override with K8S_SNAPSHOT_PATH.
+ *
+ * A function, not a constant. Frozen at import it disagreed with the export
+ * route, which resolves per call — and a constant cannot notice the export that
+ * just replaced the directory underneath it either.
+ */
+export function backupPath(): string {
+  return snapshotDir();
+}
 
 /** Fallback namespace when none is specified. */
 export const DEFAULT_NAMESPACE = 'demo';
@@ -62,12 +70,12 @@ export const cache: Record<string, unknown> = {};
  * Resolve a snapshot filename to an absolute path.
  * Checks the namespace subdirectory, then tries FILE_ALIASES.
  * @param filename - e.g. `'deployments.yaml'` or `'pods-snapshot.txt'`
- * @param namespace - K8s namespace (subdirectory under BACKUP_PATH)
+ * @param namespace - K8s namespace (subdirectory under the snapshot root)
  * @returns Absolute file path, or `null` if not found
  */
 export function resolveFilePath(filename: string, namespace?: string): string | null {
   if (namespace) {
-    const nsDir = path.join(BACKUP_PATH, namespace);
+    const nsDir = path.join(backupPath(), namespace);
     const nsPath = path.join(nsDir, filename);
     if (fs.existsSync(nsPath)) return nsPath;
     const baseName = filename.replace('.yaml', '');
@@ -116,12 +124,12 @@ export function loadText(filename: string, namespace?: string): string | null {
 }
 
 /**
- * List all namespace directories under BACKUP_PATH.
- * @returns Sorted array of namespace names, or `[DEFAULT_NAMESPACE]` if BACKUP_PATH doesn't exist
+ * List all namespace directories under the snapshot root.
+ * @returns Sorted array of namespace names, or `[DEFAULT_NAMESPACE]` if that root doesn't exist
  */
 export function listBackupNamespaces(): string[] {
-  if (!fs.existsSync(BACKUP_PATH)) return [DEFAULT_NAMESPACE];
-  return fs.readdirSync(BACKUP_PATH, { withFileTypes: true })
+  if (!fs.existsSync(backupPath())) return [DEFAULT_NAMESPACE];
+  return fs.readdirSync(backupPath(), { withFileTypes: true })
     .filter(e => e.isDirectory() && !e.name.startsWith('.') && e.name !== '_cluster')
     .map(e => e.name);
 }

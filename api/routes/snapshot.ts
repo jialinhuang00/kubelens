@@ -8,7 +8,7 @@ const fsp = fs.promises;
 
 const router = express.Router();
 
-import { PKG_ROOT, userDataPath } from '../utils/paths';
+import { PKG_ROOT, snapshotDir } from '../utils/paths';
 import { nextEta } from '../utils/export-eta';
 import { kubectlContext } from '../utils/kubectl-context';
 import { exportFailureMessage } from '../utils/export-failure';
@@ -27,7 +27,7 @@ import { exportFailureMessage } from '../utils/export-failure';
 // file count as a partial export the user never made. Both showed up the
 // afternoon this route stopped resolving its path once at import.
 function snapshotPath(): string {
-  return userDataPath('k8s-snapshot');
+  return snapshotDir();
 }
 
 // The export child runs with the snapshot directory's parent as its cwd, so the

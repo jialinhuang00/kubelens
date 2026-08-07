@@ -57,3 +57,27 @@ export function resolveDataPath(name: string): string {
 export function userDataPath(name: string): string {
   return path.join(userRoot(), name);
 }
+
+/**
+ * The one place `k8s-snapshot` is resolved, for readers and writers alike.
+ *
+ * Deliberately not `resolveDataPath`. Splitting the two — writes with no
+ * fallback, reads with one — makes them disagree the moment the fallback fires:
+ * start the server from `kubelens/api/` and an export lands in
+ * `kubelens/api/k8s-snapshot` while Snapshot mode keeps reading
+ * `kubelens/k8s-snapshot`. The export reports success, the data never changes,
+ * and `/api/snapshot/ping` says a snapshot exists in a directory the user never
+ * exported to. Nothing crashes, so nothing points at the cause.
+ *
+ * Losing the fallback costs nothing real. It only ever fired in this repo, where
+ * PKG_ROOT is the checkout; an installed package's PKG_ROOT is inside
+ * node_modules and never holds an export. A snapshot belongs to the directory
+ * the server runs from, and starting somewhere else giving you a different (and
+ * empty) snapshot is at least explainable.
+ *
+ * `K8S_SNAPSHOT_PATH` still wins, which is how the test suite points the loader
+ * away from anyone's real export.
+ */
+export function snapshotDir(): string {
+  return process.env.K8S_SNAPSHOT_PATH || userDataPath('k8s-snapshot');
+}
