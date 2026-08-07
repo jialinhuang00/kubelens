@@ -1,18 +1,25 @@
 import { after, before, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import express from 'express';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import type { Server } from 'http';
 
+import snapshotRouter from './snapshot';
+import { kubectlContext } from '../utils/kubectl-context';
+
 /**
  * Route-level tests for the export control endpoint.
  *
- * `snapshot.js` resolves its snapshot directory once, at require time, from
- * `process.cwd()`. So the temp directory has to exist and be the cwd before the
- * module is loaded — hence the `require` inside `before()` rather than a normal
- * import at the top. `node --test` runs each spec file in its own process, so
- * the chdir cannot leak into another file's fixtures.
+ * Plain top-level imports. The route resolves its snapshot directory per call
+ * rather than at import, so loading it here does not freeze a path before the
+ * chdir below — an earlier version had to `require` it inside `before()`, and
+ * that late require is what let the route and this spec end up with two copies
+ * of a shared module.
+ *
+ * `node --test` gives each spec file its own process, so the chdir cannot leak
+ * into another file's fixtures.
  *
  * No mocks: a real Express app on an ephemeral port, driven with the fetch that
  * Node ships. Everything asserted here is either a file on disk or a field in
@@ -51,35 +58,56 @@ function seedPartialExport() {
 
 before(async () => {
   prevCwd = process.cwd();
-  tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kubelens-routes-'));
+  // realpath, because on macOS os.tmpdir() hands back /var/... while chdir
+  // resolves the symlink to /private/var/... — and the guard below compares
+  // this against what the route resolves after the chdir.
+  tmpRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kubelens-routes-')));
   snapshotDir = path.join(tmpRoot, 'k8s-snapshot');
   fs.mkdirSync(snapshotDir, { recursive: true });
   process.chdir(tmpRoot);
 
   // Replace the live-cluster lookup before the route can call it. Left alone it
   // shells out to whatever kubeconfig this machine has: unassertable, and a unit
-  // test reading the developer's cluster settings.
-  //
-  // Both files named as .ts on purpose. `build:server` leaves a compiled .js
-  // beside every source, and under tsx a require resolves by the *importer's*
-  // extension — so back when the route was plain JavaScript it loaded the .js
-  // copy while this spec loaded the .ts, and the stub landed on a module the
-  // route never called. Nothing failed until someone ran build:server. Now that
-  // the whole of api/ is TypeScript both sides agree, and naming .ts keeps it
-  // that way even if a stray .js appears.
-  const { kubectlContext } = require(path.join(prevCwd, 'api', 'utils', 'kubectl-context.ts'));
+  // test reading the developer's cluster settings. Same module object the route
+  // imported, because both sides are TypeScript and resolve identically.
   kubectlContext.current = async () => stubbedContext;
 
-  const express = require('express');
-  const router = require(path.join(prevCwd, 'api', 'routes', 'snapshot.ts'));
   const app = express();
   app.use(express.json());
-  app.use('/api', router);
+  app.use('/api', snapshotRouter);
 
   server = app.listen(0);
   await new Promise<void>(resolve => server.once('listening', resolve));
   const addr = server.address() as { port: number };
   baseUrl = `http://127.0.0.1:${addr.port}`;
+
+  // Two self-checks before a single test runs. Both cover failures that are
+  // silent where they happen and only surface later as something else.
+
+  // 1. These tests send `discard`, which is `rm -rf` on whatever directory the
+  //    route resolved. Ask the route what it sees rather than recomputing the
+  //    path here: a stale compiled copy that froze its directory at import,
+  //    before the chdir above, would still be pointing at the repo, and
+  //    recomputing would agree with the temp path and prove nothing. That
+  //    mistake deleted the repo's real k8s-snapshot twice.
+  fs.writeFileSync(path.join(snapshotDir, 'guard-probe.yaml'), 'items: []\n');
+  const seen = await progress();
+  fs.rmSync(path.join(snapshotDir, 'guard-probe.yaml'));
+  if (seen.fileCount !== 1) {
+    throw new Error(
+      `refusing to run: the route reports ${seen.fileCount} files where the temp directory has 1, ` +
+      `so it is reading somewhere else — probably a stale api/routes/snapshot.js from an older ` +
+      `build. Run \`npm run build:server\`, or delete api/routes/*.js.`
+    );
+  }
+
+  // 2. The stub has to be the object the route actually calls. Assigning a
+  //    property on the wrong copy of a module always succeeds, so a missed stub
+  //    showed up three layers away as a context name that did not match.
+  const viaRoute = await kubectlContext.current();
+  if (viaRoute !== stubbedContext) {
+    throw new Error(`kubectl stub did not take: got ${viaRoute}, expected ${stubbedContext}`);
+  }
 });
 
 after(() => {

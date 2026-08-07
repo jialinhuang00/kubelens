@@ -8,16 +8,33 @@ const fsp = fs.promises;
 
 const router = express.Router();
 
-import { PKG_ROOT, resolveDataPath } from '../utils/paths';
+import { PKG_ROOT, userDataPath } from '../utils/paths';
 import { nextEta } from '../utils/export-eta';
 import { kubectlContext } from '../utils/kubectl-context';
 import { exportFailureMessage } from '../utils/export-failure';
 
-// Where snapshots are read from and written to. The export child runs with this
-// directory's parent as its cwd, so the scripts' relative 'k8s-snapshot' lands
-// in the same place the loader reads from.
-const snapshotDir = resolveDataPath('k8s-snapshot');
-const snapshotParent = path.dirname(snapshotDir);
+// Resolved per call rather than once at import. The server never moves, so this
+// costs two `existsSync` calls on a route polled once a second and changes
+// nothing in production — but a module-scope constant meant the spec could not
+// `import` this file at the top, only `require` it inside `before()` after
+// chdir'ing to a temp directory, and that late require is how the route and its
+// spec ended up loading two different copies of a shared module.
+//
+// No `resolveDataPath` here, on purpose. That helper falls back to the package's
+// own directory when the user has none, which this route cannot survive: after a
+// `discard` empties the user's directory, the fallback starts answering, so the
+// next delete lands on the package's files and the panel reports the package's
+// file count as a partial export the user never made. Both showed up the
+// afternoon this route stopped resolving its path once at import.
+function snapshotPath(): string {
+  return userDataPath('k8s-snapshot');
+}
+
+// The export child runs with the snapshot directory's parent as its cwd, so the
+// scripts' relative 'k8s-snapshot' lands where the loader reads from.
+function snapshotParentPath(): string {
+  return path.dirname(snapshotPath());
+}
 
 interface ExportState {
   running: boolean;
@@ -87,7 +104,7 @@ async function countFiles(dir: string): Promise<number> {
 // that existed, and for a directory nobody has exported into yet.
 async function readExportContext(): Promise<string | null> {
   try {
-    const raw = await fsp.readFile(path.join(snapshotDir, '.export-context'), 'utf8');
+    const raw = await fsp.readFile(path.join(snapshotPath(), '.export-context'), 'utf8');
     return JSON.parse(raw).context || null;
   } catch {
     return null;
@@ -96,12 +113,12 @@ async function readExportContext(): Promise<string | null> {
 
 async function countDoneNamespaces(): Promise<number> {
   try {
-    const entries = await fsp.readdir(snapshotDir, { withFileTypes: true });
+    const entries = await fsp.readdir(snapshotPath(), { withFileTypes: true });
     let count = 0;
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
       try {
-        await fsp.access(path.join(snapshotDir, entry.name, '.done'));
+        await fsp.access(path.join(snapshotPath(), entry.name, '.done'));
         count++;
       } catch { /* no .done marker */ }
     }
@@ -155,7 +172,7 @@ router.post('/snapshot', async (req: Request, res: Response) => {
       return res.status(409).json({ error: 'Export running' });
     }
     try {
-      await fsp.rm(snapshotDir, { recursive: true, force: true });
+      await fsp.rm(snapshotPath(), { recursive: true, force: true });
     } catch (err) {
       return res.status(500).json({ error: (err as Error).message });
     }
@@ -178,11 +195,11 @@ router.post('/snapshot', async (req: Request, res: Response) => {
   // Fresh start: clear previous completion markers so the first progress poll
   // doesn't show stale 100% data from the prior export
   if (!resume) {
-    await fsp.unlink(path.join(snapshotDir, '.export-complete')).catch(() => {});
-    const dirs = await fsp.readdir(snapshotDir, { withFileTypes: true }).catch(() => []);
+    await fsp.unlink(path.join(snapshotPath(), '.export-complete')).catch(() => {});
+    const dirs = await fsp.readdir(snapshotPath(), { withFileTypes: true }).catch(() => []);
     await Promise.all(
       dirs.filter(d => d.isDirectory()).map(d =>
-        fsp.unlink(path.join(snapshotDir, d.name, '.done')).catch(() => {})
+        fsp.unlink(path.join(snapshotPath(), d.name, '.done')).catch(() => {})
       )
     );
   }
@@ -262,7 +279,7 @@ router.post('/snapshot', async (req: Request, res: Response) => {
   if (resume) args.push('--resume');
 
   const child = spawn(spawnCmd, args, {
-    cwd: snapshotParent,
+    cwd: snapshotParentPath(),
     env: { ...process.env },
     detached: true,  // new process group — enables group kill on pause
   });
@@ -341,7 +358,7 @@ router.post('/snapshot', async (req: Request, res: Response) => {
       : null;
     exportState.running = false;
     exportState.pid = null;
-    countFiles(snapshotDir).then(c => { exportState.fileCount = c; });
+    countFiles(snapshotPath()).then(c => { exportState.fileCount = c; });
     if (code !== 0 && !exportState.paused) {
       exportState.error = exportFailureMessage(code, exportState.stderrTail);
     }
@@ -359,9 +376,9 @@ router.post('/snapshot', async (req: Request, res: Response) => {
 // GET /api/snapshot
 router.get('/snapshot', async (req: Request, res: Response) => {
   let [liveCount, doneNs, hasCompleteMarker] = await Promise.all([
-    countFiles(snapshotDir),
+    countFiles(snapshotPath()),
     countDoneNamespaces(),
-    fsp.access(path.join(snapshotDir, '.export-complete')).then(() => true).catch(() => false),
+    fsp.access(path.join(snapshotPath(), '.export-complete')).then(() => true).catch(() => false),
   ]);
 
   // Derive totalNamespaces: prefer in-memory (from stdout parsing), fallback to filesystem
@@ -369,7 +386,7 @@ router.get('/snapshot', async (req: Request, res: Response) => {
   if (!totalNamespaces && doneNs > 0) {
     // Server restarted or stdout wasn't parsed — count namespace dirs as total
     try {
-      const entries = await fsp.readdir(snapshotDir, { withFileTypes: true });
+      const entries = await fsp.readdir(snapshotPath(), { withFileTypes: true });
       totalNamespaces = entries.filter(e => e.isDirectory() && !e.name.startsWith('.')).length;
     } catch { /* ignore */ }
   }

@@ -21,10 +21,10 @@ import yaml from 'js-yaml';
 import { execFileSync } from 'child_process';
 import { parseApiResources } from '../api/utils/api-resources';
 import { detectCluster, classifyRegistry, buildCrdEntries, parseCrdIds, type ResourceEntry } from '../api/utils/init-detect';
-import { PKG_ROOT, USER_ROOT } from '../api/utils/paths';
+import { PKG_ROOT, userRoot } from '../api/utils/paths';
 
 // The seed ships with the package; the generated config belongs to the user.
-const CONFIG = path.join(USER_ROOT, 'kubelens.config.yaml');
+const CONFIG = path.join(userRoot(), 'kubelens.config.yaml');
 const DEFAULT = path.join(PKG_ROOT, 'kubelens.default.yaml');
 
 /** Run kubectl; salvage stdout even on non-zero exit (broken APIServices still list working resources). */
