@@ -127,6 +127,8 @@ func main() {
 		os.RemoveAll(baseDir)
 	}
 
+	writeContextMarker(baseDir, ctxName, *resume)
+
 	// Run export.
 	exportAllNamespaces(k8sClient, dynClient, namespaces, baseDir, *jobs, *resume)
 
@@ -160,6 +162,29 @@ func touchFile(path string) {
 // The completion marker records which cluster the snapshot came from. Every
 // reader so far only checks that the file exists, so the contents change
 // nothing for them; a snapshot exported before this reads back as unknown.
+// Records which cluster this run reads from, written after the clean above since
+// a fresh export deletes the whole directory first. The paused panel compares it
+// against the live kubectl context, and it is the only place that knows — a run
+// stopped halfway never wrote .export-complete. A resume keeps whatever is here;
+// overwriting would erase the very context being compared.
+func writeContextMarker(baseDir, ctxName string, resume bool) {
+	os.MkdirAll(baseDir, 0755)
+	marker := filepath.Join(baseDir, ".export-context")
+	if resume {
+		if _, err := os.Stat(marker); err == nil {
+			return
+		}
+	}
+	body, err := json.Marshal(map[string]string{
+		"context":   ctxName,
+		"startedAt": time.Now().UTC().Format(time.RFC3339),
+	})
+	if err != nil {
+		return
+	}
+	os.WriteFile(marker, append(body, '\n'), 0644)
+}
+
 func writeCompleteMarker(baseDir, ctxName, exporter string) {
 	body, err := json.Marshal(map[string]string{
 		"context":    ctxName,

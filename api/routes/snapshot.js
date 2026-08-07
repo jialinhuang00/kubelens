@@ -1,5 +1,7 @@
 const express = require('express');
-const { spawn } = require('child_process');
+const { spawn, execFile } = require('child_process');
+const { promisify } = require('util');
+const execFileAsync = promisify(execFile);
 const path = require('path');
 const fs = require('fs');
 const fsp = fs.promises;
@@ -52,6 +54,27 @@ async function countFiles(dir) {
     // directory doesn't exist yet
   }
   return count;
+}
+
+// The cluster the export on disk was started against. Written by the exporters
+// right after they clear the directory; absent for snapshots exported before
+// that existed, and for a directory nobody has exported into yet.
+async function readExportContext() {
+  try {
+    const raw = await fsp.readFile(path.join(snapshotDir, '.export-context'), 'utf8');
+    return JSON.parse(raw).context || null;
+  } catch {
+    return null;
+  }
+}
+
+async function currentKubectlContext() {
+  try {
+    const { stdout } = await execFileAsync('kubectl', ['config', 'current-context'], { timeout: 3000 });
+    return stdout.trim() || null;
+  } catch {
+    return null; // no kubectl, no kubeconfig, or no context selected
+  }
 }
 
 async function countDoneNamespaces() {
@@ -322,6 +345,17 @@ router.get('/snapshot', async (req, res) => {
     && !exportState.error
     && !exportState.pausedDismissed;
 
+  // Only the paused panel shows these two, and a running export polls this route
+  // once a second — no reason to shell out to kubectl on every one of those.
+  let snapshotContext = null;
+  let currentContext = null;
+  if (paused) {
+    [snapshotContext, currentContext] = await Promise.all([
+      readExportContext(),
+      currentKubectlContext(),
+    ]);
+  }
+
   // ETA: elapsed / doneNs * remainingNs — clamped to only decrease
   let etaSeconds = null;
   if (exportState.running && exportState.startedAt && doneNs > 0 && totalNamespaces > 0) {
@@ -358,6 +392,8 @@ router.get('/snapshot', async (req, res) => {
     etaSeconds,
     elapsedSeconds,
     error: exportState.error,
+    snapshotContext,
+    currentContext,
   };
 
   res.json(response);

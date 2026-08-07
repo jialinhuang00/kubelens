@@ -16,6 +16,8 @@ interface ExportProgress {
   etaSeconds: number | null;
   elapsedSeconds: number | null;
   error: string | null;
+  snapshotContext?: string | null;
+  currentContext?: string | null;
 }
 
 const EXPORT_TIPS = [
@@ -49,6 +51,11 @@ export class SnapshotService {
   progress = signal(0);
   error = signal<string | null>(null);
   done = signal(false);
+  /** Cluster the partial export on disk was started against, and the one kubectl
+   *  points at now. Both null unless the export is paused — the server only looks
+   *  them up then. Resuming while they differ writes two clusters into one dir. */
+  snapshotContext = signal<string | null>(null);
+  currentContext = signal<string | null>(null);
   mode = signal<ExportMode>('workers');
   workers = signal(4);
   parallelAvailable = signal(false);
@@ -167,6 +174,8 @@ export class SnapshotService {
     this.eta.set(data.etaSeconds != null ? this.formatEta(data.etaSeconds) : '');
     this.elapsed.set(data.elapsedSeconds != null ? `${data.elapsedSeconds}s` : '');
     this.error.set(data.error);
+    this.snapshotContext.set(data.snapshotContext ?? null);
+    this.currentContext.set(data.currentContext ?? null);
 
     if (data.totalNamespaces > 0) {
       this.progress.set(Math.round((data.completedNamespaces / data.totalNamespaces) * 100));

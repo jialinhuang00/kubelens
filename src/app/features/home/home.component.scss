@@ -557,6 +557,30 @@
   }
 }
 
+.export-context {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 0.75rem;
+  margin: 0 0 1rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+
+  dt {
+    color: var(--t-text-secondary);
+    opacity: 0.6;
+  }
+
+  dd {
+    margin: 0;
+    color: var(--t-text-secondary);
+    word-break: break-all;
+  }
+
+  &.mismatch dd {
+    color: var(--t-error);
+  }
+}
+
 .export-actions {
   display: flex;
   gap: 0.5rem;

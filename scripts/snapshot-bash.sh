@@ -130,6 +130,17 @@ else
   fi
 fi
 
+# Record which cluster this run reads from. Written after the clean above, since
+# a fresh export deletes the whole directory first. The paused panel compares
+# this against the live kubectl context: it is the only place that knows, because
+# a run stopped halfway has no .export-complete to read. A resume keeps whatever
+# is already here — overwriting it would erase the very context being compared.
+mkdir -p "$BASE_DIR"
+if [[ "$RESUME" != "true" || ! -f "${BASE_DIR}/.export-context" ]]; then
+  printf '{"context":"%s","startedAt":"%s"}\n' \
+    "$CONTEXT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "${BASE_DIR}/.export-context"
+fi
+
 # --- Namespace export function ---
 export_one_namespace() {
   local ns="$1"

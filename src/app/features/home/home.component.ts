@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DataModeService } from '../../core/services/data-mode.service';
 import { SnapshotService, ExportMode } from '../../core/services/snapshot.service';
@@ -20,6 +20,15 @@ export class HomeComponent implements OnInit {
   showModeDropdown = signal(false);
   // Deleting a half-finished export is not undoable, so the button asks once.
   confirmDiscard = signal(false);
+
+  /** True when the partial export came from one cluster and kubectl now points
+   *  at another. Both names have to be known — an old snapshot with no recorded
+   *  context is unknown, not mismatched. */
+  contextMismatch = computed(() => {
+    const from = this.exportService.snapshotContext();
+    const now = this.exportService.currentContext();
+    return !!from && !!now && from !== now;
+  });
 
   workerLabel(): string {
     const labels: Record<string, string> = {

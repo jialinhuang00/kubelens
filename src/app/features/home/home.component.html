@@ -99,7 +99,15 @@
           <button class="export-btn export-btn-ghost" (click)="confirmDiscard.set(false)">Back</button>
         </div>
       } @else {
-        <p class="hint">Resume finishes the remaining namespaces against whatever cluster kubectl is set to right now. If that is no longer the cluster this export started on, the directory ends up with half of each. Start over deletes it all and exports again.</p>
+        @if (exportService.snapshotContext()) {
+          <dl class="export-context" [class.mismatch]="contextMismatch()">
+            <dt>exported from</dt><dd>{{ exportService.snapshotContext() }}</dd>
+            <dt>kubectl is on</dt><dd>{{ exportService.currentContext() || 'no context' }}</dd>
+          </dl>
+        }
+        @if (contextMismatch()) {
+          <p class="hint hint-error">Resume would finish this export against the second cluster, leaving both in one directory. Start over instead.</p>
+        }
         <div class="export-actions">
           <button class="export-btn" (click)="resumeExport()">Resume</button>
           <button class="export-btn export-btn-ghost" (click)="confirmDiscard.set(true)">Start over</button>

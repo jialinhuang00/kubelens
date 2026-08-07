@@ -223,6 +223,18 @@ async function writeCompleteMarker(baseDir, context, exporter) {
   await fs.writeFile(path.join(baseDir, '.export-complete'), JSON.stringify(body) + '\n');
 }
 
+// Records which cluster this run reads from, written after the clean above since
+// a fresh export deletes the whole directory first. The paused panel compares it
+// against the live kubectl context, and it is the only place that knows — a run
+// stopped halfway never wrote .export-complete. A resume keeps whatever is here;
+// overwriting would erase the very context being compared.
+async function writeContextMarker(baseDir, context, resume) {
+  await fs.mkdir(baseDir, { recursive: true });
+  const marker = path.join(baseDir, '.export-context');
+  if (resume && await fileExists(marker)) return;
+  await fs.writeFile(marker, JSON.stringify({ context, startedAt: new Date().toISOString() }) + '\n');
+}
+
 async function fileExists(fpath) {
   try { await fs.access(fpath); return true; } catch { return false; }
 }
@@ -448,6 +460,8 @@ async function main() {
   }
 
   await fs.mkdir(baseDir, { recursive: true });
+
+  await writeContextMarker(baseDir, ctxName, resume);
 
   const chunks = splitIntoChunks(namespaces, Math.min(procs, namespaces.length));
   await Promise.all(chunks.map((chunk, i) => spawnWorker(i, chunk)));
