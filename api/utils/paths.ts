@@ -75,9 +75,15 @@ export function userDataPath(name: string): string {
  * the server runs from, and starting somewhere else giving you a different (and
  * empty) snapshot is at least explainable.
  *
- * `K8S_SNAPSHOT_PATH` still wins, which is how the test suite points the loader
- * away from anyone's real export.
+ * `K8S_SNAPSHOT_PATH` is the name to use, and it wins — that is also how the test
+ * suite points the loader away from anyone's real export. `K8S_SNAPSHOT_DIR` is
+ * the exporters' older name, still read so a CLI habit keeps working, and read
+ * *second* here, in `cmd/server/store/loader.go`, and in all five exporters. One
+ * order in all three, because two orders is what made the Go backend and the
+ * bash exporter answer differently for the same pair of variables.
  */
 export function snapshotDir(): string {
-  return process.env.K8S_SNAPSHOT_PATH || userDataPath('k8s-snapshot');
+  return process.env.K8S_SNAPSHOT_PATH
+    || process.env.K8S_SNAPSHOT_DIR
+    || userDataPath('k8s-snapshot');
 }

@@ -19,7 +19,12 @@ Snapshot **export** (writing those files) is NOT here — it's in [`scripts/`](.
 
 ## Tests
 
-`pnpm run test:utils` runs `utils/**/*.spec.ts` and `routes/**/*.spec.ts`.
+`pnpm run test:utils` runs `utils/**/*.spec.ts` and `routes/**/*.spec.ts`, and
+makes no external calls at all. `pnpm run test:parity` runs `**/*.itest.ts`,
+which does the opposite on purpose: it starts a real exporter and a real `go
+run` to check that every implementation resolves the same snapshot directory.
+Two scripts because "this suite touches nothing" is only useful if it stays
+true.
 
 `routes/snapshot.spec.ts` is the only route spec so far: a real Express app on an
 ephemeral port, driven with Node's built-in `fetch`, no mocks. It covers the

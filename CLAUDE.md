@@ -123,8 +123,9 @@ Control: `POST /api/execute/stream/stop` (kill process), `POST /api/execute/stre
 - `npm run dev:go` — same ports, Go backend instead of Node
 - `bash scripts/snapshot-bash.sh` — CLI export (independent of server)
 - `ng test` — Unit tests
-- `npm run test:utils` — Backend unit tests: `api/utils/**/*.spec.ts` + `api/routes/**/*.spec.ts`. Points `K8S_SNAPSHOT_PATH` at a nonexistent path so nothing reads a real export; `snapshot-commands.spec.ts` seeds `snapshot-loader`'s in-memory cache with fixtures instead. `routes/snapshot.spec.ts` starts a real Express app on an ephemeral port and drives it with Node's `fetch`; it chdirs to a temp dir before requiring the route, because `snapshotDir` is resolved from `process.cwd()` at require time.
+- `npm run test:utils` — Backend unit tests: `api/utils/**/*.spec.ts` + `api/routes/**/*.spec.ts`. Hermetic: zero kubectl calls, and `K8S_SNAPSHOT_PATH` points at a nonexistent path so nothing reads a real export. `snapshot-commands.spec.ts` seeds `snapshot-loader`'s cache with fixtures; `routes/snapshot.spec.ts` starts a real Express app on an ephemeral port, drives it with Node's `fetch`, and refuses to run if the route resolves anywhere but its temp directory.
 - `npm run test:go` — Go backend tests (`net/http/httptest`, no cluster needed).
+- `npm run test:parity` — `api/**/*.itest.ts`. The one suite that deliberately shells out: it runs a real exporter and a real `go run` to compare the directory each implementation resolves, because that is not readable from either side alone. Needs a reachable cluster and a Go toolchain, and skips (not fakes) when either is missing. Kept out of `test:utils` so "zero external calls" stays a measurable property there.
 - No test drives `command: 'start'` on either backend — every mode spawns a real exporter against the live kubeconfig. Go covers the mode-to-command mapping by keeping it in a pure `exporterCommand`; the Node handler still has that switch inline.
 - `npm run test:e2e` — Playwright. Starts the dev server itself; first run needs `npx playwright install chromium` (or add `channel: 'chrome'` to use the system browser).
 

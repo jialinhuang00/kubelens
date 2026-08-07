@@ -126,6 +126,7 @@ pnpm run build       # production build
 pnpm test            # unit tests (Karma)
 pnpm run test:utils  # backend unit tests (node:test)
 pnpm run test:go     # Go backend tests (net/http/httptest)
+pnpm run test:parity # cross-implementation checks; needs a cluster, skips without
 pnpm run test:e2e    # browser tests (Playwright)
 ```
 

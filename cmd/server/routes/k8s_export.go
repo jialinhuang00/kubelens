@@ -104,6 +104,20 @@ func handleExportCommand(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// childEnv is the environment an exporter child runs with: this process's, plus
+// the resolved directory under the name that wins everywhere, minus the older
+// name so nothing the user left set can outrank it.
+func childEnv(dir string) []string {
+	out := []string{}
+	for _, kv := range os.Environ() {
+		if strings.HasPrefix(kv, "K8S_SNAPSHOT_PATH=") || strings.HasPrefix(kv, "K8S_SNAPSHOT_DIR=") {
+			continue
+		}
+		out = append(out, kv)
+	}
+	return append(out, "K8S_SNAPSHOT_PATH="+dir)
+}
+
 // GET /api/export/ping — whether GNU parallel is installed, for the mode dropdown.
 func handleExportPing(w http.ResponseWriter, r *http.Request) {
 	_, err := exec.LookPath("parallel")
@@ -173,6 +187,12 @@ func handleExportStart(w http.ResponseWriter, r *http.Request, rawBody []byte) {
 	cmd := exec.Command(spawnCmd, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} // new process group for group kill
 	cmd.Dir = "."
+	// Same handoff the Node route does: tell the child where to write rather
+	// than letting it resolve for itself. Without this the child inherited the
+	// raw variables, so with K8S_SNAPSHOT_PATH and K8S_SNAPSHOT_DIR both set and
+	// pointing at different directories, this route read one and the export
+	// wrote the other.
+	cmd.Env = childEnv(snapshotDir())
 
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()

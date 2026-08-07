@@ -16,6 +16,7 @@ import { backupPath } from './snapshot-loader';
 let tmpRoot: string;
 let prevCwd: string;
 let prevSnapshotEnv: string | undefined;
+let prevSnapshotDirEnv: string | undefined;
 let createdPkgSnapshot = false;
 
 const pkgSnapshot = path.join(PKG_ROOT, 'k8s-snapshot');
@@ -25,7 +26,9 @@ before(() => {
   // `test:utils` sets this, and snapshotDir() honours it above everything else.
   // These tests are about what happens without it, so clear it and put it back.
   prevSnapshotEnv = process.env.K8S_SNAPSHOT_PATH;
+  prevSnapshotDirEnv = process.env.K8S_SNAPSHOT_DIR;
   delete process.env.K8S_SNAPSHOT_PATH;
+  delete process.env.K8S_SNAPSHOT_DIR;
 
   tmpRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kubelens-paths-')));
   // The fallback needs something to fall back to. Only create it if the
@@ -41,6 +44,8 @@ after(() => {
   process.chdir(prevCwd);
   if (prevSnapshotEnv === undefined) delete process.env.K8S_SNAPSHOT_PATH;
   else process.env.K8S_SNAPSHOT_PATH = prevSnapshotEnv;
+  if (prevSnapshotDirEnv === undefined) delete process.env.K8S_SNAPSHOT_DIR;
+  else process.env.K8S_SNAPSHOT_DIR = prevSnapshotDirEnv;
   if (createdPkgSnapshot) fs.rmSync(pkgSnapshot, { recursive: true, force: true });
   fs.rmSync(tmpRoot, { recursive: true, force: true });
 });
@@ -64,17 +69,51 @@ describe('snapshot path resolution', () => {
   });
 
   it('honours K8S_SNAPSHOT_PATH, which is how the test suite steers the loader', () => {
-    const prev = process.env.K8S_SNAPSHOT_PATH;
-    process.env.K8S_SNAPSHOT_PATH = '/somewhere/else';
-    try {
+    withEnv({ K8S_SNAPSHOT_PATH: '/somewhere/else' }, () => {
       assert.equal(snapshotDir(), '/somewhere/else');
       assert.equal(backupPath(), '/somewhere/else');
-    } finally {
-      if (prev === undefined) delete process.env.K8S_SNAPSHOT_PATH;
-      else process.env.K8S_SNAPSHOT_PATH = prev;
-    }
+    });
+  });
+
+  // Mirrors TestSnapshotDirAcceptsTheExporterVariable in
+  // cmd/server/routes/snapshot_dir_test.go. K8S_SNAPSHOT_DIR is the exporters'
+  // older name, and the one the cross-cluster abort message used to tell users
+  // to set. This side did not read it at all, so the same variable relocated the
+  // snapshot under `dev:go` and did nothing under the Node backend.
+  it('also honours the exporters\' K8S_SNAPSHOT_DIR', () => {
+    withEnv({ K8S_SNAPSHOT_DIR: '/data/mysnap' }, () => {
+      assert.equal(snapshotDir(), '/data/mysnap');
+      assert.equal(backupPath(), '/data/mysnap');
+    });
+  });
+
+  // The two names had opposite precedence: PATH first here and in the Go
+  // loader, DIR first in all five exporters. Set both and the app read one
+  // directory while the export wrote the other.
+  it('prefers K8S_SNAPSHOT_PATH when both are set, the same way everything else does', () => {
+    withEnv({ K8S_SNAPSHOT_PATH: '/data/a', K8S_SNAPSHOT_DIR: '/data/b' }, () => {
+      assert.equal(snapshotDir(), '/data/a');
+      assert.equal(backupPath(), '/data/a');
+    });
   });
 });
+
+/** Set env vars for the duration of `fn`, restoring whatever was there. */
+function withEnv(vars: Record<string, string>, fn: () => void): void {
+  const prev: Record<string, string | undefined> = {};
+  for (const [k, v] of Object.entries(vars)) {
+    prev[k] = process.env[k];
+    process.env[k] = v;
+  }
+  try {
+    fn();
+  } finally {
+    for (const [k, v] of Object.entries(prev)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+}
 
 describe('resolveDataPath', () => {
   it('still falls back to the package, which is what config seeding needs', () => {

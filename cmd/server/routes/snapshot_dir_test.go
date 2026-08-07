@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"kubelens/server/store"
@@ -66,15 +67,58 @@ func TestSnapshotDirFallsBackToTheWorkingDirectory(t *testing.T) {
 	}
 }
 
-// K8S_SNAPSHOT_DIR is what the Node route passes to a spawned exporter. Reading
-// it here keeps the Go server and the exporters on one directory when only that
-// name is set.
+// K8S_SNAPSHOT_DIR is the exporters' older name, and the one the cross-cluster
+// abort message used to tell users to set. Reading it here keeps this backend on
+// the same directory as the exporters when only that name is set. Mirrored by
+// "also honours the exporters' K8S_SNAPSHOT_DIR" in api/utils/paths.spec.ts —
+// this side had the case and that side did not, which is how the same variable
+// came to relocate the snapshot here and do nothing there.
 func TestSnapshotDirAcceptsTheExporterVariable(t *testing.T) {
 	t.Setenv("K8S_SNAPSHOT_PATH", "")
 	t.Setenv("K8S_SNAPSHOT_DIR", "/data/mysnap")
 
 	if got := store.SnapshotDir(); got != "/data/mysnap" {
 		t.Fatalf("SnapshotDir() = %q, want /data/mysnap", got)
+	}
+}
+
+// The two names once had opposite precedence: PATH first here, DIR first in all
+// five exporters. Set both and this route read one directory while the export
+// wrote the other.
+func TestSnapshotPathWinsOverSnapshotDir(t *testing.T) {
+	t.Setenv("K8S_SNAPSHOT_PATH", "/data/a")
+	t.Setenv("K8S_SNAPSHOT_DIR", "/data/b")
+
+	if got := store.SnapshotDir(); got != "/data/a" {
+		t.Fatalf("SnapshotDir() = %q with both set, want /data/a", got)
+	}
+	if got := snapshotDir(); got != "/data/a" {
+		t.Fatalf("export route resolves %q with both set, want /data/a", got)
+	}
+}
+
+// The child must be told where to write, under the winning name, with the older
+// one removed so nothing the user left set can outrank it.
+func TestChildEnvPinsTheResolvedDirectory(t *testing.T) {
+	t.Setenv("K8S_SNAPSHOT_PATH", "/data/a")
+	t.Setenv("K8S_SNAPSHOT_DIR", "/data/b")
+
+	var sawPath, sawDir int
+	var pathValue string
+	for _, kv := range childEnv("/data/resolved") {
+		switch {
+		case strings.HasPrefix(kv, "K8S_SNAPSHOT_PATH="):
+			sawPath++
+			pathValue = strings.TrimPrefix(kv, "K8S_SNAPSHOT_PATH=")
+		case strings.HasPrefix(kv, "K8S_SNAPSHOT_DIR="):
+			sawDir++
+		}
+	}
+	if sawPath != 1 || pathValue != "/data/resolved" {
+		t.Errorf("K8S_SNAPSHOT_PATH appears %d time(s) as %q, want once as /data/resolved", sawPath, pathValue)
+	}
+	if sawDir != 0 {
+		t.Errorf("K8S_SNAPSHOT_DIR still present %d time(s); a stale value could outrank the resolved one", sawDir)
 	}
 }
 

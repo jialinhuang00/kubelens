@@ -27,11 +27,12 @@ RESUME=false
 PARALLEL_NS=3
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Output goes to the working directory, matching the node exporters. Run from
-# the project root, or set either variable. The server passes K8S_SNAPSHOT_DIR
-# explicitly; K8S_SNAPSHOT_PATH is the app-wide name (api/utils/paths.ts), and
-# reading only the first meant a user who set that one exported to a directory
-# the app was not reading.
-BASE_DIR="${K8S_SNAPSHOT_DIR:-${K8S_SNAPSHOT_PATH:-$PWD/k8s-snapshot}}"
+# the project root, or set K8S_SNAPSHOT_PATH — that is the name the app uses
+# (api/utils/paths.ts, cmd/server/store/loader.go) and it wins here too.
+# K8S_SNAPSHOT_DIR is this script's older name, still read second so an existing
+# habit keeps working. The order matters: it used to be the other way round
+# here, so setting both sent the app to one directory and the export to another.
+BASE_DIR="${K8S_SNAPSHOT_PATH:-${K8S_SNAPSHOT_DIR:-$PWD/k8s-snapshot}}"
 
 # Namespaced resource types to export — split into parallel batches
 # Pods are handled separately (usually the most objects)
@@ -125,7 +126,7 @@ if [[ "$FULL_WIPE" != true && -f "$CONTEXT_FILE" ]]; then
       "$BASE_DIR" "$RECORDED" "$CONTEXT" >&2
     printf "Adding namespaces from a second cluster would leave both in one directory.\n" >&2
     printf "Nothing was changed. Switch context back to %s to continue this snapshot,\n" "$RECORDED" >&2
-    printf "run a full export to replace it, or set K8S_SNAPSHOT_DIR to a different path.\n" >&2
+    printf "run a full export to replace it, or set K8S_SNAPSHOT_PATH to a different path.\n" >&2
     exit 1
   fi
 fi

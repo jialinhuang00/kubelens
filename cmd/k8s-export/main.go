@@ -36,14 +36,15 @@ func main() {
 
 	_ = clusterScoped // reserved for future implementation
 
-	// Base directory: relative to cwd unless told otherwise. Either name works —
-	// the server passes K8S_SNAPSHOT_DIR explicitly, K8S_SNAPSHOT_PATH is the
-	// app-wide one (api/utils/paths.ts). Reading only the first meant a user who
-	// set that one exported to a directory the app was not reading.
+	// Base directory: relative to cwd unless told otherwise. K8S_SNAPSHOT_PATH
+	// first, matching api/utils/paths.ts and cmd/server/store/loader.go;
+	// K8S_SNAPSHOT_DIR is the older name and is read second. One order in all
+	// three, because two orders is what made the app and the exporter pick
+	// different directories when both were set.
 	baseDir := "k8s-snapshot"
-	if bd := os.Getenv("K8S_SNAPSHOT_DIR"); bd != "" {
+	if bd := os.Getenv("K8S_SNAPSHOT_PATH"); bd != "" {
 		baseDir = bd
-	} else if bd := os.Getenv("K8S_SNAPSHOT_PATH"); bd != "" {
+	} else if bd := os.Getenv("K8S_SNAPSHOT_DIR"); bd != "" {
 		baseDir = bd
 	}
 

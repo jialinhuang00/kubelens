@@ -389,11 +389,10 @@ async function exportOneNamespace(clients, ns, baseDir, doResume) {
 // ============================================================================
 
 async function childMain() {
-  // Either name works. K8S_SNAPSHOT_DIR is this script's own knob and what
-  // the server sets when it spawns us; K8S_SNAPSHOT_PATH is the app-wide one
-  // (api/utils/paths.ts). Reading only the first meant a user who exported
-  // with K8S_SNAPSHOT_PATH set wrote somewhere the app was not reading.
-  const baseDir = process.env.K8S_SNAPSHOT_DIR ?? process.env.K8S_SNAPSHOT_PATH ?? 'k8s-snapshot';
+  // K8S_SNAPSHOT_PATH first, matching api/utils/paths.ts and
+  // cmd/server/store/loader.go. This used to read DIR first, so with both
+  // set the app and the exporter picked different directories.
+  const baseDir = process.env.K8S_SNAPSHOT_PATH ?? process.env.K8S_SNAPSHOT_DIR ?? 'k8s-snapshot';
   const kc = new k8s.KubeConfig();
   kc.loadFromDefault();
   const clients = makeClients(kc);
@@ -441,7 +440,7 @@ function splitIntoChunks(arr, n) {
 }
 
 async function main() {
-  const baseDir = process.env.K8S_SNAPSHOT_DIR ?? process.env.K8S_SNAPSHOT_PATH ?? 'k8s-snapshot';
+  const baseDir = process.env.K8S_SNAPSHOT_PATH ?? process.env.K8S_SNAPSHOT_DIR ?? 'k8s-snapshot';
   const kc = new k8s.KubeConfig();
   kc.loadFromDefault();
   const clients = makeClients(kc);
