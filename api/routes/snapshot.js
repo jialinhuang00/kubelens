@@ -9,6 +9,7 @@ const router = express.Router();
 const { PKG_ROOT, resolveDataPath } = require('../utils/paths');
 const { nextEta } = require('../utils/export-eta');
 const { kubectlContext } = require('../utils/kubectl-context');
+const { exportFailureMessage } = require('../utils/export-failure');
 
 // Where snapshots are read from and written to. The export child runs with this
 // directory's parent as its cwd, so the scripts' relative 'k8s-snapshot' lands
@@ -35,6 +36,7 @@ let exportState = {
   minEtaSeconds: null,
   error: null,
   output: '',
+  stderrTail: '',
 };
 
 async function countFiles(dir) {
@@ -176,6 +178,7 @@ router.post('/snapshot', async (req, res) => {
     minEtaSeconds: null,
     error: null,
     output: '',
+    stderrTail: '',
     freshStart: !resume,  // suppress stale filesystem counts on first polls
   };
 
@@ -289,7 +292,14 @@ router.post('/snapshot', async (req, res) => {
   });
 
   child.stderr.on('data', (data) => {
-    exportState.output += data.toString();
+    const text = data.toString();
+    exportState.output += text;
+    // Kept separately from `output` because the failure message has to reach the
+    // browser. The exporters explain refusals in full ("holds a snapshot of X,
+    // and kubectl is on Y") but only on stderr, and the UI renders `error` and
+    // nothing else — so a Resume that hit the cross-cluster guard used to show
+    // "Export failed: Process exited with code 1" and no reason at all.
+    exportState.stderrTail = (exportState.stderrTail + text).slice(-2000);
   });
 
   child.on('close', (code) => {
@@ -300,7 +310,7 @@ router.post('/snapshot', async (req, res) => {
     exportState.pid = null;
     countFiles(snapshotDir).then(c => { exportState.fileCount = c; });
     if (code !== 0 && !exportState.paused) {
-      exportState.error = `Process exited with code ${code}`;
+      exportState.error = exportFailureMessage(code, exportState.stderrTail);
     }
   });
 

@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -183,19 +184,47 @@ func TestProgressReportsElapsedSecondsAfterARun(t *testing.T) {
 	}
 }
 
-func TestProgressCarriesEveryFieldNodeReturns(t *testing.T) {
+// exportProgressFields reads the field names out of the frontend's
+// ExportProgress interface. Parsed rather than copied: a hand-kept list only
+// catches Go dropping a field it already had, and the failure this guards
+// against runs the other way — a field added to the frontend and the Node route
+// that nobody mirrors here. A copied list is green on exactly that case.
+// Note that Go's test cache cannot see this file: it lives outside the module,
+// so editing the interface does not invalidate a cached PASS. `npm run test:go`
+// passes -count=1 for that reason. A bare `go test ./...` can still hand back a
+// stale green here.
+func exportProgressFields(t *testing.T) []string {
+	t.Helper()
+	const rel = "../../../src/app/core/services/snapshot.service.ts"
+	src, err := os.ReadFile(rel)
+	if err != nil {
+		t.Fatalf("cannot read %s: %v", rel, err)
+	}
+
+	body := regexp.MustCompile(`(?s)interface ExportProgress \{(.*?)\n\}`).FindSubmatch(src)
+	if body == nil {
+		t.Fatalf("no ExportProgress interface in %s — did it move or get renamed?", rel)
+	}
+
+	// `name: type;` and `name?: type;`, ignoring comment and blank lines.
+	fieldRe := regexp.MustCompile(`(?m)^\s*([A-Za-z_][A-Za-z0-9_]*)\??\s*:`)
+	var fields []string
+	for _, m := range fieldRe.FindAllSubmatch(body[1], -1) {
+		fields = append(fields, string(m[1]))
+	}
+	if len(fields) == 0 {
+		t.Fatalf("parsed no fields out of ExportProgress — the regex has drifted from the source")
+	}
+	return fields
+}
+
+func TestProgressCarriesEveryFieldTheFrontendDeclares(t *testing.T) {
 	withSnapshotDir(t)
 
-	// src/app/core/services/snapshot.service.ts:9-21, the ExportProgress interface.
-	want := []string{
-		"running", "paused", "totalNamespaces", "completedNamespaces",
-		"currentNamespace", "activeResources", "fileCount", "etaSeconds",
-		"elapsedSeconds", "error", "snapshotContext", "currentContext",
-	}
 	got := progress(t)
-	for _, k := range want {
+	for _, k := range exportProgressFields(t) {
 		if _, ok := got[k]; !ok {
-			t.Errorf("response is missing %q — the frontend reads it from both backends", k)
+			t.Errorf("response is missing %q — the frontend declares it and reads this route from both backends", k)
 		}
 	}
 }

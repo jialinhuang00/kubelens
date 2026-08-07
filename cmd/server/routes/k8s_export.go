@@ -19,32 +19,35 @@ import (
 
 // exportState tracks the running export process and its progress.
 type exportState struct {
-	mu                 sync.Mutex
-	running            bool
-	paused             bool
+	mu      sync.Mutex
+	running bool
+	paused  bool
 	// "I know there's a half-finished export; let me use the app anyway."
 	// handleExportProgress recomputes paused from disk on every poll, so clearing
 	// the flag above is not enough — the partial files are still there and the
 	// next poll would put the modal straight back. Only the user sets this.
-	pausedDismissed    bool
-	pid                int
-	startedAt          time.Time
+	pausedDismissed bool
+	pid             int
+	startedAt       time.Time
 	// How long the last finished run took. The frontend prints it on the done
 	// panel ("Export complete — 47 files in 12s"), so a missing value is not
 	// an error, just a shorter sentence.
-	elapsedSeconds     *int
+	elapsedSeconds *int
 	// True from the moment a fresh (non-resume) export starts until its first
 	// progress line arrives. Until then the directory still holds the previous
 	// export, and reporting those counts makes a new run appear to begin at 100%.
-	freshStart         bool
-	totalNamespaces    int
+	freshStart          bool
+	totalNamespaces     int
 	completedNamespaces int
-	activeNamespaces   map[string]struct{}
-	activeResources    map[string]struct{}
-	fileCount          int
-	minEtaSeconds      *int
-	err                string
-	output             string
+	activeNamespaces    map[string]struct{}
+	activeResources     map[string]struct{}
+	fileCount           int
+	minEtaSeconds       *int
+	err                 string
+	output              string
+	// The error stream on its own, capped. The UI shows `err` and nothing else,
+	// so a refusal explained on stderr has to travel through here to be read.
+	stderrTail string
 }
 
 var state = &exportState{
@@ -156,6 +159,7 @@ func handleExportStart(w http.ResponseWriter, r *http.Request, rawBody []byte) {
 	state.minEtaSeconds = nil
 	state.err = ""
 	state.output = ""
+	state.stderrTail = ""
 	state.mu.Unlock()
 
 	cmd := exec.Command(spawnCmd, args...)
@@ -192,7 +196,7 @@ func handleExportStart(w http.ResponseWriter, r *http.Request, rawBody []byte) {
 		state.pid = 0
 		state.fileCount = count
 		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() != 0 && !state.paused {
-			state.err = fmt.Sprintf("Process exited with code %d", cmd.ProcessState.ExitCode())
+			state.err = exportFailureMessage(cmd.ProcessState.ExitCode(), state.stderrTail)
 		}
 		state.mu.Unlock()
 	}()
@@ -426,8 +430,14 @@ func handleExportStop(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"stopped": true})
 }
 
+const stderrTailLimit = 2000
+
 // pipeOutput reads from a pipe, writes to stdout, and parses progress markers.
-func pipeOutput(r io.Reader, _ bool) {
+// `isStderr` keeps a separate tail of the error stream: the exporters explain
+// refusals in full there ("holds a snapshot of X, and kubectl is on Y"), and the
+// UI renders only `error`, so without this a Resume that hit the cross-cluster
+// guard showed "Process exited with code 1" and no reason.
+func pipeOutput(r io.Reader, isStderr bool) {
 	buf := make([]byte, 4096)
 	for {
 		n, err := r.Read(buf)
@@ -440,6 +450,12 @@ func pipeOutput(r io.Reader, _ bool) {
 			state.mu.Lock()
 			if len(state.output) < 200000 {
 				state.output += text
+			}
+			if isStderr {
+				state.stderrTail += text
+				if len(state.stderrTail) > stderrTailLimit {
+					state.stderrTail = state.stderrTail[len(state.stderrTail)-stderrTailLimit:]
+				}
 			}
 
 			if m := reDiscovered.FindStringSubmatch(text); m != nil {

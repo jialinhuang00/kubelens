@@ -98,6 +98,35 @@ echo "Namespaces:      ${NAMESPACES[*]}"
 echo "Parallel jobs:   $PARALLEL_NS"
 echo ""
 
+# --- Refuse to mix two clusters, BEFORE anything is deleted ---
+#
+# `.export-context` records which cluster the directory holds. A run that
+# replaces the whole thing may replace that record; the scoped (-n) and resume
+# paths keep what is already there, and stop when it names a different cluster.
+# Export everything from A, then `-n foo` against B, and the directory holds A's
+# namespaces plus foo from B. No single value is honest then: whichever cluster
+# this file names, the paused panel compares it to the live context, reports a
+# match, and lets Resume finish mixing the two.
+#
+# This has to run before the clean below. Checking afterwards still aborted, but
+# only after `rm -rf "$BASE_DIR/foo"` had already taken foo out of the snapshot —
+# refusing an unsafe operation while performing half of it.
+CONTEXT_FILE="${BASE_DIR}/.export-context"
+FULL_WIPE=false
+[[ "$RESUME" != "true" && "$ALL_NS" == true ]] && FULL_WIPE=true
+
+if [[ "$FULL_WIPE" != true && -f "$CONTEXT_FILE" ]]; then
+  RECORDED=$(sed -n 's/.*"context"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$CONTEXT_FILE")
+  if [[ -n "$RECORDED" && "$RECORDED" != "$CONTEXT" ]]; then
+    printf "\n${RED}ERROR: %s holds a snapshot of %s, and kubectl is on %s.${RESET}\n" \
+      "$BASE_DIR" "$RECORDED" "$CONTEXT" >&2
+    printf "Adding namespaces from a second cluster would leave both in one directory.\n" >&2
+    printf "Nothing was changed. Switch context back to %s to continue this snapshot,\n" "$RECORDED" >&2
+    printf "run a full export to replace it, or set K8S_SNAPSHOT_DIR to a different path.\n" >&2
+    exit 1
+  fi
+fi
+
 # Clean previous snapshot (skip if resuming)
 if [[ "$RESUME" == "true" ]]; then
   rm -f "${BASE_DIR}/.export-complete"
@@ -131,34 +160,14 @@ else
   fi
 fi
 
-# Record which cluster this run reads from. Written after the clean above, since
-# a full export deletes the whole directory first. The paused panel compares this
-# against the live kubectl context: it is the only place that knows, because a run
-# stopped halfway has no .export-complete to read.
-#
-# Only a run that replaced the whole directory may replace this file. The other
-# two paths keep what is already there, and refuse when it names a different
-# cluster: export everything from A, then `-n foo` against B, and the directory
-# holds A's namespaces plus foo from B. There is no honest single value to write
-# — whichever cluster this file names, the panel compares it to the live context,
-# reports a match, and lets Resume finish mixing the two.
+# Write the record. The mismatch case was already rejected above, so this only
+# ever runs when the directory is being replaced wholesale or has no record yet.
+# A full export must write here rather than earlier, because the clean above
+# deletes the directory it lives in.
 mkdir -p "$BASE_DIR"
-CONTEXT_FILE="${BASE_DIR}/.export-context"
-FULL_WIPE=false
-[[ "$RESUME" != "true" && "$ALL_NS" == true ]] && FULL_WIPE=true
-
 if [[ "$FULL_WIPE" == true || ! -f "$CONTEXT_FILE" ]]; then
   printf '{"context":"%s","startedAt":"%s"}\n' \
     "$CONTEXT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$CONTEXT_FILE"
-else
-  RECORDED=$(sed -n 's/.*"context"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$CONTEXT_FILE")
-  if [[ -n "$RECORDED" && "$RECORDED" != "$CONTEXT" ]]; then
-    printf "\n${RED}ERROR: %s holds a snapshot of %s, and kubectl is on %s.${RESET}\n" \
-      "$BASE_DIR" "$RECORDED" "$CONTEXT" >&2
-    printf "Adding namespaces from a second cluster would leave both in one directory.\n" >&2
-    printf "Run a full export to replace it, switch context back, or set K8S_SNAPSHOT_DIR elsewhere.\n" >&2
-    exit 1
-  fi
 fi
 
 # --- Namespace export function ---

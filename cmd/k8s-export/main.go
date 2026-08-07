@@ -106,6 +106,8 @@ func main() {
 
 	startTime := time.Now()
 
+	assertSameCluster(baseDir, ctxName, *resume)
+
 	if *resume {
 		// Remove .export-complete and leftover .tmp files, then skip completed namespaces.
 		os.Remove(filepath.Join(baseDir, ".export-complete"))
@@ -162,6 +164,37 @@ func touchFile(path string) {
 // The completion marker records which cluster the snapshot came from. Every
 // reader so far only checks that the file exists, so the contents change
 // nothing for them; a snapshot exported before this reads back as unknown.
+// Stop before anything is deleted when the directory belongs to another cluster.
+// Only a resume can get here: a fresh run replaces the whole directory, so it is
+// free to replace the record too. Resuming is the dangerous one — it writes the
+// current cluster's namespaces beside the previous cluster's while
+// .export-context keeps naming the previous one, so the paused panel compares the
+// two, reports a match, and offers Resume again.
+//
+// The paused panel's Resume button reaches this from the browser, which is why it
+// cannot live in snapshot-bash.sh alone.
+func assertSameCluster(baseDir, ctxName string, resume bool) {
+	if !resume {
+		return
+	}
+	raw, err := os.ReadFile(filepath.Join(baseDir, ".export-context"))
+	if err != nil {
+		return // no record — nothing to contradict
+	}
+	var parsed struct {
+		Context string `json:"context"`
+	}
+	if err := json.Unmarshal(raw, &parsed); err != nil || parsed.Context == "" || parsed.Context == ctxName {
+		return
+	}
+
+	fmt.Fprintf(os.Stderr, "\nERROR: %s holds a snapshot of %s, and kubectl is on %s.\n", baseDir, parsed.Context, ctxName)
+	fmt.Fprintf(os.Stderr, "Resuming would write a second cluster into the same directory.\n")
+	fmt.Fprintf(os.Stderr, "Nothing was changed. Switch context back to %s to continue this snapshot,\n", parsed.Context)
+	fmt.Fprintf(os.Stderr, "or start a fresh export to replace it.\n")
+	os.Exit(1)
+}
+
 // Records which cluster this run reads from, written after the clean above since
 // a fresh export deletes the whole directory first. The paused panel compares it
 // against the live kubectl context, and it is the only place that knows — a run

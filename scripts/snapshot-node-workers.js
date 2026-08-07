@@ -217,6 +217,32 @@ async function writeCompleteMarker(baseDir, context, exporter) {
 // against the live kubectl context, and it is the only place that knows — a run
 // stopped halfway never wrote .export-complete. A resume keeps whatever is here;
 // overwriting would erase the very context being compared.
+// Stop before anything is deleted when the directory belongs to another cluster.
+// Only a resume can get here: a fresh run replaces the whole directory, so it is
+// free to replace the record too. Resuming is the dangerous one — it writes the
+// current cluster's namespaces beside the previous cluster's while
+// .export-context keeps naming the previous one, so the paused panel compares
+// the two, reports a match, and offers Resume again.
+//
+// The paused panel's Resume button reaches this from the browser, which is why
+// it cannot live in snapshot-bash.sh alone.
+async function assertSameCluster(baseDir, context, resume) {
+  if (!resume) return;
+  let recorded;
+  try {
+    recorded = JSON.parse(await fs.readFile(path.join(baseDir, '.export-context'), 'utf8')).context;
+  } catch {
+    return; // no record, or unreadable — nothing to contradict
+  }
+  if (!recorded || recorded === context) return;
+
+  console.error(`\nERROR: ${baseDir} holds a snapshot of ${recorded}, and kubectl is on ${context}.`);
+  console.error('Resuming would write a second cluster into the same directory.');
+  console.error(`Nothing was changed. Switch context back to ${recorded} to continue this snapshot,`);
+  console.error('or start a fresh export to replace it.');
+  process.exit(1);
+}
+
 async function writeContextMarker(baseDir, context, resume) {
   await fs.mkdir(baseDir, { recursive: true });
   const marker = path.join(baseDir, '.export-context');
@@ -432,6 +458,8 @@ async function main() {
   console.log();
 
   const start = Date.now();
+
+  await assertSameCluster(baseDir, ctxName, resume);
 
   if (resume) {
     await fs.rm(path.join(baseDir, '.export-complete'), { force: true });

@@ -55,6 +55,10 @@
   &.hint-error {
     color: var(--t-error);
     opacity: 1;
+    // Export failures carry the exporter's own stderr, which is several lines.
+    // Without this the browser collapses them and a four-line refusal explaining
+    // both cluster names arrives as one run-on paragraph.
+    white-space: pre-line;
   }
 }
 

@@ -59,7 +59,11 @@ before(async () => {
   // Replace the live-cluster lookup before the route can call it. Left alone it
   // shells out to whatever kubeconfig this machine has: unassertable, and a unit
   // test reading the developer's cluster settings.
-  const { kubectlContext } = require(path.join(prevCwd, 'api', 'utils', 'kubectl-context.ts'));
+  //
+  // kubectl-context is hand-written JavaScript with no .ts source, so this and
+  // snapshot.js load the same module however the repo was last built. See the
+  // comment in that file for what a compiled twin did to this stub.
+  const { kubectlContext } = require(path.join(prevCwd, 'api', 'utils', 'kubectl-context.js'));
   kubectlContext.current = async () => stubbedContext;
 
   const express = require('express');
