@@ -90,5 +90,7 @@ if (argv[0] === 'init') {
   }
 
   seedConfig();
-  require(path.join(pkgRoot, 'api', 'index.js'));
+  // No extension: the package ships api/index.js (compiled), a clone has only
+  // api/index.ts and the tsx hook above resolves it.
+  require(path.join(pkgRoot, 'api', 'index'));
 }

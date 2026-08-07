@@ -1,6 +1,8 @@
 # api/ — Node.js backend (the one that runs)
 
-Express server. Both `pnpm run dev` and production run this (`tsx api/index.js`).
+Express server, TypeScript throughout. `pnpm run dev` runs the sources through
+tsx (`tsx api/index.ts`); the published package runs the `.js` that
+`build:server` compiles beside each of them.
 The Go backend in [`cmd/`](../cmd/) is a parallel port — this is the real one.
 
 - `index.js` — entry point.

@@ -60,14 +60,18 @@ before(async () => {
   // shells out to whatever kubeconfig this machine has: unassertable, and a unit
   // test reading the developer's cluster settings.
   //
-  // kubectl-context is hand-written JavaScript with no .ts source, so this and
-  // snapshot.js load the same module however the repo was last built. See the
-  // comment in that file for what a compiled twin did to this stub.
-  const { kubectlContext } = require(path.join(prevCwd, 'api', 'utils', 'kubectl-context.js'));
+  // Both files named as .ts on purpose. `build:server` leaves a compiled .js
+  // beside every source, and under tsx a require resolves by the *importer's*
+  // extension — so back when the route was plain JavaScript it loaded the .js
+  // copy while this spec loaded the .ts, and the stub landed on a module the
+  // route never called. Nothing failed until someone ran build:server. Now that
+  // the whole of api/ is TypeScript both sides agree, and naming .ts keeps it
+  // that way even if a stray .js appears.
+  const { kubectlContext } = require(path.join(prevCwd, 'api', 'utils', 'kubectl-context.ts'));
   kubectlContext.current = async () => stubbedContext;
 
   const express = require('express');
-  const router = require(path.join(prevCwd, 'api', 'routes', 'snapshot.js'));
+  const router = require(path.join(prevCwd, 'api', 'routes', 'snapshot.ts'));
   const app = express();
   app.use(express.json());
   app.use('/api', router);

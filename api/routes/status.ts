@@ -1,18 +1,23 @@
-const express = require('express');
-const { execFile } = require('child_process');
-const util = require('util');
-const path = require('path');
-const fs = require('fs');
-const fsp = fs.promises;
+import express from 'express';
+import type { Request, Response } from 'express';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+import * as path from 'path';
+import { promises as fsp } from 'fs';
 
-const { resolveDataPath } = require('../utils/paths');
+import { resolveDataPath } from '../utils/paths';
 
-const execFileAsync = util.promisify(execFile);
+const execFileAsync = promisify(execFile);
 
 const router = express.Router();
 
+/** A failed execFile carries the child's output on the error object. */
+interface ExecError extends Error {
+  stderr?: string;
+}
+
 // GET /api/realtime/ping
-router.get('/realtime/ping', async (req, res) => {
+router.get('/realtime/ping', async (req: Request, res: Response) => {
   const env_info = {
     PATH: process.env.PATH,
     HOME: process.env.HOME,
@@ -36,7 +41,7 @@ router.get('/realtime/ping', async (req, res) => {
         },
         environment: env_info
       });
-    } catch (e) {
+    } catch {
       res.json({
         status: 'kubectl found but version parse failed',
         kubectl_path: kubectlPath,
@@ -44,7 +49,8 @@ router.get('/realtime/ping', async (req, res) => {
         raw_output: versionOut
       });
     }
-  } catch (error) {
+  } catch (err) {
+    const error = err as ExecError;
     res.json({
       status: 'kubectl not available',
       error: error.message,
@@ -55,7 +61,7 @@ router.get('/realtime/ping', async (req, res) => {
 });
 
 // GET /api/export/ping
-router.get('/export/ping', async (req, res) => {
+router.get('/export/ping', async (req: Request, res: Response) => {
   try {
     await execFileAsync('which', ['parallel']);
     res.json({ parallel: true });
@@ -65,7 +71,7 @@ router.get('/export/ping', async (req, res) => {
 });
 
 // GET /api/snapshot/ping
-router.get('/snapshot/ping', async (req, res) => {
+router.get('/snapshot/ping', async (req: Request, res: Response) => {
   // Same directory the export writes to and the loader reads from. Resolving
   // this against the package instead left the toggle greyed out after a
   // successful export: the snapshot was in the user's directory, this looked
@@ -83,4 +89,4 @@ router.get('/snapshot/ping', async (req, res) => {
   res.json({ available });
 });
 
-module.exports = router;
+export = router;

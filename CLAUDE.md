@@ -2,7 +2,7 @@
 
 ## Architecture
 - Angular 20+ standalone components with signals
-- Express.js backend (`api/index.js` + `api/routes/`) with Go backend (`cmd/server/`)
+- Express.js backend (`api/index.ts` + `api/routes/`) with Go backend (`cmd/server/`)
 - TypeScript with strict compilation
 - Nord theme (`#88c0d0` accent on `#2e3440` background) — single theme, folded into `:root` in `styles.scss` (no runtime switching, no `[data-theme]` blocks)
 - Dual data mode: **Realtime** (live kubectl) and **Snapshot** (offline `k8s-snapshot/`)
@@ -25,16 +25,17 @@
 
 ## File Structure
 ```
-├── api/
-│   ├── index.js               # Express entry point
+├── api/                       # All TypeScript; build:server emits .js twins (gitignored)
+│   ├── index.ts               # Express entry point
 │   ├── routes/
-│   │   ├── execute.js         #   POST /api/execute + WebSocket /api/execute/stream/ws
-│   │   ├── graph.js           #   GET  /api/graph — resource topology
-│   │   ├── snapshot.js        #   POST/GET /api/snapshot — export control + progress
-│   │   ├── status.js          #   GET  /api/realtime/ping, /api/snapshot/ping
-│   │   ├── registry.js        #   GET  /api/registry/tags — image tags (ECR/GCR/ACR by URL)
-│   │   ├── config.js          #   GET  /api/config — resource kinds from kubelens.config.yaml
-│   │   └── discovery.js       #   GET  /api/api-resources — cluster's kinds (kubectl api-resources)
+│   │   ├── execute.ts         #   POST /api/execute + WebSocket /api/execute/stream/ws
+│   │   ├── graph.ts           #   GET  /api/graph — resource topology
+│   │   ├── snapshot.ts        #   POST/GET /api/snapshot — export control + progress
+│   │   ├── snapshot.spec.ts   #   Route tests: real Express app, Node's fetch, no mocks
+│   │   ├── status.ts          #   GET  /api/realtime/ping, /api/snapshot/ping
+│   │   ├── registry.ts        #   GET  /api/registry/tags — image tags (ECR/GCR/ACR by URL)
+│   │   ├── config.ts          #   GET  /api/config — resource kinds from kubelens.config.yaml
+│   │   └── discovery.ts       #   GET  /api/api-resources — cluster's kinds (kubectl api-resources)
 │   └── utils/
 │       ├── config-loader.ts    #   Loads + caches kubelens.config.yaml (resources, aliases)
 │       ├── api-resources.ts    #   Parser for `kubectl api-resources` table (shared: discovery + init)
@@ -93,13 +94,13 @@ All endpoints use **REST** (request-response) except:
 ## Data Flow
 
 ### Realtime Mode
-Frontend → `api/routes/execute.js` → `execFile('kubectl', ...)` → live cluster
+Frontend → `api/routes/execute.ts` → `execFile('kubectl', ...)` → live cluster
 
 ### Snapshot Mode
-Frontend → `api/routes/execute.js` → `snapshot-handler.ts` → reads `k8s-snapshot/*.yaml`
+Frontend → `api/routes/execute.ts` → `snapshot-handler.ts` → reads `k8s-snapshot/*.yaml`
 
 ### Export
-Home page → `api/routes/snapshot.js` → spawns export script → writes `k8s-snapshot/`
+Home page → `api/routes/snapshot.ts` → spawns export script → writes `k8s-snapshot/`
 - Multiple export modes: bash, node, workers, procs, go
 - Progress: stdout parsing → in-memory `exportState` → polled by frontend every 1s
 - `.export-complete` marker = snapshot available; `.export-context` = which cluster it came from
@@ -135,7 +136,7 @@ pm2 restart kubelens
 |------|-------|
 | Path | `/home/ec2-user/kubelens/` |
 | Port | 8080 (`PORT=8080` in pm2 env) |
-| Start | `PORT=8080 pm2 start "npx tsx api/index.js" --name kubelens` |
+| Start | `PORT=8080 pm2 start "npx tsx api/index.ts" --name kubelens` |
 
 Frontend: `npm run build` → `dist/kubelens/browser/` (static files). Backend: no build, tsx runs directly.
 Production mode: Express serves `dist/` + API on one port. Dev mode: `dist/` absent → static serve skipped.
@@ -151,7 +152,7 @@ npm publish --otp=<code>                 # prepublishOnly runs ng build; prepack
 rm -rf ~/.npm/_npx && npx kubelens        # verify from the registry, not a local tarball
 ```
 
-- Verify by publishing then running `npx`, not by installing a tarball. Four bugs shipped in 0.1.0 that `npm install <tgz>` could not reach — deep links 404'd because the npx cache path contains a dot, and a finished export left the UI unusable. See `bin/kubelens.js`, `api/index.js` SPA fallback, `api/routes/status.js`, `api/routes/graph.js`.
+- Verify by publishing then running `npx`, not by installing a tarball. Four bugs shipped in 0.1.0 that `npm install <tgz>` could not reach — deep links 404'd because the npx cache path contains a dot, and a finished export left the UI unusable. See `bin/kubelens.js`, `api/index.ts` SPA fallback, `api/routes/status.ts`, `api/routes/graph.ts`.
 - To remove a version, publish the replacement **first**. `npm unpublish` on the last remaining version locks the package name for 24 hours. A version number is burned permanently once unpublished; it can never be reused.
 - `npx --package=<path-to-tgz> kubelens` exercises the npx cache path without publishing — the closest dry run available.
 

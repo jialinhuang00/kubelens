@@ -1,19 +1,31 @@
-const express = require('express');
-const path = require('path');
-const fs = require('fs');
-const { execFile } = require('child_process');
-const util = require('util');
-const execFileAsync = util.promisify(execFile);
+import express from 'express';
+import type { Request, Response } from 'express';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 
-const { discoverNamespaces, getItemsFromSnapshot, buildGraph } = require('../utils/graph-builder');
-const { getGraphResources, isCrd } = require('../utils/config-loader');
-const { resolveDataPath } = require('../utils/paths');
+import { discoverNamespaces, getItemsFromSnapshot, buildGraph } from '../utils/graph-builder';
+import type { K8sItem } from '../utils/snapshot-loader';
+import { getGraphResources, isCrd } from '../utils/config-loader';
+import { resolveDataPath } from '../utils/paths';
+
+const execFileAsync = promisify(execFile);
 
 const router = express.Router();
 
+/** A failed execFile carries the child's output and an abort code on the error. */
+interface ExecError extends Error {
+  code?: string;
+  stderr?: string;
+}
+
+/** Only the shape this route reads out of `kubectl get -o json`. */
+interface KubectlList {
+  items?: K8sItem[];
+}
+
 // --- Realtime (kubectl) helpers ---
 
-async function execKubectl(args, signal) {
+async function execKubectl(args: string, signal: AbortSignal): Promise<{ data: KubectlList; error: string | null }> {
   try {
     const argList = args.split(/\s+/);
     const { stdout } = await execFileAsync('kubectl', argList, {
@@ -23,10 +35,11 @@ async function execKubectl(args, signal) {
       signal,
     });
     const bytes = Buffer.byteLength(stdout, 'utf8');
-    const parsed = JSON.parse(stdout);
+    const parsed: KubectlList = JSON.parse(stdout);
     console.log(`[graph] kubectl ${args.split(' -')[0]}: ${(bytes / 1024).toFixed(1)}KB, ${parsed.items?.length ?? 0} items`);
     return { data: parsed, error: null };
-  } catch (e) {
+  } catch (err) {
+    const e = err as ExecError;
     if (e.code === 'ABORT_ERR') return { data: { items: [] }, error: null };
     const stderrLines = [...new Set((e.stderr || '').split('\n').map(l => l.trim()).filter(Boolean))];
     const msg = stderrLines.join('\n') || e.message?.split('\n')[0] || 'Unknown error';
@@ -35,7 +48,7 @@ async function execKubectl(args, signal) {
   }
 }
 
-async function fetchLiveData(signal) {
+async function fetchLiveData(signal: AbortSignal) {
   const graphResources = getGraphResources();
   const builtins = graphResources.filter(r => !isCrd(r));
   const crds = graphResources.filter(r => isCrd(r));
@@ -49,13 +62,13 @@ async function fetchLiveData(signal) {
 
   // "group/kind" → internal key, so kinds sharing a Kind name across API groups
   // (e.g. Gateway in gateway.networking.k8s.io vs networking.istio.io) don't collide.
-  const groupKindToKey = {};
+  const groupKindToKey: Record<string, string> = {};
   for (const r of graphResources) groupKindToKey[`${r.group}/${r.kind}`] = r.key;
 
-  const nsData = new Map();
-  const allNamespaces = new Set();
+  const nsData = new Map<string, Map<string, K8sItem[]>>();
+  const allNamespaces = new Set<string>();
 
-  function ingest(data) {
+  function ingest(data: KubectlList) {
     for (const item of data?.items || []) {
       const av = item.apiVersion || '';
       const group = av.includes('/') ? av.slice(0, av.indexOf('/')) : '';
@@ -64,9 +77,9 @@ async function fetchLiveData(signal) {
       const ns = item.metadata?.namespace || '_cluster';
       allNamespaces.add(ns);
       if (!nsData.has(ns)) nsData.set(ns, new Map());
-      const nsMap = nsData.get(ns);
+      const nsMap = nsData.get(ns)!;
       if (!nsMap.has(key)) nsMap.set(key, []);
-      nsMap.get(key).push(item);
+      nsMap.get(key)!.push(item);
     }
   }
 
@@ -83,7 +96,7 @@ async function fetchLiveData(signal) {
 }
 
 // GET /api/graph
-router.get('/graph', async (req, res) => {
+router.get('/graph', async (req: Request, res: Response) => {
   const isSnapshot = req.query.snapshot === 'true';
 
   try {
@@ -96,7 +109,7 @@ router.get('/graph', async (req, res) => {
       const namespaceDirs = discoverNamespaces(dataPath);
       const namespaceList = [...namespaceDirs.keys()];
 
-      const getItemsFn = (ns, resourceKey) => {
+      const getItemsFn = (ns: string, resourceKey: string) => {
         const nsDir = namespaceDirs.get(ns);
         if (!nsDir) return [];
         return getItemsFromSnapshot(nsDir, resourceKey);
@@ -115,7 +128,7 @@ router.get('/graph', async (req, res) => {
 
       const { nsData, namespaces } = await fetchLiveData(ac.signal);
 
-      const getItemsFn = (ns, resourceKey) => {
+      const getItemsFn = (ns: string, resourceKey: string) => {
         const nsMap = nsData.get(ns);
         if (!nsMap) return [];
         return nsMap.get(resourceKey) || [];
@@ -124,9 +137,10 @@ router.get('/graph', async (req, res) => {
       res.json(buildGraph(getItemsFn, namespaces));
     }
   } catch (err) {
-    console.error('[graph] Error:', err.message);
-    res.status(500).json({ message: err.message || 'Failed to fetch graph data' });
+    const e = err as Error;
+    console.error('[graph] Error:', e.message);
+    res.status(500).json({ message: e.message || 'Failed to fetch graph data' });
   }
 });
 
-module.exports = router;
+export = router;

@@ -1,15 +1,17 @@
-const express = require('express');
-const { spawn } = require('child_process');
-const path = require('path');
-const fs = require('fs');
+import express from 'express';
+import type { Request, Response } from 'express';
+import { spawn } from 'child_process';
+import * as path from 'path';
+import * as fs from 'fs';
+
 const fsp = fs.promises;
 
 const router = express.Router();
 
-const { PKG_ROOT, resolveDataPath } = require('../utils/paths');
-const { nextEta } = require('../utils/export-eta');
-const { kubectlContext } = require('../utils/kubectl-context');
-const { exportFailureMessage } = require('../utils/export-failure');
+import { PKG_ROOT, resolveDataPath } from '../utils/paths';
+import { nextEta } from '../utils/export-eta';
+import { kubectlContext } from '../utils/kubectl-context';
+import { exportFailureMessage } from '../utils/export-failure';
 
 // Where snapshots are read from and written to. The export child runs with this
 // directory's parent as its cwd, so the scripts' relative 'k8s-snapshot' lands
@@ -17,13 +19,35 @@ const { exportFailureMessage } = require('../utils/export-failure');
 const snapshotDir = resolveDataPath('k8s-snapshot');
 const snapshotParent = path.dirname(snapshotDir);
 
-let exportState = {
+interface ExportState {
+  running: boolean;
+  paused: boolean;
+  /**
+   * "I know there's a half-finished export; let me use the app anyway." The GET
+   * handler recomputes `paused` from disk every poll, so clearing the flag above
+   * is not enough — the partial files are still there and the next poll would
+   * put the modal straight back. This one is only ever set by the user.
+   */
+  pausedDismissed: boolean;
+  pid: number | null;
+  startedAt: number | null;
+  elapsedSeconds: number | null;
+  totalNamespaces: number;
+  completedNamespaces: number;
+  activeNamespaces: Set<string>;
+  activeResources: Set<string>;
+  fileCount: number;
+  minEtaSeconds: number | null;
+  error: string | null;
+  output: string;
+  stderrTail: string;
+  /** True until the new export's first progress line; see the GET handler. */
+  freshStart?: boolean;
+}
+
+let exportState: ExportState = {
   running: false,
   paused: false,
-  // "I know there's a half-finished export; let me use the app anyway." The GET
-  // handler recomputes `paused` from disk every poll, so clearing the flag above
-  // is not enough — the partial files are still there and the next poll would
-  // put the modal straight back. This one is only ever set by the user.
   pausedDismissed: false,
   pid: null,
   startedAt: null,
@@ -39,7 +63,7 @@ let exportState = {
   stderrTail: '',
 };
 
-async function countFiles(dir) {
+async function countFiles(dir: string): Promise<number> {
   let count = 0;
   try {
     const entries = await fsp.readdir(dir, { withFileTypes: true });
@@ -61,7 +85,7 @@ async function countFiles(dir) {
 // The cluster the export on disk was started against. Written by the exporters
 // right after they clear the directory; absent for snapshots exported before
 // that existed, and for a directory nobody has exported into yet.
-async function readExportContext() {
+async function readExportContext(): Promise<string | null> {
   try {
     const raw = await fsp.readFile(path.join(snapshotDir, '.export-context'), 'utf8');
     return JSON.parse(raw).context || null;
@@ -70,7 +94,7 @@ async function readExportContext() {
   }
 }
 
-async function countDoneNamespaces() {
+async function countDoneNamespaces(): Promise<number> {
   try {
     const entries = await fsp.readdir(snapshotDir, { withFileTypes: true });
     let count = 0;
@@ -87,9 +111,17 @@ async function countDoneNamespaces() {
   }
 }
 
+interface SnapshotCommandBody {
+  command?: 'start' | 'stop' | 'clear' | 'discard';
+  mode?: string;
+  workers?: number;
+  resume?: boolean;
+}
+
 // POST /api/snapshot  { command: "start", mode, workers, resume }
-router.post('/snapshot', async (req, res) => {
-  const command = req.body?.command;
+router.post('/snapshot', async (req: Request, res: Response) => {
+  const body = (req.body ?? {}) as SnapshotCommandBody;
+  const command = body.command;
 
   // --- STOP ---
   if (command === 'stop') {
@@ -102,7 +134,7 @@ router.post('/snapshot', async (req, res) => {
       exportState.paused = true;
       return res.json({ stopped: true });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: (err as Error).message });
     }
   }
 
@@ -125,7 +157,7 @@ router.post('/snapshot', async (req, res) => {
     try {
       await fsp.rm(snapshotDir, { recursive: true, force: true });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: (err as Error).message });
     }
     exportState.paused = false;
     exportState.pausedDismissed = false;
@@ -141,7 +173,7 @@ router.post('/snapshot', async (req, res) => {
     return res.status(409).json({ error: 'Export already running' });
   }
 
-  const resume = req.body?.resume === true;
+  const resume = body.resume === true;
 
   // Fresh start: clear previous completion markers so the first progress poll
   // doesn't show stale 100% data from the prior export
@@ -155,9 +187,9 @@ router.post('/snapshot', async (req, res) => {
     );
   }
   // mode: 'bash' | 'node' | 'workers' | 'procs' | 'go' | 'parallel'  (default: 'bash')
-  const mode = req.body?.mode ?? 'bash';
+  const mode = body.mode ?? 'bash';
   // workers: parallelism count — threads for 'workers', processes for 'procs', jobs for 'parallel'
-  const workers = Number.isInteger(req.body?.workers) ? req.body.workers : null;
+  const workers = Number.isInteger(body.workers) ? (body.workers as number) : null;
 
   exportState = {
     running: true,
@@ -182,7 +214,8 @@ router.post('/snapshot', async (req, res) => {
     freshStart: !resume,  // suppress stale filesystem counts on first polls
   };
 
-  let spawnCmd, args;
+  let spawnCmd: string;
+  let args: string[];
   if (mode === 'go') {
     const goSrcDir = path.join(PKG_ROOT, 'cmd', 'k8s-export');
     spawnCmd = path.join(goSrcDir, 'k8s-export');
@@ -234,9 +267,9 @@ router.post('/snapshot', async (req, res) => {
     detached: true,  // new process group — enables group kill on pause
   });
 
-  exportState.pid = child.pid;
+  exportState.pid = child.pid ?? null;
 
-  child.stdout.on('data', (data) => {
+  child.stdout?.on('data', (data: Buffer) => {
     const raw = data.toString();
     process.stdout.write(raw);
     const text = raw.replace(/\x1b\[[0-9;]*m/g, '');
@@ -254,7 +287,7 @@ router.post('/snapshot', async (req, res) => {
 
     // Parse "=== Namespace: xxx === (complete, skipping)" — already done
     const skipMatches = text.matchAll(/=== Namespace: (.+?) === \(complete, skipping\)/g);
-    const skippedSet = new Set();
+    const skippedSet = new Set<string>();
     for (const m of skipMatches) {
       exportState.completedNamespaces++;
       skippedSet.add(m[1]);
@@ -291,7 +324,7 @@ router.post('/snapshot', async (req, res) => {
     }
   });
 
-  child.stderr.on('data', (data) => {
+  child.stderr?.on('data', (data: Buffer) => {
     const text = data.toString();
     exportState.output += text;
     // Kept separately from `output` because the failure message has to reach the
@@ -324,7 +357,7 @@ router.post('/snapshot', async (req, res) => {
 });
 
 // GET /api/snapshot
-router.get('/snapshot', async (req, res) => {
+router.get('/snapshot', async (req: Request, res: Response) => {
   let [liveCount, doneNs, hasCompleteMarker] = await Promise.all([
     countFiles(snapshotDir),
     countDoneNamespaces(),
@@ -353,8 +386,8 @@ router.get('/snapshot', async (req, res) => {
 
   // Only the paused panel shows these two, and a running export polls this route
   // once a second — no reason to shell out to kubectl on every one of those.
-  let snapshotContext = null;
-  let currentContext = null;
+  let snapshotContext: string | null = null;
+  let currentContext: string | null = null;
   if (paused) {
     [snapshotContext, currentContext] = await Promise.all([
       readExportContext(),
@@ -364,7 +397,7 @@ router.get('/snapshot', async (req, res) => {
 
   // ETA: elapsed / doneNs * remainingNs — clamped to only decrease. The maths
   // lives in api/utils/export-eta.ts so it can be tested without an exporter.
-  let etaSeconds = null;
+  let etaSeconds: number | null = null;
   if (exportState.running && exportState.startedAt && doneNs > 0 && totalNamespaces > 0) {
     const r = nextEta({
       minEtaSeconds: exportState.minEtaSeconds,
@@ -405,5 +438,4 @@ router.get('/snapshot', async (req, res) => {
   res.json(response);
 });
 
-
-module.exports = router;
+export = router;

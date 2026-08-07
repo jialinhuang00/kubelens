@@ -13,6 +13,8 @@ cmd/k8s-export/k8s-export
 # `npm run build:server` emits these beside their .ts sources so the published
 # package runs without tsx. Build artifacts, not sources — the package.json
 # `files` list still ships them.
+api/index.js
+api/routes/*.js
 api/utils/*.js
 scripts/init.js
 shared/*.js

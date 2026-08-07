@@ -1,27 +1,49 @@
-const express = require('express');
-const { execFile, spawn } = require('child_process');
-const util = require('util');
-const { WebSocketServer } = require('ws');
-const snapshotK8s = require('../utils/snapshot-handler');
+import express from 'express';
+import type { Request, Response } from 'express';
+import type { Server as HttpServer } from 'http';
+import { execFile, spawn } from 'child_process';
+import type { ChildProcess } from 'child_process';
+import { promisify } from 'util';
+import { WebSocketServer, WebSocket } from 'ws';
+import * as snapshotK8s from '../utils/snapshot-handler';
 
-const execFileAsync = util.promisify(execFile);
+const execFileAsync = promisify(execFile);
 
 const router = express.Router();
 
-global.runningProcesses = global.runningProcesses || new Map();
+/** A live `kubectl` stream plus the output collected for it so far. */
+interface RunningProcess {
+  process: ChildProcess;
+  bufferRef: { value: string };
+}
+
+// One registry for the whole process, so the stop/clear routes can reach a
+// stream started over the WebSocket.
+declare global {
+  // eslint-disable-next-line no-var
+  var runningProcesses: Map<string, RunningProcess> | undefined;
+}
+const runningProcesses: Map<string, RunningProcess> = global.runningProcesses ?? new Map();
+global.runningProcesses = runningProcesses;
+
+/** A failed execFile carries the child's output on the error object. */
+interface ExecError extends Error {
+  stdout?: string;
+  stderr?: string;
+}
 
 // Split command string into args array, respecting quoted substrings.
 // "kubectl get pods -o custom-columns="A:.a,B:.b" -n ns"
 //  → ['get', 'pods', '-o', 'custom-columns=A:.a,B:.b', '-n', 'ns']
-function parseArgs(command) {
-  const args = [];
+function parseArgs(command: string): string[] {
+  const args: string[] = [];
   // Skip "kubectl " prefix
   let i = command.indexOf(' ');
   if (i < 0) return args;
   i++; // skip the space after kubectl
 
   let current = '';
-  let inQuote = null; // null, '"', or "'"
+  let inQuote: string | null = null; // null, '"', or "'"
 
   for (; i < command.length; i++) {
     const ch = command[i];
@@ -48,11 +70,17 @@ function parseArgs(command) {
   return args;
 }
 
+interface GetAllTable {
+  resourceType: string;
+  lines: string[];
+  resourceTypeDetected: boolean;
+}
+
 // Split kubectl get all output into separate tables
-function splitGetAllTables(output) {
+function splitGetAllTables(output: string): string {
   const lines = output.split('\n');
-  const tables = [];
-  let currentTable = null;
+  const tables: GetAllTable[] = [];
+  let currentTable: GetAllTable | null = null;
 
   const isAllNamespaces = output.includes('NAMESPACE');
 
@@ -136,7 +164,7 @@ function splitGetAllTables(output) {
  * base64-decode its data here. Mirrors the snapshot emulator so both modes return
  * the same decoded output. Returns the decoded JSON string, or null if not a match.
  */
-async function tryDecodeSecret(args) {
+async function tryDecodeSecret(args: string[]): Promise<string | null> {
   if (args[0] !== 'get' || (args[1] !== 'secret' && args[1] !== 'secrets')) return null;
   if (!args.some(a => a === 'jsonpath={.data}' || a === '{.data}')) return null;
   const name = args[2] && !args[2].startsWith('-') ? args[2] : null;
@@ -148,8 +176,8 @@ async function tryDecodeSecret(args) {
   jsonArgs.push('-o', 'json');
 
   const { stdout } = await execFileAsync('kubectl', jsonArgs, { timeout: 30000 });
-  const data = JSON.parse(stdout).data || {};
-  const decoded = {};
+  const data: Record<string, string> = JSON.parse(stdout).data || {};
+  const decoded: Record<string, string> = {};
   for (const [k, v] of Object.entries(data)) {
     try { decoded[k] = Buffer.from(v, 'base64').toString('utf-8'); }
     catch { decoded[k] = v; }
@@ -158,8 +186,8 @@ async function tryDecodeSecret(args) {
 }
 
 // POST /api/execute
-router.post('/execute', async (req, res) => {
-  const { command } = req.body;
+router.post('/execute', async (req: Request, res: Response) => {
+  const { command } = req.body as { command?: string };
 
   if (!command || !command.startsWith('kubectl')) {
     return res.status(400).json({
@@ -203,8 +231,9 @@ router.post('/execute', async (req, res) => {
       stdout: processedOutput,
       command: command
     });
-  } catch (error) {
+  } catch (err) {
     // execFile rejects with error.stderr and error.stdout on non-zero exit
+    const error = err as ExecError;
     const errorMessage = (error.stderr || error.stdout || '').trim() || error.message;
     res.json({
       success: false,
@@ -216,15 +245,15 @@ router.post('/execute', async (req, res) => {
 });
 
 // POST /api/execute/stream/stop
-router.post('/execute/stream/stop', (req, res) => {
-  const { streamId } = req.body;
+router.post('/execute/stream/stop', (req: Request, res: Response) => {
+  const { streamId } = req.body as { streamId?: string };
   if (!streamId) {
     return res.status(400).json({ error: 'streamId is required' });
   }
-  const entry = global.runningProcesses?.get(streamId);
+  const entry = runningProcesses.get(streamId);
   if (entry) {
     entry.process.kill('SIGTERM');
-    global.runningProcesses.delete(streamId);
+    runningProcesses.delete(streamId);
     console.log(`Terminated stream: ${streamId}`);
     res.json({ success: true, message: 'Stream terminated' });
   } else {
@@ -233,15 +262,22 @@ router.post('/execute/stream/stop', (req, res) => {
 });
 
 // POST /api/execute/stream/clear
-router.post('/execute/stream/clear', (req, res) => {
-  const { streamId } = req.body;
-  const entry = global.runningProcesses?.get(streamId);
+router.post('/execute/stream/clear', (req: Request, res: Response) => {
+  const { streamId } = req.body as { streamId?: string };
+  const entry = streamId ? runningProcesses.get(streamId) : undefined;
   if (entry) entry.bufferRef.value = '';
   res.json({ success: true });
 });
 
+/** The client's opening WebSocket frame. */
+interface StreamInit {
+  command?: string;
+  streamId?: string;
+  snapshot?: boolean;
+}
+
 // Attach WebSocket server to the HTTP server for /api/execute/stream/ws
-function mountWebSocket(httpServer) {
+function mountWebSocket(httpServer: HttpServer): void {
   const wss = new WebSocketServer({ noServer: true });
 
   httpServer.on('upgrade', (req, socket, head) => {
@@ -253,10 +289,10 @@ function mountWebSocket(httpServer) {
     // Other paths (e.g. webpack HMR) are left alone
   });
 
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws: WebSocket) => {
     // First message from client: { command, streamId, snapshot }
     ws.once('message', (raw) => {
-      let init;
+      let init: StreamInit;
       try {
         init = JSON.parse(raw.toString());
       } catch {
@@ -291,22 +327,22 @@ function mountWebSocket(httpServer) {
       const args = parseArgs(command);
       const proc = spawn('kubectl', args);
       const bufferRef = { value: '' };
-      global.runningProcesses.set(streamId, { process: proc, bufferRef });
+      runningProcesses.set(streamId, { process: proc, bufferRef });
 
       const cleanup = () => {
         if (proc.exitCode === null) proc.kill('SIGTERM');
-        global.runningProcesses.delete(streamId);
+        runningProcesses.delete(streamId);
       };
 
       ws.on('close', cleanup);
 
-      proc.stdout.on('data', (data) => {
+      proc.stdout?.on('data', (data: Buffer) => {
         const chunk = data.toString();
         bufferRef.value += chunk;
         sendWs(ws, { type: 'stream-data', streamId, dataType: 'stdout', data: chunk, timestamp: Date.now() });
       });
 
-      proc.stderr.on('data', (data) => {
+      proc.stderr?.on('data', (data: Buffer) => {
         const chunk = data.toString();
         bufferRef.value += chunk;
         sendWs(ws, { type: 'stream-data', streamId, dataType: 'stderr', data: chunk, timestamp: Date.now() });
@@ -315,24 +351,24 @@ function mountWebSocket(httpServer) {
       proc.on('close', (code) => {
         console.log(`[stream] end ${command} (id=${streamId} exit=${code})`);
         sendWs(ws, { type: 'stream-end', streamId, exitCode: code, fullOutput: bufferRef.value, timestamp: Date.now() });
-        global.runningProcesses.delete(streamId);
+        runningProcesses.delete(streamId);
         ws.close();
       });
 
       proc.on('error', (err) => {
         console.error(`[stream] error ${streamId}:`, err);
         sendWs(ws, { type: 'stream-error', streamId, error: err.message, timestamp: Date.now() });
-        global.runningProcesses.delete(streamId);
+        runningProcesses.delete(streamId);
         ws.close();
       });
     });
   });
 }
 
-function sendWs(ws, data) {
+function sendWs(ws: WebSocket, data: Record<string, unknown>): void {
   if (ws.readyState === 1) { // WebSocket.OPEN
     ws.send(JSON.stringify(data));
   }
 }
 
-module.exports = { router, mountWebSocket };
+export { router, mountWebSocket };

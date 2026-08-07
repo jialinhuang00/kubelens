@@ -1,21 +1,24 @@
-require('dotenv').config();
-const express = require('express');
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
+import 'dotenv/config';
+import express from 'express';
+import type { Request, Response } from 'express';
+import * as http from 'http';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.PORT || 3042;
+// Number(), not the raw env string: listen() takes a number, and an unset or
+// unparseable PORT falls through to the default the same way `|| 3042` did.
+const PORT = Number(process.env.PORT) || 3042;
 
 // Always load snapshot handler — per-request snapshot mode via ?snapshot=true
-require('./utils/snapshot-handler');
+import './utils/snapshot-handler';
 console.log('snapshot-handler loaded — use ?snapshot=true on requests to enable snapshot mode');
 
 app.use(express.json());
 
 // GET /api/debug/memory — server RSS for memory leak testing
-app.get('/api/debug/memory', (_req, res) => {
+app.get('/api/debug/memory', (_req: Request, res: Response) => {
   const m = process.memoryUsage();
   res.json({
     rss:      Math.round(m.rss      / 1024 / 1024),
@@ -25,13 +28,13 @@ app.get('/api/debug/memory', (_req, res) => {
 });
 
 // Mount routes
-const { router: executeRouter, mountWebSocket } = require('./routes/execute');
-const graphRouter = require('./routes/graph');
-const statusRouter = require('./routes/status');
-const registryRouter = require('./routes/registry');
-const snapshotRouter = require('./routes/snapshot');
-const configRouter = require('./routes/config');
-const discoveryRouter = require('./routes/discovery');
+import { router as executeRouter, mountWebSocket } from './routes/execute';
+import graphRouter from './routes/graph';
+import statusRouter from './routes/status';
+import registryRouter from './routes/registry';
+import snapshotRouter from './routes/snapshot';
+import configRouter from './routes/config';
+import discoveryRouter from './routes/discovery';
 
 app.use('/api', executeRouter);
 app.use('/api', graphRouter);
@@ -48,7 +51,7 @@ mountWebSocket(server);
 const distPath = path.join(__dirname, '..', 'dist', 'kubelens', 'browser');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
-  app.get('/{*splat}', (req, res) => {
+  app.get('/{*splat}', (req: Request, res: Response) => {
     // An /api/ path that reached here matched no route. Say so; falling through
     // without a response left the request open until the client gave up.
     if (req.path.startsWith('/api/')) {

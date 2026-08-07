@@ -2,27 +2,29 @@
 
 Who calls whom, from a click in the browser down to `kubectl`. Read this before touching `api/routes/` or any frontend service.
 
-Two backends live in this repo. The Node backend (`api/index.js`, Express 5) is what `npm run dev` runs and what this doc describes. The Go backend under `cmd/server/` is a parallel implementation, reached by `npm run dev:go`, and not covered here. It answers the same paths on purpose, and keeping it that way is manual: rename a route on one side only and `dev:go` starts returning 404 with nothing in the logs. That is exactly what happened to `/api/snapshot` between 2026-03-07 and 2026-08-07.
+Two backends live in this repo. The Node backend (`api/index.ts`, Express 5) is what `npm run dev` runs and what this doc describes. The Go backend under `cmd/server/` is a parallel implementation, reached by `npm run dev:go`, and not covered here. It answers the same paths on purpose, and keeping it that way is manual: rename a route on one side only and `dev:go` starts returning 404 with nothing in the logs. That is exactly what happened to `/api/snapshot` between 2026-03-07 and 2026-08-07.
 
 ## HTTP endpoints
 
-All routers mount under `/api` (`api/index.js:36-42`). In prod, anything outside `/api/` falls through to the SPA's `index.html` (`api/index.js:51`).
+All routers mount under `/api` (`api/index.ts:39-45`). In prod, anything outside `/api/` falls through to the SPA's `index.html` (`api/index.ts:54`).
+
+Everything under `api/` is TypeScript. `build:server` compiles each file to a `.js` beside it so the published package runs on plain node; those twins are gitignored build output. Keeping the sources uniformly `.ts` is what makes the twins harmless: under `tsx` a require resolves by the *importer's* extension, so a lone `.js` file in here would load the compiled copy of its dependencies while everything else loaded the sources.
 
 | Method | Path | Handler | Returns |
 |---|---|---|---|
-| GET | `/api/graph` | `api/routes/graph.js:85` | `{nodes, edges, pods, namespaces, stats}` |
-| POST | `/api/execute` | `api/routes/execute.js:161` | `{success, stdout, command}`; one kubectl run |
-| POST | `/api/execute/stream/stop` | `api/routes/execute.js:219` | kills a stream's process by `streamId` |
-| POST | `/api/execute/stream/clear` | `api/routes/execute.js:236` | clears a stream's buffer |
-| GET | `/api/config` | `api/routes/config.js:8` | `{resources, templates}` from `kubelens.config.yaml` |
-| GET | `/api/api-resources` | `api/routes/discovery.js:23` | discovered kinds from `kubectl api-resources` |
-| GET | `/api/registry/tags` | `api/routes/registry.js:114` | image tags; detects ECR/GAR/GCR/ACR from `?image=` |
-| POST | `/api/snapshot` | `api/routes/snapshot.js:98` | export control: `start` / `stop` / `clear` / `discard` |
-| GET | `/api/snapshot` | `api/routes/snapshot.js:321` | export progress (running, totals, ETA, contexts) |
-| GET | `/api/realtime/ping` | `api/routes/status.js:13` | kubectl health + version |
-| GET | `/api/export/ping` | `api/routes/status.js:58` | is GNU `parallel` installed |
-| GET | `/api/snapshot/ping` | `api/routes/status.js:68` | does `k8s-snapshot/.export-complete` exist |
-| GET | `/api/debug/memory` | `api/index.js:18` | rss / heap in MB |
+| GET | `/api/graph` | `api/routes/graph.ts:99` | `{nodes, edges, pods, namespaces, stats}` |
+| POST | `/api/execute` | `api/routes/execute.ts:189` | `{success, stdout, command}`; one kubectl run |
+| POST | `/api/execute/stream/stop` | `api/routes/execute.ts:248` | kills a stream's process by `streamId` |
+| POST | `/api/execute/stream/clear` | `api/routes/execute.ts:265` | clears a stream's buffer |
+| GET | `/api/config` | `api/routes/config.ts:9` | `{resources, templates}` from `kubelens.config.yaml` |
+| GET | `/api/api-resources` | `api/routes/discovery.ts:30` | discovered kinds from `kubectl api-resources` |
+| GET | `/api/registry/tags` | `api/routes/registry.ts:137` | image tags; detects ECR/GAR/GCR/ACR from `?image=` |
+| POST | `/api/snapshot` | `api/routes/snapshot.ts:122` | export control: `start` / `stop` / `clear` / `discard` |
+| GET | `/api/snapshot` | `api/routes/snapshot.ts:360` | export progress (running, totals, ETA, contexts) |
+| GET | `/api/realtime/ping` | `api/routes/status.ts:20` | kubectl health + version |
+| GET | `/api/export/ping` | `api/routes/status.ts:64` | is GNU `parallel` installed |
+| GET | `/api/snapshot/ping` | `api/routes/status.ts:74` | does `k8s-snapshot/.export-complete` exist |
+| GET | `/api/debug/memory` | `api/index.ts:21` | rss / heap in MB |
 
 Every `/api/` request can carry `?snapshot=true`. The frontend never adds it by hand: `snapshotInterceptor` (`src/app/core/interceptors/snapshot.interceptor.ts:10`) appends it to all `/api/` calls while snapshot mode is on. Handlers that see it read from `k8s-snapshot/` instead of running kubectl.
 
@@ -30,7 +32,7 @@ Every `/api/` request can carry `?snapshot=true`. The frontend never adds it by 
 
 Long-running commands (`rollout status`, `get events -w`, `wait`, `logs -f`) don't fit request/response. They stream over a native WebSocket. No socket.io anywhere; the server side is the `ws` package.
 
-The server never listens on a separate port. `mountWebSocket()` (`api/routes/execute.js:244-330`) creates a `WebSocketServer({ noServer: true })` and hooks the shared HTTP server's `upgrade` event, accepting only `req.url === '/api/execute/stream/ws'`. Other upgrades (like HMR) pass through untouched.
+The server never listens on a separate port. `mountWebSocket()` (`api/routes/execute.ts:280-368`) creates a `WebSocketServer({ noServer: true })` and hooks the shared HTTP server's `upgrade` event, accepting only `req.url === '/api/execute/stream/ws'`. Other upgrades (like HMR) pass through untouched.
 
 There is no POST to start a stream. The first WS message is the start:
 
@@ -56,7 +58,7 @@ On the frontend, `WebSocketService.connectStream()` (`src/app/core/services/webs
 
 The expensive question: how many kubectl processes does one user action cost?
 
-**Graph load — 4 calls.** `fetchLiveData()` (`api/routes/graph.js:37-82`) reads the graph kinds from `kubelens.config.yaml`, splits built-ins from CRDs, then runs one `kubectl get <all-builtins-joined> -A -o json` plus one call per CRD. The config currently lists 3 graph CRDs (Gateway, HTTPRoute, TCPRoute), so a load is 1 batch + 3 = 4 invocations, all in a single `Promise.all`. Add a graph CRD to the config and the count grows by one. Results are keyed by `group/kind` so same-named Kinds from different groups don't collide (`graph.js:49-52`).
+**Graph load — 4 calls.** `fetchLiveData()` (`api/routes/graph.ts:51-96`) reads the graph kinds from `kubelens.config.yaml`, splits built-ins from CRDs, then runs one `kubectl get <all-builtins-joined> -A -o json` plus one call per CRD. The config currently lists 3 graph CRDs (Gateway, HTTPRoute, TCPRoute), so a load is 1 batch + 3 = 4 invocations, all in a single `Promise.all`. Add a graph CRD to the config and the count grows by one. Results are keyed by `group/kind` so same-named Kinds from different groups don't collide (`graph.ts:64-67`).
 
 **Terminal namespace select — 2 phases.** `ResourceTreeService.loadForNamespace()` (`src/app/features/terminal/services/resource-tree.service.ts:85-135`) runs phase 1 as one batch `kubectl get <priority-kinds> -n <ns> -o name` (`KubectlService.getResourceNamesBatch()`, `kubectl.service.ts:250`), renders the tree, then phase 2 fetches every remaining kind in parallel, one call each (`getResourceNames()`, `kubectl.service.ts:281`). Priority kinds show up fast; the long tail fills in behind.
 
