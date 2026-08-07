@@ -41,22 +41,27 @@ export function findItem(yamlData: K8sList | null, name: string): K8sItem | null
  * Right-pad a value to a fixed width with spaces. Used for table column alignment.
  * @param str - Value to pad (coerced to string; null/undefined → '')
  * @param len - Target width
- * A value at least as long as the column gets a single trailing space rather
- * than none. Without it the column runs into the next one and the row becomes
- * unreadable: `kubectl get svc` printed `LoadBalancer10.96.155.77`, because
- * TYPE is 12 wide and `LoadBalancer` is 12 characters. Widening the column only
- * moves the problem — a ConfigMap or Role name can be any length at all.
+ * A value at least as long as the column gets TWO trailing spaces, not one and
+ * not none. `kubectl get svc` printed `LoadBalancer10.96.155.77`, because TYPE
+ * is 12 wide and `LoadBalancer` is 12 characters. Widening the column only moves
+ * the problem — a ConfigMap or Role name can be any length at all.
+ *
+ * Two, because the frontend splits these rows back into columns on
+ * `/\s{2,}/` (dashboard/services/output-parser.service.ts). One space reads
+ * fine as text and still merges TYPE and CLUSTER-IP into a single cell, which
+ * shifts every later column left by one — worse than the run-together text,
+ * because the row looks plausible and is wrong.
  *
  * @returns Padded string. Never truncates.
  * @example
  * pad('web', 10)     // → 'web       '
- * pad('toolong', 3)  // → 'toolong '
+ * pad('toolong', 3)  // → 'toolong  '
  * pad(42, 5)         // → '42   '
  * pad(null, 3)       // → '   '
  */
 export function pad(str: unknown, len: number): string {
   const s = String(str || '');
-  return s.length >= len ? s + ' ' : s + ' '.repeat(len - s.length);
+  return s.length >= len ? s + '  ' : s + ' '.repeat(len - s.length);
 }
 
 /**

@@ -66,16 +66,25 @@ describe('pad', () => {
     assert.equal(pad('hi', 5), 'hi   ');
   });
 
-  // A value that fills or overflows its column still gets one space, so the row
-  // stays readable. `kubectl get svc` printed `LoadBalancer10.96.155.77`
-  // because TYPE is 12 wide and `LoadBalancer` is 12 characters, and no
-  // column width can prevent it for a name the user chose.
-  it('adds one space when the value exactly fills the column', () => {
-    assert.equal(pad('hello', 5), 'hello ');
+  // A value that fills or overflows its column gets two spaces. `kubectl get
+  // svc` printed `LoadBalancer10.96.155.77` because TYPE is 12 wide and
+  // `LoadBalancer` is 12 characters, and no column width can prevent it for a
+  // name the user chose. Two and not one because the frontend splits these rows
+  // back into cells on /\s{2,}/ — one space leaves the two values in one cell.
+  it('adds two spaces when the value exactly fills the column', () => {
+    assert.equal(pad('hello', 5), 'hello  ');
   });
 
-  it('adds one space when the value overflows, and never truncates', () => {
-    assert.equal(pad('toolong', 3), 'toolong ');
+  it('adds two spaces when the value overflows, and never truncates', () => {
+    assert.equal(pad('toolong', 3), 'toolong  ');
+  });
+
+  it('leaves a gap the frontend parser can split on', () => {
+    // The invariant that matters: after padding, /\s{2,}/ separates the value
+    // from whatever follows it. This is the check the earlier one-space fix
+    // would have failed while still looking correct as text.
+    const row = pad('LoadBalancer', 12) + pad('10.96.155.77', 17) + '<none>';
+    assert.deepEqual(row.split(/\s{2,}/), ['LoadBalancer', '10.96.155.77', '<none>']);
   });
 
   it('converts non-string to string', () => {

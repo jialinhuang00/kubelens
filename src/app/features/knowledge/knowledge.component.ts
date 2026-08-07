@@ -1,5 +1,5 @@
 import {
-  Component, OnInit, AfterViewChecked,
+  Component, AfterViewChecked,
   ViewChild, ViewChildren, ElementRef, QueryList,
   signal, computed, inject, effect,
 } from '@angular/core';
@@ -1223,7 +1223,7 @@ export const CRD_GLOSSARY: Record<CrdField, CrdInfo> = {
   templateUrl: './knowledge.component.html',
   styleUrls: ['./knowledge.component.scss'],
 })
-export class KnowledgeComponent implements OnInit, AfterViewChecked {
+export class KnowledgeComponent implements AfterViewChecked {
   private readonly router       = inject(Router);
   protected readonly dataModeService = inject(DataModeService);
   private readonly themeService = inject(ThemeService);
@@ -1328,12 +1328,13 @@ export class KnowledgeComponent implements OnInit, AfterViewChecked {
 
   private needsPathUpdate = false;
 
-  ngOnInit(): void {
-    effect(() => {
-      this.themeService.activeTheme(); // track theme changes
-      this.edgeColors.set(getThemedEdgeColors());
-    });
-  }
+  // Field initializer, not ngOnInit. effect() needs an injection context, and a
+  // lifecycle hook is not one — Angular threw NG0203 on every visit to this page
+  // and the effect never registered at all.
+  private readonly themeSync = effect(() => {
+    this.themeService.activeTheme(); // track theme changes
+    this.edgeColors.set(getThemedEdgeColors());
+  });
 
   ngAfterViewChecked(): void {
     if (this.needsPathUpdate) {
