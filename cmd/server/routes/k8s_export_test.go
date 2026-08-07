@@ -48,6 +48,12 @@ func withSnapshotDir(t *testing.T) string {
 	snapshotDir = dir
 	t.Cleanup(func() { snapshotDir = prev })
 
+	// Stub the live-cluster lookup: the real one reads this machine's kubeconfig,
+	// so its result cannot be asserted and the test would depend on the developer.
+	prevCtx := currentKubectlContext
+	currentKubectlContext = func() *string { return nil }
+	t.Cleanup(func() { currentKubectlContext = prevCtx })
+
 	// Reset field by field: assigning a fresh struct would overwrite state.mu
 	// while it is held, and a zeroed mutex unlocks into a fatal error.
 	state.mu.Lock()
@@ -132,6 +138,85 @@ func TestDiscardResetsPausedDismissed(t *testing.T) {
 	}
 }
 
+// A start→stop that produced nothing has nothing to resume. Trusting the
+// in-memory paused flag left the modal up forever with a single Resume button.
+func TestStopWithZeroFilesIsNotPaused(t *testing.T) {
+	dir := withSnapshotDir(t)
+	os.RemoveAll(filepath.Join(dir, "demo"))
+
+	state.mu.Lock()
+	state.paused = true // what handleExportStop leaves behind
+	state.mu.Unlock()
+
+	if got := progress(t); got["paused"] != false {
+		t.Fatalf("paused = %v with 0 files, want false — nothing to resume", got["paused"])
+	}
+}
+
+// A failed export that left half a directory belongs to the error panel (Retry /
+// Dismiss), not the paused panel (Resume / Start over). Node has always had the
+// `&& !error` term; this side did not.
+func TestErrorSuppressesPaused(t *testing.T) {
+	withSnapshotDir(t)
+
+	state.mu.Lock()
+	state.err = "Process exited with code 1"
+	state.mu.Unlock()
+
+	if got := progress(t); got["paused"] != false {
+		t.Fatalf("paused = %v with an error set, want false", got["paused"])
+	}
+}
+
+// The frontend prints this on the done panel; Go omitted the key entirely, so
+// `elapsed()` was empty and the sentence lost its "in 12s".
+func TestProgressReportsElapsedSecondsAfterARun(t *testing.T) {
+	withSnapshotDir(t)
+
+	twelve := 12
+	state.mu.Lock()
+	state.elapsedSeconds = &twelve
+	state.mu.Unlock()
+
+	if got := progress(t); got["elapsedSeconds"] != float64(12) {
+		t.Fatalf("elapsedSeconds = %v, want 12", got["elapsedSeconds"])
+	}
+}
+
+func TestProgressCarriesEveryFieldNodeReturns(t *testing.T) {
+	withSnapshotDir(t)
+
+	// src/app/core/services/snapshot.service.ts:9-21, the ExportProgress interface.
+	want := []string{
+		"running", "paused", "totalNamespaces", "completedNamespaces",
+		"currentNamespace", "activeResources", "fileCount", "etaSeconds",
+		"elapsedSeconds", "error", "snapshotContext", "currentContext",
+	}
+	got := progress(t)
+	for _, k := range want {
+		if _, ok := got[k]; !ok {
+			t.Errorf("response is missing %q — the frontend reads it from both backends", k)
+		}
+	}
+}
+
+// Starting a fresh export over a finished snapshot used to report the previous
+// run's file count until the exporter got around to deleting the directory, so
+// the progress bar opened at 100%.
+func TestFreshStartSuppressesThePreviousRunsCounts(t *testing.T) {
+	withSnapshotDir(t)
+
+	state.mu.Lock()
+	state.freshStart = true
+	state.mu.Unlock()
+
+	got := progress(t)
+	if got["fileCount"] != float64(0) || got["totalNamespaces"] != float64(0) {
+		t.Fatalf("fileCount=%v totalNamespaces=%v during a fresh start, want 0 and 0",
+			got["fileCount"], got["totalNamespaces"])
+	}
+}
+
 func TestStopRejectedWhenNothingRunning(t *testing.T) {
 	withSnapshotDir(t)
 
@@ -151,6 +236,21 @@ func TestProgressReportsRecordedContext(t *testing.T) {
 
 	if got := progress(t); got["snapshotContext"] != "kind-kubelens-demo" {
 		t.Fatalf("snapshotContext = %v, want kind-kubelens-demo", got["snapshotContext"])
+	}
+}
+
+func TestProgressReportsBothContexts(t *testing.T) {
+	dir := withSnapshotDir(t)
+	os.WriteFile(filepath.Join(dir, ".export-context"), []byte(`{"context":"kind-kubelens-demo"}`+"\n"), 0644)
+	live := "arn:aws:eks:ap-northeast-1:000000000000:cluster/staging"
+	currentKubectlContext = func() *string { return &live }
+
+	got := progress(t)
+	if got["snapshotContext"] != "kind-kubelens-demo" {
+		t.Errorf("snapshotContext = %v", got["snapshotContext"])
+	}
+	if got["currentContext"] != live {
+		t.Errorf("currentContext = %v, want %q", got["currentContext"], live)
 	}
 }
 

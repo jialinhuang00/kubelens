@@ -24,6 +24,8 @@ let snapshotDir: string;
 let prevCwd: string;
 let server: Server;
 let baseUrl: string;
+/** Set per test; the real kubectl is never reached. */
+let stubbedContext: string | null = null;
 
 /** POST /api/snapshot with a command body. */
 async function post(body: Record<string, unknown>) {
@@ -54,6 +56,12 @@ before(async () => {
   fs.mkdirSync(snapshotDir, { recursive: true });
   process.chdir(tmpRoot);
 
+  // Replace the live-cluster lookup before the route can call it. Left alone it
+  // shells out to whatever kubeconfig this machine has: unassertable, and a unit
+  // test reading the developer's cluster settings.
+  const { kubectlContext } = require(path.join(prevCwd, 'api', 'utils', 'kubectl-context.ts'));
+  kubectlContext.current = async () => stubbedContext;
+
   const express = require('express');
   const router = require(path.join(prevCwd, 'api', 'routes', 'snapshot.js'));
   const app = express();
@@ -73,9 +81,11 @@ after(() => {
 });
 
 beforeEach(async () => {
-  seedPartialExport();
-  // Clears the in-memory dismissal left by whichever test ran last. The module
-  // keeps one exportState for the process, so state does leak between tests.
+  stubbedContext = null;
+  // discard is the reset: it deletes the directory *and* clears the in-memory
+  // dismissal the previous test may have set. The module keeps one exportState
+  // for the whole process, so that flag really does leak between tests. Seeding
+  // has to come after, or the discard would delete what was just seeded.
   await post({ command: 'discard' });
   seedPartialExport();
 });
@@ -115,6 +125,35 @@ describe('GET /api/snapshot', () => {
   it('returns null rather than a name for a corrupt .export-context', async () => {
     fs.writeFileSync(path.join(snapshotDir, '.export-context'), 'not json at all\n');
     assert.equal((await progress()).snapshotContext, null);
+  });
+
+  it('returns the live kubectl context beside the recorded one', async () => {
+    stubbedContext = 'kind-kubelens-demo';
+    fs.writeFileSync(
+      path.join(snapshotDir, '.export-context'),
+      JSON.stringify({ context: 'kind-kubelens-demo' }) + '\n',
+    );
+    const p = await progress();
+    assert.equal(p.snapshotContext, 'kind-kubelens-demo');
+    assert.equal(p.currentContext, 'kind-kubelens-demo');
+  });
+
+  // The case the panel turns red for: same directory, two clusters.
+  it('reports the two contexts separately when they differ', async () => {
+    stubbedContext = 'arn:aws:eks:ap-northeast-1:000000000000:cluster/staging';
+    fs.writeFileSync(
+      path.join(snapshotDir, '.export-context'),
+      JSON.stringify({ context: 'kind-kubelens-demo' }) + '\n',
+    );
+    const p = await progress();
+    assert.equal(p.snapshotContext, 'kind-kubelens-demo');
+    assert.equal(p.currentContext, 'arn:aws:eks:ap-northeast-1:000000000000:cluster/staging');
+    assert.notEqual(p.snapshotContext, p.currentContext);
+  });
+
+  it('reports a null live context when kubectl has none', async () => {
+    stubbedContext = null;
+    assert.equal((await progress()).currentContext, null);
   });
 
   it('skips the context lookup entirely when not paused', async () => {

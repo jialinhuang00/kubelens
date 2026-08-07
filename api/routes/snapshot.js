@@ -1,7 +1,5 @@
 const express = require('express');
-const { spawn, execFile } = require('child_process');
-const { promisify } = require('util');
-const execFileAsync = promisify(execFile);
+const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const fsp = fs.promises;
@@ -9,6 +7,8 @@ const fsp = fs.promises;
 const router = express.Router();
 
 const { PKG_ROOT, resolveDataPath } = require('../utils/paths');
+const { nextEta } = require('../utils/export-eta');
+const { kubectlContext } = require('../utils/kubectl-context');
 
 // Where snapshots are read from and written to. The export child runs with this
 // directory's parent as its cwd, so the scripts' relative 'k8s-snapshot' lands
@@ -65,15 +65,6 @@ async function readExportContext() {
     return JSON.parse(raw).context || null;
   } catch {
     return null;
-  }
-}
-
-async function currentKubectlContext() {
-  try {
-    const { stdout } = await execFileAsync('kubectl', ['config', 'current-context'], { timeout: 3000 });
-    return stdout.trim() || null;
-  } catch {
-    return null; // no kubectl, no kubeconfig, or no context selected
   }
 }
 
@@ -178,6 +169,11 @@ router.post('/snapshot', async (req, res) => {
     activeNamespaces: new Set(),
     activeResources: new Set(),
     fileCount: 0,
+    // Rebuilt from a literal, so every field of the initial state has to be
+    // repeated here. Leaving this one out is what made the ETA disappear from
+    // the second export onward: it arrived at the clamp as undefined instead of
+    // null. `nextEta` no longer cares, but the omission was still a bug.
+    minEtaSeconds: null,
     error: null,
     output: '',
     freshStart: !resume,  // suppress stale filesystem counts on first polls
@@ -352,22 +348,22 @@ router.get('/snapshot', async (req, res) => {
   if (paused) {
     [snapshotContext, currentContext] = await Promise.all([
       readExportContext(),
-      currentKubectlContext(),
+      kubectlContext.current(),
     ]);
   }
 
-  // ETA: elapsed / doneNs * remainingNs — clamped to only decrease
+  // ETA: elapsed / doneNs * remainingNs — clamped to only decrease. The maths
+  // lives in api/utils/export-eta.ts so it can be tested without an exporter.
   let etaSeconds = null;
   if (exportState.running && exportState.startedAt && doneNs > 0 && totalNamespaces > 0) {
-    const elapsed = (Date.now() - exportState.startedAt) / 1000;
-    const avgPerNs = elapsed / doneNs;
-    const remaining = totalNamespaces - doneNs;
-    const rawEta = Math.round(avgPerNs * remaining);
-    // Clamp: ETA can only decrease, never jump upward
-    if (exportState.minEtaSeconds === null || rawEta < exportState.minEtaSeconds) {
-      exportState.minEtaSeconds = rawEta;
-    }
-    etaSeconds = exportState.minEtaSeconds;
+    const r = nextEta({
+      minEtaSeconds: exportState.minEtaSeconds,
+      elapsedSeconds: (Date.now() - exportState.startedAt) / 1000,
+      doneNamespaces: doneNs,
+      totalNamespaces,
+    });
+    exportState.minEtaSeconds = r.minEtaSeconds;
+    etaSeconds = r.etaSeconds;
   }
 
   // Suppress stale filesystem counts until the new export's first stdout arrives

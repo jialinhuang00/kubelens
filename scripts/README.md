@@ -2,7 +2,14 @@
 
 Snapshot **export** writes your live cluster out to `k8s-snapshot/`. There are
 several implementations on purpose — they're the comparison set behind the in-app
-**benchmark** feature (which export strategy is fastest), not redundant copies:
+**benchmark** feature (which export strategy is fastest), not redundant copies.
+
+They write the same file layout, so the app reads any of them the same way. Their
+command lines are not interchangeable. `-n` is the one that bites: bash clears
+only the namespaces you named and leaves the rest of the previous snapshot alone,
+while node / workers / procs / go delete the whole directory first. Same flag,
+opposite meaning for everything you did not name. The server never passes `-n`, so
+this only reaches you from the CLI.
 
 - `snapshot-bash.sh` — bash, parallel batched
 - `snapshot-node.js` — node, sequential
@@ -13,8 +20,8 @@ several implementations on purpose — they're the comparison set behind the in-
 
 ## Every exporter writes the same two dotfiles
 
-All five implementations produce an interchangeable `k8s-snapshot/`, which means
-five copies of this, and a missed one is invisible until someone runs that mode:
+Five copies of the same write, and a missed one stays invisible until someone
+runs that mode:
 
 ```
 .export-context    after the clean, before the first fetch

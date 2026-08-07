@@ -29,6 +29,14 @@ type exportState struct {
 	pausedDismissed    bool
 	pid                int
 	startedAt          time.Time
+	// How long the last finished run took. The frontend prints it on the done
+	// panel ("Export complete — 47 files in 12s"), so a missing value is not
+	// an error, just a shorter sentence.
+	elapsedSeconds     *int
+	// True from the moment a fresh (non-resume) export starts until its first
+	// progress line arrives. Until then the directory still holds the previous
+	// export, and reporting those counts makes a new run appear to begin at 100%.
+	freshStart         bool
 	totalNamespaces    int
 	completedNamespaces int
 	activeNamespaces   map[string]struct{}
@@ -119,9 +127,25 @@ func handleExportStart(w http.ResponseWriter, r *http.Request, rawBody []byte) {
 		args = append(args, "--resume")
 	}
 
+	// A fresh start drops the previous run's markers before spawning. Without
+	// this the first polls see .export-complete from last time and report the
+	// new export as already finished.
+	if !body.Resume {
+		os.Remove(filepath.Join(snapshotDir, ".export-complete"))
+		if entries, err := os.ReadDir(snapshotDir); err == nil {
+			for _, e := range entries {
+				if e.IsDir() {
+					os.Remove(filepath.Join(snapshotDir, e.Name(), ".done"))
+				}
+			}
+		}
+	}
+
 	state.running = true
 	state.paused = false
 	state.pausedDismissed = false
+	state.elapsedSeconds = nil
+	state.freshStart = !body.Resume
 	state.pid = 0
 	state.startedAt = time.Now()
 	state.totalNamespaces = 0
@@ -160,6 +184,10 @@ func handleExportStart(w http.ResponseWriter, r *http.Request, rawBody []byte) {
 		cmd.Wait()
 		count, _ := countFiles(snapshotDir)
 		state.mu.Lock()
+		if !state.startedAt.IsZero() {
+			secs := int(time.Since(state.startedAt).Seconds())
+			state.elapsedSeconds = &secs
+		}
 		state.running = false
 		state.pid = 0
 		state.fileCount = count
@@ -235,17 +263,17 @@ func handleExportProgress(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	paused := state.paused
-	if !state.running && !state.paused {
-		if hasComplete {
-			paused = false
-		} else if liveCount > 0 {
-			paused = true
-		}
-	}
-	if state.pausedDismissed {
-		paused = false
-	}
+	// Derived from the filesystem, never from state.paused alone, and the same
+	// four conditions as api/routes/snapshot.js. Trusting the in-memory flag
+	// instead meant a stop that produced zero files stayed "paused" forever,
+	// showing a modal whose only button was Resume with nothing to resume; and
+	// a failed export that left half a directory got the paused panel here
+	// while Node showed the error panel with Retry.
+	paused := !state.running &&
+		!hasComplete &&
+		liveCount > 0 &&
+		state.err == "" &&
+		!state.pausedDismissed
 
 	// Only the paused panel shows these two, and a running export polls this route
 	// once a second — no reason to shell out to kubectl on every one of those.
@@ -267,6 +295,22 @@ func handleExportProgress(w http.ResponseWriter, r *http.Request) {
 		etaSeconds = state.minEtaSeconds
 	}
 
+	// Suppress the previous export's counts until the new one's first progress
+	// line arrives, or a fresh run appears to start at 100%.
+	if state.freshStart {
+		liveCount = 0
+		doneNs = 0
+		totalNs = 0
+	}
+
+	// While running, count up from startedAt; once finished, report what the
+	// completed run took.
+	elapsedSeconds := state.elapsedSeconds
+	if state.running && !state.startedAt.IsZero() {
+		secs := int(time.Since(state.startedAt).Seconds())
+		elapsedSeconds = &secs
+	}
+
 	activeNsList := make([]string, 0, len(state.activeNamespaces))
 	for ns := range state.activeNamespaces {
 		activeNsList = append(activeNsList, ns)
@@ -285,6 +329,7 @@ func handleExportProgress(w http.ResponseWriter, r *http.Request) {
 		"activeResources":     activeResList,
 		"fileCount":           liveCount,
 		"etaSeconds":          etaSeconds,
+		"elapsedSeconds":      elapsedSeconds,
 		"error":               state.err,
 		"snapshotContext":     snapshotContext,
 		"currentContext":      currentContext,
@@ -308,7 +353,11 @@ func readExportContext() *string {
 	return &parsed.Context
 }
 
-func currentKubectlContext() *string {
+// Which cluster kubectl is pointed at right now. A package var rather than a
+// plain function so tests can replace it; left alone it reads whatever
+// kubeconfig the machine has, which is both unassertable and a unit test
+// reaching outside the repo.
+var currentKubectlContext = func() *string {
 	out, err := exec.Command("kubectl", "config", "current-context").Output()
 	if err != nil {
 		return nil // no kubectl, no kubeconfig, or no context selected
@@ -395,6 +444,7 @@ func pipeOutput(r io.Reader, _ bool) {
 
 			if m := reDiscovered.FindStringSubmatch(text); m != nil {
 				fmt.Sscanf(m[1], "%d", &state.totalNamespaces)
+				state.freshStart = false // the exporter is rewriting the directory now
 			}
 
 			skipped := map[string]bool{}

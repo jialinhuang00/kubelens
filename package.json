@@ -45,7 +45,7 @@
     "init": "tsx scripts/init.ts",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "test:utils": "K8S_SNAPSHOT_PATH=/nonexistent-kubelens-test-snapshot tsx --test api/utils/**/*.spec.ts api/routes/**/*.spec.ts",
+    "test:utils": "K8S_SNAPSHOT_PATH=/nonexistent-kubelens-test-snapshot tsx --test 'api/utils/**/*.spec.ts' 'api/routes/**/*.spec.ts'",
     "test:go": "go -C cmd/server test ./...",
     "test:utils:cov": "K8S_SNAPSHOT_PATH=/nonexistent-kubelens-test-snapshot npx c8 --include='api/utils/*.ts' --exclude='api/utils/*.spec.ts' --exclude='api/utils/test-fixtures.ts' tsx --test 'api/utils/**/*.spec.ts'",
     "test:e2e": "playwright test",

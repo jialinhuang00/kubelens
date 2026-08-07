@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# k8s-export.sh — Dump all k8s resources to k8s-snapshot/ for offline use
+# snapshot-bash.sh — Dump all k8s resources to k8s-snapshot/ for offline use
 #
 # Usage:
-#   ./scripts/k8s-export.sh                          # all namespaces (default)
-#   ./scripts/k8s-export.sh -n my-namespace           # single namespace
-#   ./scripts/k8s-export.sh -n demo -n kube-system   # multiple namespaces
-#   ./scripts/k8s-export.sh --cluster-scoped           # also export cluster-scoped resources
-#   ./scripts/k8s-export.sh --resume                    # skip already-exported files
-#   ./scripts/k8s-export.sh --jobs 3                    # parallel namespaces (default: 3)
+#   ./scripts/snapshot-bash.sh                        # all namespaces; replaces the directory
+#   ./scripts/snapshot-bash.sh -n my-namespace        # one namespace; keeps the rest of the
+#   ./scripts/snapshot-bash.sh -n demo -n kube-system #   previous snapshot, unlike the node
+#                                                     #   and go exporters, which wipe first
+#   ./scripts/snapshot-bash.sh --cluster-scoped       # also export cluster-scoped resources
+#   ./scripts/snapshot-bash.sh --resume               # skip already-exported files
+#   ./scripts/snapshot-bash.sh --jobs 3               # parallel namespaces (default: 3)
 
 set -euo pipefail
 
@@ -131,14 +132,33 @@ else
 fi
 
 # Record which cluster this run reads from. Written after the clean above, since
-# a fresh export deletes the whole directory first. The paused panel compares
-# this against the live kubectl context: it is the only place that knows, because
-# a run stopped halfway has no .export-complete to read. A resume keeps whatever
-# is already here — overwriting it would erase the very context being compared.
+# a full export deletes the whole directory first. The paused panel compares this
+# against the live kubectl context: it is the only place that knows, because a run
+# stopped halfway has no .export-complete to read.
+#
+# Only a run that replaced the whole directory may replace this file. The other
+# two paths keep what is already there, and refuse when it names a different
+# cluster: export everything from A, then `-n foo` against B, and the directory
+# holds A's namespaces plus foo from B. There is no honest single value to write
+# — whichever cluster this file names, the panel compares it to the live context,
+# reports a match, and lets Resume finish mixing the two.
 mkdir -p "$BASE_DIR"
-if [[ "$RESUME" != "true" || ! -f "${BASE_DIR}/.export-context" ]]; then
+CONTEXT_FILE="${BASE_DIR}/.export-context"
+FULL_WIPE=false
+[[ "$RESUME" != "true" && "$ALL_NS" == true ]] && FULL_WIPE=true
+
+if [[ "$FULL_WIPE" == true || ! -f "$CONTEXT_FILE" ]]; then
   printf '{"context":"%s","startedAt":"%s"}\n' \
-    "$CONTEXT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "${BASE_DIR}/.export-context"
+    "$CONTEXT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$CONTEXT_FILE"
+else
+  RECORDED=$(sed -n 's/.*"context"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$CONTEXT_FILE")
+  if [[ -n "$RECORDED" && "$RECORDED" != "$CONTEXT" ]]; then
+    printf "\n${RED}ERROR: %s holds a snapshot of %s, and kubectl is on %s.${RESET}\n" \
+      "$BASE_DIR" "$RECORDED" "$CONTEXT" >&2
+    printf "Adding namespaces from a second cluster would leave both in one directory.\n" >&2
+    printf "Run a full export to replace it, switch context back, or set K8S_SNAPSHOT_DIR elsewhere.\n" >&2
+    exit 1
+  fi
 fi
 
 # --- Namespace export function ---
