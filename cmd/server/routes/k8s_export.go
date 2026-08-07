@@ -65,14 +65,56 @@ var state = &exportState{
 // assigns it.
 var snapshotDir = store.SnapshotDir
 
+// The exporters' stdout is a third interface between these two backends, next to
+// the route names and the JSON fields, and it drifted the same way. All five
+// exporters print `<ns> start` and prefix their resource lines with a padded
+// `[ns]` tag; these patterns looked for `=== Namespace: x ===`, which only
+// appears on a resume-skip line, and for `fetching` with no tag in front of it.
+// Nothing here matched anything, so `dev:go` showed an export with no current
+// namespace and no resource line. Mirrors api/utils/export-progress.ts.
+const nsTag = `(?:\[\S+\]\s+)?`
+
 var (
 	reDiscovered = regexp.MustCompile(`Discovered (\d+) namespaces`)
 	reSkip       = regexp.MustCompile(`=== Namespace: (.+?) === \(complete, skipping\)`)
-	reNs         = regexp.MustCompile(`=== Namespace: (\S+?) ===`)
+	reNs         = regexp.MustCompile(`(?m)^(\S+) start$`)
 	reDoneNs     = regexp.MustCompile(`✓ Namespace (\S+) completed`)
-	reFetch      = regexp.MustCompile(`→ fetching (\S+)`)
-	reDoneRes    = regexp.MustCompile(`← (\S+) (?:done|failed)`)
+	reFetch      = regexp.MustCompile(`→ ` + nsTag + `fetching (\S+)`)
+	reDoneRes    = regexp.MustCompile(`← ` + nsTag + `(\S+) (?:done|failed)`)
 )
+
+// applyProgressChunk folds one chunk of exporter stdout into the state. Chunks
+// arrive split at arbitrary byte offsets. The caller holds state.mu.
+func applyProgressChunk(s *exportState, text string) {
+	if m := reDiscovered.FindStringSubmatch(text); m != nil {
+		fmt.Sscanf(m[1], "%d", &s.totalNamespaces)
+		s.freshStart = false // the exporter is rewriting the directory now
+	}
+
+	skipped := map[string]bool{}
+	for _, m := range reSkip.FindAllStringSubmatch(text, -1) {
+		s.completedNamespaces++
+		skipped[m[1]] = true
+	}
+	for _, m := range reNs.FindAllStringSubmatch(text, -1) {
+		if !skipped[m[1]] {
+			s.activeNamespaces[m[1]] = struct{}{}
+		}
+	}
+	for _, m := range reDoneNs.FindAllStringSubmatch(text, -1) {
+		delete(s.activeNamespaces, m[1])
+	}
+	for _, m := range reFetch.FindAllStringSubmatch(text, -1) {
+		for _, res := range strings.Split(m[1], ",") {
+			s.activeResources[res] = struct{}{}
+		}
+	}
+	for _, m := range reDoneRes.FindAllStringSubmatch(text, -1) {
+		for _, res := range strings.Split(m[1], ",") {
+			delete(s.activeResources, res)
+		}
+	}
+}
 
 // The frontend calls GET /api/snapshot and POST /api/snapshot with a `command`
 // field. These used to be /api/k8s-export/{start,progress,stop}; commit daed7fa
@@ -486,34 +528,7 @@ func pipeOutput(r io.Reader, isStderr bool) {
 				}
 			}
 
-			if m := reDiscovered.FindStringSubmatch(text); m != nil {
-				fmt.Sscanf(m[1], "%d", &state.totalNamespaces)
-				state.freshStart = false // the exporter is rewriting the directory now
-			}
-
-			skipped := map[string]bool{}
-			for _, m := range reSkip.FindAllStringSubmatch(text, -1) {
-				state.completedNamespaces++
-				skipped[m[1]] = true
-			}
-			for _, m := range reNs.FindAllStringSubmatch(text, -1) {
-				if !skipped[m[1]] {
-					state.activeNamespaces[m[1]] = struct{}{}
-				}
-			}
-			for _, m := range reDoneNs.FindAllStringSubmatch(text, -1) {
-				delete(state.activeNamespaces, m[1])
-			}
-			for _, m := range reFetch.FindAllStringSubmatch(text, -1) {
-				for _, res := range strings.Split(m[1], ",") {
-					state.activeResources[res] = struct{}{}
-				}
-			}
-			for _, m := range reDoneRes.FindAllStringSubmatch(text, -1) {
-				for _, res := range strings.Split(m[1], ",") {
-					delete(state.activeResources, res)
-				}
-			}
+			applyProgressChunk(state, text)
 			state.mu.Unlock()
 		}
 		if err != nil {

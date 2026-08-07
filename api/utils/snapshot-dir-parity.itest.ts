@@ -4,6 +4,7 @@ import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { pathToFileURL } from 'url';
 
 import { PKG_ROOT } from './paths';
 
@@ -44,11 +45,22 @@ function usable(binary: string, probeArgs: string[]): boolean {
   }
 }
 
-/** The directory `snapshotDir()` resolves to, asked in a clean child process. */
+/**
+ * The directory `snapshotDir()` resolves to, asked in a clean child process.
+ *
+ * Loaded through tsx from the TypeScript source. This used to require
+ * `paths.js`, which only exists after `build:server`, so the suite passed or
+ * failed on whether stale build output happened to be lying around — and the
+ * failure read as "the implementations disagree", not "there is nothing to load".
+ */
 function appAnswer(cwd: string, env: NodeJS.ProcessEnv): string {
+  // tsx resolved absolutely: the child's cwd is a temp directory with no
+  // node_modules, so a bare `--import tsx` finds nothing there.
+  const tsx = require.resolve('tsx');
   const out = execFileSync(process.execPath, [
+    '--import', pathToFileURL(tsx).href,
     '-e',
-    `const {snapshotDir} = require(${JSON.stringify(path.join(PKG_ROOT, 'api', 'utils', 'paths.js'))});` +
+    `const {snapshotDir} = require(${JSON.stringify(path.join(PKG_ROOT, 'api', 'utils', 'paths.ts'))});` +
     'process.stdout.write(snapshotDir());',
   ], { cwd, env, encoding: 'utf8' });
   return out.trim();

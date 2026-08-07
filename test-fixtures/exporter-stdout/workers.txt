@@ -1,0 +1,29 @@
+Cluster context: kind-kubelens-demo
+Export target:   /var/folders/pr/ld1zbz6d0ld7vc8hhv6fk9hr0000gn/T/tmp.6b3JRLaptI/workers
+Namespaces:      demo
+Worker threads:  1
+
+demo start
+[33m  → [demo]               fetching deployments,replicasets,statefulsets,daemonsets,cronjobs,jobs[0m
+[33m  → [demo]               fetching services,ingresses,endpoints[0m
+[33m  → [demo]               fetching configmaps,secrets,serviceaccounts[0m
+[33m  → [demo]               fetching persistentvolumeclaims,roles,rolebindings[0m
+[33m  → [demo]               fetching networkpolicies,horizontalpodautoscalers,poddisruptionbudgets[0m
+[33m  → [demo]               fetching gateways,httproutes,tcproutes,applications[0m
+[33m  → [demo]               fetching pods[0m
+[32m  ← [demo]               networkpolicies,horizontalpodautoscalers,poddisruptionbudgets done[0m
+[32m  ← [demo]               persistentvolumeclaims,roles,rolebindings done[0m
+[32m  ← [demo]               gateways,httproutes,tcproutes,applications done[0m
+[32m  ← [demo]               pods done[0m
+[32m  ← [demo]               services,ingresses,endpoints done[0m
+[32m  ← [demo]               deployments,replicasets,statefulsets,daemonsets,cronjobs,jobs done[0m
+[32m  ← [demo]               configmaps,secrets,serviceaccounts done[0m
+[32m✓ Namespace demo completed in 0s[0m
+
+╔══════════════════════════════════════════════════════════╗
+║  Export Complete                                         ║
+╠══════════════════════════════════════════════════════════╣
+║  Files: 10 files
+║  Size:  101.0K
+║  Time:  0s
+╚══════════════════════════════════════════════════════════╝

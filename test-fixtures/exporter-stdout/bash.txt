@@ -1,0 +1,45 @@
+Cluster context: kind-kubelens-demo
+Export target:   /var/folders/pr/ld1zbz6d0ld7vc8hhv6fk9hr0000gn/T/tmp.6b3JRLaptI/bash
+Namespaces:      demo
+Parallel jobs:   3
+
+Using GNU parallel (--jobs 3)
+demo start
+  [33m→ [demo]               fetching deployments,replicasets,statefulsets,daemonsets,cronjobs,jobs[0m
+  [33m→ [demo]               fetching services,ingresses,endpoints[0m
+  [33m→ [demo]               fetching configmaps,secrets,serviceaccounts[0m
+  [33m→ [demo]               fetching persistentvolumeclaims,roles,rolebindings[0m
+  [33m→ [demo]               fetching networkpolicies,horizontalpodautoscalers,poddisruptionbudgets[0m
+  [33m→ [demo]               fetching gateways.gateway.networking.k8s.io,httproutes.gateway.networking.k8s.io,tcproutes.gateway.networking.k8s.io,applications.argoproj.io[0m
+  [33m→ [demo]               fetching pods[0m
+  [33m→ [demo]               fetching pods-snapshot[0m
+  [33m→ [demo]               fetching pods-images[0m
+  [32m← [demo]               pods-snapshot done[0m
+  services (3 objects, done)
+  endpoints (3 objects, done)
+  [32m← [demo]               pods-images done[0m
+  pods (5 objects, done)
+  configmaps (3 objects, done)
+  [32m← [demo]               networkpolicies,horizontalpodautoscalers,poddisruptionbudgets done[0m
+  secrets (3 objects, done)
+  [32m← [demo]               persistentvolumeclaims,roles,rolebindings done[0m
+  serviceaccounts (1 objects, done)
+  [32m← [demo]               pods done[0m
+  [32m← [demo]               services,ingresses,endpoints done[0m
+  [32m← [demo]               configmaps,secrets,serviceaccounts done[0m
+  [32m← [demo]               gateways.gateway.networking.k8s.io,httproutes.gateway.networking.k8s.io,tcproutes.gateway.networking.k8s.io,applications.argoproj.io done[0m
+  deployments (3 objects, done)
+  replicasets (22 objects, done)
+  [32m← [demo]               deployments,replicasets,statefulsets,daemonsets,cronjobs,jobs done[0m
+[32m✓ Namespace demo completed in 1s[0m
+
+[32m╔══════════════════════════════════════════════════════════╗[0m
+[32m║  Export Complete                                         ║[0m
+[32m╠══════════════════════════════════════════════════════════╣[0m
+[32m║  Files:        11 files[0m
+[32m║  Size:         128K[0m
+[32m║  Time:         1s[0m
+[32m╚══════════════════════════════════════════════════════════╝[0m
+
+Tip: to restore a resource later:
+  kubectl apply -f k8s-snapshot/<namespace>/<resource>.yaml

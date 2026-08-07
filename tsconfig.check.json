@@ -1,0 +1,15 @@
+// Typecheck only, nothing emitted. `npm run test:utils` runs through tsx, which
+// strips types without checking them, so a suite can be green on code that does
+// not compile — that is how `applyProgressChunk(exportState, …)` passed 190 tests
+// while `build:server` refused it.
+//
+// Wider than tsconfig.publish.json on purpose: the specs and itests are excluded
+// from the published build, so nothing was checking them at all.
+{
+  "extends": "./tsconfig.publish.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["api/**/*.ts", "scripts/init.ts", "shared/graph-types.ts"],
+  "exclude": ["node_modules", "src", "dist"]
+}

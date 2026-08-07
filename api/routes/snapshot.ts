@@ -12,6 +12,7 @@ import { PKG_ROOT, snapshotDir } from '../utils/paths';
 import { nextEta } from '../utils/export-eta';
 import { kubectlContext } from '../utils/kubectl-context';
 import { exportFailureMessage } from '../utils/export-failure';
+import { applyProgressChunk } from '../utils/export-progress';
 
 // Resolved per call rather than once at import. The server never moves, so this
 // costs two `existsSync` calls on a route polled once a second and changes
@@ -320,50 +321,9 @@ router.post('/snapshot', async (req: Request, res: Response) => {
       exportState.output += text;
     }
 
-    // Parse "Discovered N namespaces"
-    const discoveredMatch = text.match(/Discovered (\d+) namespaces/);
-    if (discoveredMatch) {
-      exportState.totalNamespaces = parseInt(discoveredMatch[1], 10);
-      exportState.freshStart = false;  // script is running — filesystem is being rewritten
-    }
-
-    // Parse "=== Namespace: xxx === (complete, skipping)" — already done
-    const skipMatches = text.matchAll(/=== Namespace: (.+?) === \(complete, skipping\)/g);
-    const skippedSet = new Set<string>();
-    for (const m of skipMatches) {
-      exportState.completedNamespaces++;
-      skippedSet.add(m[1]);
-    }
-
-    // Parse "xxx start" (node/workers/procs/go/bash format)
-    const nsStartMatches = text.matchAll(/^(\S+) start$/gm);
-    for (const m of nsStartMatches) {
-      if (!skippedSet.has(m[1])) {
-        exportState.activeNamespaces.add(m[1]);
-      }
-    }
-
-    // Parse "✓ Namespace xxx completed" — remove from active set
-    const doneNsMatches = text.matchAll(/✓ Namespace (\S+) completed/g);
-    for (const m of doneNsMatches) {
-      exportState.activeNamespaces.delete(m[1]);
-    }
-
-    // Parse "→ [ns] fetching xxx" or "→ fetching xxx"
-    const fetchMatches = text.matchAll(/→ (?:\[\S+\]\s+)?fetching (\S+)/gm);
-    for (const m of fetchMatches) {
-      for (const r of m[1].split(',')) {
-        exportState.activeResources.add(r);
-      }
-    }
-
-    // Parse "← [ns] xxx done/failed" or "← xxx done/failed"
-    const doneResMatches = text.matchAll(/← (?:\[\S+\]\s+)?(\S+) (?:done|failed)/gm);
-    for (const m of doneResMatches) {
-      for (const r of m[1].split(',')) {
-        exportState.activeResources.delete(r);
-      }
-    }
+    // The patterns live in utils/export-progress so a test can drive them
+    // against captured exporter output rather than against typed samples.
+    applyProgressChunk(exportState, text);
   });
 
   child.stderr?.on('data', (data: Buffer) => {

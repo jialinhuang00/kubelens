@@ -202,7 +202,12 @@ export_one_namespace() {
   mkdir -p "$NS_DIR"
 
   local NS_TAG
-  NS_TAG=$(printf '[%-18s]' "$ns")
+  # Pad outside the brackets, not inside. `[%-18s]` produced "[demo    ]", and
+  # both routes look for a tag with no whitespace between the brackets, so the
+  # default export mode was the one neither of them could follow. The other four
+  # exporters already pad to 20 outside: snapshot-node.js nsTag(), -workers,
+  # -procs, and cmd/k8s-export/export.go.
+  NS_TAG=$(printf '%-20s' "[$ns]")
 
   # Run all batches in parallel — each batch is one kubectl call
   for batch in "${NS_BATCHES[@]}"; do
