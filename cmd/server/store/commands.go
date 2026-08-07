@@ -1,10 +1,11 @@
 package store
 
 import (
-	"encoding/json"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 )
@@ -28,42 +29,38 @@ type ParsedCommand struct {
 	Raw          string
 }
 
-// resourceFileMap maps kubectl resource aliases to YAML filenames.
-var resourceFileMap = map[string]string{
-	"deployments": "deployments.yaml", "deployment": "deployments.yaml", "deploy": "deployments.yaml",
-	"services": "services.yaml", "service": "services.yaml", "svc": "services.yaml",
-	"cronjobs": "cronjobs.yaml", "cronjob": "cronjobs.yaml",
-	"jobs": "jobs.yaml", "job": "jobs.yaml",
-	"statefulsets": "statefulsets.yaml", "statefulset": "statefulsets.yaml", "sts": "statefulsets.yaml",
-	"configmaps": "configmaps.yaml", "configmap": "configmaps.yaml", "cm": "configmaps.yaml",
-	"endpoints": "endpoints.yaml", "ep": "endpoints.yaml",
-	"secrets": "secrets.yaml", "secret": "secrets.yaml",
-	"serviceaccounts": "serviceaccounts.yaml", "serviceaccount": "serviceaccounts.yaml", "sa": "serviceaccounts.yaml",
-	"persistentvolumeclaims": "persistentvolumeclaims.yaml", "persistentvolumeclaim": "persistentvolumeclaims.yaml", "pvc": "persistentvolumeclaims.yaml",
-	"poddisruptionbudgets": "poddisruptionbudgets.yaml", "poddisruptionbudget": "poddisruptionbudgets.yaml", "pdb": "poddisruptionbudgets.yaml",
-	"gateways": "gateways.yaml", "gateway": "gateways.yaml",
-	"httproutes": "httproutes.yaml", "httproute": "httproutes.yaml",
-	"tcproutes": "tcproutes.yaml", "tcproute": "tcproutes.yaml",
-	"roles": "roles.yaml", "role": "roles.yaml",
-	"rolebindings": "rolebindings.yaml", "rolebinding": "rolebindings.yaml",
-	// nil-mapped (no YAML file)
-	"pods": "", "pod": "",
-	"namespaces": "", "namespace": "", "ns": "",
-	"nodes": "", "node": "",
-	"replicasets": "", "replicaset": "", "rs": "",
-	"events": "", "event": "", "ev": "",
-}
+var (
+	resourceFileCache map[string]string
+	resourceFileOnce  sync.Once
+)
 
-type tableGen func([]K8sItem) string
-
-var tableGenerators = map[string]tableGen{
-	"deployments.yaml":  GenerateDeploymentTable,
-	"services.yaml":     GenerateServiceTable,
-	"cronjobs.yaml":     GenerateCronjobTable,
-	"statefulsets.yaml": GenerateStatefulsetTable,
-	"jobs.yaml":         GenerateJobTable,
-	"configmaps.yaml":   GenerateConfigmapTable,
-	"endpoints.yaml":    GenerateEndpointTable,
+// ResourceFileMap maps every kubectl resource name and alias to its snapshot
+// filename, built from kubelens.config.yaml the way
+// getResourceFileMap in api/utils/config-loader.ts does.
+//
+// This was a hardcoded map, and it had never heard of daemonsets, ingresses,
+// horizontalpodautoscalers or networkpolicies. `kubectl get ds` on `dev:go`
+// answered "Unknown resource type: ds" while Node printed a table, and adding a
+// kind to the config reached only one of the two backends.
+//
+// Pods, namespaces, nodes, replicasets and events used to appear here mapped to
+// "". They are unreachable: handleGet's switch answers all five before the
+// lookup. Keeping them would have meant this map could never be compared
+// against the TypeScript one without an exception list.
+func ResourceFileMap() map[string]string {
+	resourceFileOnce.Do(func() {
+		m := map[string]string{}
+		for _, r := range LoadResources() {
+			file := r.Key + ".yaml"
+			m[r.Key] = file
+			m[strings.ToLower(r.Kind)] = file
+			for _, a := range r.Aliases {
+				m[a] = file
+			}
+		}
+		resourceFileCache = m
+	})
+	return resourceFileCache
 }
 
 // ParseKubectlCommand parses a kubectl command string into structured parts.
@@ -212,7 +209,7 @@ func handleGet(p *ParsedCommand) CommandResult {
 		return handleGetReplicasets(p)
 	}
 
-	yamlFile, known := resourceFileMap[p.Resource]
+	yamlFile, known := ResourceFileMap()[p.Resource]
 	if !known {
 		return CommandResult{Error: fmt.Sprintf("[SNAPSHOT] Unknown resource type: %s", p.Resource)}
 	}
@@ -248,12 +245,17 @@ func handleGet(p *ParsedCommand) CommandResult {
 	if strings.HasPrefix(p.Output, "custom-columns=") {
 		return handleCustomColumns(p, items)
 	}
-	if gen, ok := tableGenerators[yamlFile]; ok {
-		out := gen(items)
+	// Config first, hand-written generators only as a fallback. The seven
+	// generators covered seven of the seventeen kinds the config declares, and
+	// the other ten fell through to a bare list of names below.
+	if spec, ok := GetTableSpecForFile(yamlFile); ok {
+		out := RenderTable(spec, items)
 		if p.Flags["noHeaders"] == true {
 			lines := strings.SplitN(out, "\n", 2)
 			if len(lines) > 1 {
 				out = lines[1]
+			} else {
+				out = ""
 			}
 		}
 		return CommandResult{Success: true, Stdout: out}
@@ -294,8 +296,8 @@ func renderSingleItem(item K8sItem, p *ParsedCommand, yamlFile string) CommandRe
 		s := fmt.Sprintf("%v", val)
 		return CommandResult{Success: true, Stdout: s}
 	}
-	if gen, ok := tableGenerators[yamlFile]; ok {
-		return CommandResult{Success: true, Stdout: gen([]K8sItem{item})}
+	if spec, ok := GetTableSpecForFile(yamlFile); ok {
+		return CommandResult{Success: true, Stdout: RenderTable(spec, []K8sItem{item})}
 	}
 	b, _ := yaml.Marshal(item)
 	return CommandResult{Success: true, Stdout: string(b)}
@@ -534,22 +536,36 @@ func handleGetAll(p *ParsedCommand) CommandResult {
 			}
 			podLines = append(podLines, "pod/"+f[0]+rest)
 		}
-		parts = append(parts, "=== POD ===\n"+header+"\n"+strings.Join(podLines, "\n"))
+		if len(podLines) > 0 {
+			parts = append(parts, "=== Pod ===\n"+header+"\n"+strings.Join(podLines, "\n"))
+		}
 	}
-	if d := LoadYaml("deployments.yaml", ns); d != nil {
-		parts = append(parts, "=== DEPLOYMENT ===\n"+GenerateDeploymentTable(d.Items))
+
+	// Config-driven, and in the order Node lists them. This block used to call
+	// the hand-written generators and to shout its headings (`=== DEPLOYMENT ===`
+	// against Node's `=== Deployment ===`), so the same `kubectl get all` came
+	// back different from the two backends.
+	for _, section := range []struct{ heading, file string }{
+		{"Deployment", "deployments.yaml"},
+		{"Service", "services.yaml"},
+		{"StatefulSet", "statefulsets.yaml"},
+		{"CronJob", "cronjobs.yaml"},
+		{"Job", "jobs.yaml"},
+	} {
+		d := LoadYaml(section.file, ns)
+		if d == nil || len(d.Items) == 0 {
+			continue
+		}
+		spec, ok := GetTableSpecForFile(section.file)
+		if !ok {
+			continue
+		}
+		parts = append(parts, "=== "+section.heading+" ===\n"+RenderTable(spec, d.Items))
 	}
-	if d := LoadYaml("services.yaml", ns); d != nil {
-		parts = append(parts, "=== SERVICE ===\n"+GenerateServiceTable(d.Items))
-	}
-	if d := LoadYaml("statefulsets.yaml", ns); d != nil {
-		parts = append(parts, "=== STATEFULSET ===\n"+GenerateStatefulsetTable(d.Items))
-	}
-	if d := LoadYaml("cronjobs.yaml", ns); d != nil {
-		parts = append(parts, "=== CRONJOB ===\n"+GenerateCronjobTable(d.Items))
-	}
-	if d := LoadYaml("jobs.yaml", ns); d != nil {
-		parts = append(parts, "=== JOB ===\n"+GenerateJobTable(d.Items))
+
+	// Match real kubectl when the namespace has nothing to show.
+	if len(parts) == 0 {
+		return CommandResult{Success: true, Stdout: fmt.Sprintf("No resources found in %s namespace.", ns)}
 	}
 	return CommandResult{Success: true, Stdout: strings.Join(parts, "\n\n")}
 }

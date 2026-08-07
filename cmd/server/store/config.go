@@ -3,6 +3,7 @@ package store
 import (
 	"log"
 	"os"
+	"strings"
 	"sync"
 
 	"gopkg.in/yaml.v3"
@@ -33,12 +34,29 @@ type TemplateEntry struct {
 	Disabled      bool   `yaml:"disabled" json:"disabled,omitempty"`
 }
 
+// TableColumn is one column of a snapshot `kubectl get` table. `Value` is a
+// template: `{.path}` reads a field, `{.path|transform}` runs it through one,
+// `{|transform}` reads the whole item, and `{...?fallback}` supplies a default.
+type TableColumn struct {
+	Name  string `yaml:"name" json:"name"`
+	Value string `yaml:"value" json:"value"`
+	Width int    `yaml:"width" json:"width,omitempty"`
+}
+
+// TableSpec is one kind's table, keyed by Kind in the config's `tables:` section.
+type TableSpec struct {
+	Columns []TableColumn `yaml:"columns" json:"columns"`
+}
+
 var (
 	resourceCache []ResourceConfig
 	resourceOnce  sync.Once
 
 	templateCache map[string][]TemplateEntry
 	templateOnce  sync.Once
+
+	tableCache map[string]TableSpec
+	tableOnce  sync.Once
 
 	discoveryGroups    []string
 	discoveryResources []string
@@ -63,6 +81,55 @@ func LoadTemplates() map[string][]TemplateEntry {
 		templateCache = parsed.Templates
 	})
 	return templateCache
+}
+
+// LoadTables reads and caches the per-kind snapshot table specs.
+//
+// This section had no Go struct at all until 2026-08-07, and the Go backend
+// rendered seven hand-written tables instead. Nine kinds the config declares
+// (Secret, PVC, ServiceAccount, DaemonSet, Ingress, HPA, Role, RoleBinding,
+// NetworkPolicy) came back from `dev:go` as a bare list of names, and editing
+// the config changed nothing on this backend.
+func LoadTables() map[string]TableSpec {
+	tableOnce.Do(func() {
+		data, err := os.ReadFile("kubelens.config.yaml")
+		if err != nil {
+			log.Printf("failed to read kubelens.config.yaml: %v", err)
+			return
+		}
+		var parsed struct {
+			Tables map[string]TableSpec `yaml:"tables"`
+		}
+		if err := yaml.Unmarshal(data, &parsed); err != nil {
+			log.Printf("failed to parse kubelens.config.yaml: %v", err)
+			return
+		}
+		tableCache = parsed.Tables
+	})
+	return tableCache
+}
+
+// Snapshot-exported files with no `resources:` entry (no tree or graph role),
+// mapped to the Kind their table spec is keyed under. Mirrors FILE_KIND_EXTRA
+// in api/utils/config-loader.ts.
+var fileKindExtra = map[string]string{"endpoints.yaml": "Endpoints"}
+
+// GetTableSpecForFile resolves a snapshot filename ("deployments.yaml") to its
+// table spec through its Kind. Returns ok=false when the config declares none.
+func GetTableSpecForFile(yamlFile string) (TableSpec, bool) {
+	key := strings.TrimSuffix(yamlFile, ".yaml")
+	kind := fileKindExtra[yamlFile]
+	for _, r := range LoadResources() {
+		if r.Key == key {
+			kind = r.Kind
+			break
+		}
+	}
+	if kind == "" {
+		return TableSpec{}, false
+	}
+	spec, ok := LoadTables()[kind]
+	return spec, ok
 }
 
 // LoadResources reads and caches kubelens.config.yaml. CWD is PROJECT_ROOT

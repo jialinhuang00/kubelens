@@ -1,0 +1,724 @@
+{
+  "Deployment": {
+    "apiVersion": "apps/v1",
+    "kind": "Deployment",
+    "metadata": {
+      "annotations": {
+        "deployment.kubernetes.io/revision": "3",
+        "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"app\":\"gateway\",\"tier\":\"edge\"},\"name\":\"gateway\",\"namespace\":\"demo\"},\"spec\":{\"replicas\":2,\"selector\":{\"matchLabels\":{\"app\":\"gateway\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"gateway\",\"tier\":\"edge\"}},\"spec\":{\"containers\":[{\"envFrom\":[{\"configMapRef\":{\"name\":\"app-config\"}},{\"secretRef\":{\"name\":\"app-secrets\"}}],\"image\":\"nginx:alpine\",\"name\":\"gateway\",\"ports\":[{\"containerPort\":80}],\"volumeMounts\":[{\"mountPath\":\"/etc/nginx/conf.d/default.conf\",\"name\":\"gw\",\"subPath\":\"default.conf\"},{\"mountPath\":\"/usr/share/nginx/html/index.html\",\"name\":\"gw\",\"subPath\":\"index.html\"}]}],\"volumes\":[{\"configMap\":{\"name\":\"gateway-nginx\"},\"name\":\"gw\"}]}}}}\n"
+      },
+      "creationTimestamp": "2026-06-29T12:20:00Z",
+      "generation": 5,
+      "labels": {
+        "app": "gateway",
+        "tier": "edge"
+      },
+      "name": "gateway",
+      "namespace": "demo",
+      "resourceVersion": "2059863",
+      "uid": "27702f4b-8f53-4ec1-81f1-735b0d97cd9e"
+    },
+    "spec": {
+      "progressDeadlineSeconds": 600,
+      "replicas": 2,
+      "revisionHistoryLimit": 10,
+      "selector": {
+        "matchLabels": {
+          "app": "gateway"
+        }
+      },
+      "strategy": {
+        "rollingUpdate": {
+          "maxSurge": "25%",
+          "maxUnavailable": "25%"
+        },
+        "type": "RollingUpdate"
+      },
+      "template": {
+        "metadata": {
+          "annotations": {
+            "kubectl.kubernetes.io/restartedAt": "2026-07-02T21:37:12+08:00"
+          },
+          "labels": {
+            "app": "gateway",
+            "tier": "edge"
+          }
+        },
+        "spec": {
+          "containers": [
+            {
+              "envFrom": [
+                {
+                  "configMapRef": {
+                    "name": "app-config"
+                  }
+                },
+                {
+                  "secretRef": {
+                    "name": "app-secrets"
+                  }
+                }
+              ],
+              "image": "nginx:alpine",
+              "imagePullPolicy": "IfNotPresent",
+              "name": "gateway",
+              "ports": [
+                {
+                  "containerPort": 80,
+                  "protocol": "TCP"
+                }
+              ],
+              "resources": {},
+              "terminationMessagePath": "/dev/termination-log",
+              "terminationMessagePolicy": "File",
+              "volumeMounts": [
+                {
+                  "mountPath": "/etc/nginx/conf.d/default.conf",
+                  "name": "gw",
+                  "subPath": "default.conf"
+                },
+                {
+                  "mountPath": "/usr/share/nginx/html/index.html",
+                  "name": "gw",
+                  "subPath": "index.html"
+                }
+              ]
+            }
+          ],
+          "dnsPolicy": "ClusterFirst",
+          "restartPolicy": "Always",
+          "schedulerName": "default-scheduler",
+          "securityContext": {},
+          "terminationGracePeriodSeconds": 30,
+          "volumes": [
+            {
+              "configMap": {
+                "defaultMode": 420,
+                "name": "gateway-nginx"
+              },
+              "name": "gw"
+            }
+          ]
+        }
+      }
+    },
+    "status": {
+      "availableReplicas": 2,
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-07-02T13:31:58Z",
+          "lastUpdateTime": "2026-07-02T13:37:14Z",
+          "message": "ReplicaSet \"gateway-999576696\" has successfully progressed.",
+          "reason": "NewReplicaSetAvailable",
+          "status": "True",
+          "type": "Progressing"
+        },
+        {
+          "lastTransitionTime": "2026-07-31T06:25:47Z",
+          "lastUpdateTime": "2026-07-31T06:25:47Z",
+          "message": "Deployment has minimum availability.",
+          "reason": "MinimumReplicasAvailable",
+          "status": "True",
+          "type": "Available"
+        }
+      ],
+      "observedGeneration": 5,
+      "readyReplicas": 2,
+      "replicas": 2,
+      "updatedReplicas": 2
+    }
+  },
+  "ReplicaSet": {
+    "apiVersion": "apps/v1",
+    "kind": "ReplicaSet",
+    "metadata": {
+      "annotations": {
+        "deployment.kubernetes.io/desired-replicas": "2",
+        "deployment.kubernetes.io/max-replicas": "3",
+        "deployment.kubernetes.io/revision": "1"
+      },
+      "creationTimestamp": "2026-06-29T12:20:00Z",
+      "generation": 3,
+      "labels": {
+        "app": "gateway",
+        "pod-template-hash": "6c6585f5b5",
+        "tier": "edge"
+      },
+      "name": "gateway-6c6585f5b5",
+      "namespace": "demo",
+      "ownerReferences": [
+        {
+          "apiVersion": "apps/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "Deployment",
+          "name": "gateway",
+          "uid": "27702f4b-8f53-4ec1-81f1-735b0d97cd9e"
+        }
+      ],
+      "resourceVersion": "2727",
+      "uid": "9ae3e07f-7821-4251-9591-9cfe19513098"
+    },
+    "spec": {
+      "replicas": 0,
+      "selector": {
+        "matchLabels": {
+          "app": "gateway",
+          "pod-template-hash": "6c6585f5b5"
+        }
+      },
+      "template": {
+        "metadata": {
+          "labels": {
+            "app": "gateway",
+            "pod-template-hash": "6c6585f5b5",
+            "tier": "edge"
+          }
+        },
+        "spec": {
+          "containers": [
+            {
+              "envFrom": [
+                {
+                  "configMapRef": {
+                    "name": "app-config"
+                  }
+                },
+                {
+                  "secretRef": {
+                    "name": "app-secrets"
+                  }
+                }
+              ],
+              "image": "nginx:alpine",
+              "imagePullPolicy": "IfNotPresent",
+              "name": "gateway",
+              "ports": [
+                {
+                  "containerPort": 80,
+                  "protocol": "TCP"
+                }
+              ],
+              "resources": {},
+              "terminationMessagePath": "/dev/termination-log",
+              "terminationMessagePolicy": "File",
+              "volumeMounts": [
+                {
+                  "mountPath": "/etc/nginx/conf.d",
+                  "name": "nginx-conf"
+                }
+              ]
+            }
+          ],
+          "dnsPolicy": "ClusterFirst",
+          "restartPolicy": "Always",
+          "schedulerName": "default-scheduler",
+          "securityContext": {},
+          "terminationGracePeriodSeconds": 30,
+          "volumes": [
+            {
+              "configMap": {
+                "defaultMode": 420,
+                "name": "gateway-nginx"
+              },
+              "name": "nginx-conf"
+            }
+          ]
+        }
+      }
+    },
+    "status": {
+      "observedGeneration": 3,
+      "replicas": 0
+    }
+  },
+  "Service": {
+    "metadata": {
+      "name": "gateway",
+      "namespace": "demo",
+      "creationTimestamp": "2026-01-02T03:04:05Z"
+    },
+    "spec": {
+      "type": "NodePort",
+      "clusterIP": "10.96.0.9",
+      "externalIPs": [
+        "1.2.3.4"
+      ],
+      "ports": [
+        {
+          "port": 80,
+          "nodePort": 30080,
+          "protocol": "TCP"
+        },
+        {
+          "port": 443,
+          "protocol": "TCP"
+        }
+      ]
+    }
+  },
+  "CronJob": {
+    "metadata": {
+      "name": "nightly",
+      "namespace": "demo",
+      "creationTimestamp": "2026-01-02T03:04:05Z"
+    },
+    "spec": {
+      "schedule": "0 3 * * *",
+      "suspend": false
+    },
+    "status": {
+      "active": [
+        {},
+        {}
+      ],
+      "lastScheduleTime": "2026-01-02T03:04:05Z"
+    }
+  },
+  "StatefulSet": {
+    "metadata": {
+      "name": "db",
+      "namespace": "demo",
+      "creationTimestamp": "2026-01-02T03:04:05Z"
+    },
+    "spec": {
+      "replicas": 3
+    },
+    "status": {
+      "readyReplicas": 2
+    }
+  },
+  "Job": {
+    "metadata": {
+      "name": "migrate",
+      "namespace": "demo",
+      "creationTimestamp": "2026-01-02T03:04:05Z"
+    },
+    "spec": {
+      "completions": 1
+    },
+    "status": {
+      "succeeded": 1,
+      "startTime": "2026-01-02T03:04:05Z",
+      "completionTime": "2026-01-02T04:10:35Z"
+    }
+  },
+  "ConfigMap": {
+    "apiVersion": "v1",
+    "data": {
+      "ca.crt": "-----BEGIN CERTIFICATE-----\nMIIDBTCCAe2gAwIBAgIINBO968cmoUcwDQYJKoZIhvcNAQELBQAwFTETMBEGA1UE\nAxMKa3ViZXJuZXRlczAeFw0yNjA2MjkxMjEzNDhaFw0zNjA2MjYxMjE4NDhaMBUx\nEzARBgNVBAMTCmt1YmVybmV0ZXMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK\nAoIBAQCaU85CgMxUQaECPGYiWYgAwH0r5TsMfmufOiZ/15BA9USjrdK6wNHrvAGf\nz0Dv/BsgrbdgxoOCR+EDT6xAP1+hfZqpwv2GVUlVtyr3ES/erYenfjaqJFbSko7n\nIEa2mkYqI3q1/YBiyRkwWPU6hYl6nKWVPWwMQTA3LEziM7VlYVw7/yHO/aR+OCq3\n9xOS9oD76lsNHkm/+ORvNfzLCxwehmNW9mhBLthG4s54nKo8U53PJsR07YcGl6m5\nw1L1drpovIETuX4+Nm2eybP+SS59J+eG0LMEIADNnIupMWTTlTQMwhVZvm6TEuPM\njHoB1asxQpF5IAgIdhOSgB2zcrN9AgMBAAGjWTBXMA4GA1UdDwEB/wQEAwICpDAP\nBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBS7JqSmXRyV2XlgqANg4gP582VJEjAV\nBgNVHREEDjAMggprdWJlcm5ldGVzMA0GCSqGSIb3DQEBCwUAA4IBAQBaXEYReD/3\nqHzUXuFesOM0h0izsP1C+idqw12YTkinx1Z4tfOGi6cOZjJa6zZGd+h5AqMgWhcz\n1QgdPpLAZoSfP24QySVPBONrSFz0S7RBrtrDK2WKKgb4kb4B8xudMhFkIBbbJHmM\nGKpBGn4FquZk+Q7NS+BobAKRVhcdwBbsDBOyyYOhZ0AKdP+8MWI9FImcLQqJgFsI\nquV0NE8jDVejq37O94YGpUaUIvZ30MOfkMqBBx8vKcsLFO3kpxz4yv690C8s6bFa\nBhCVh4fc73XJtHgeCD7NHisx35wY9wmR6IvwkbSiTLsn+F254a+PYwxvBxfveUPi\nqlGcqY/PTnWU\n-----END CERTIFICATE-----\n"
+    },
+    "kind": "ConfigMap",
+    "metadata": {
+      "annotations": {
+        "kubernetes.io/description": "Contains a CA bundle that can be used to verify the kube-apiserver when using internal endpoints such as the internal service IP or kubernetes.default.svc. No other usage is guaranteed across distributions of Kubernetes clusters."
+      },
+      "creationTimestamp": "2026-06-29T12:19:02Z",
+      "name": "kube-root-ca.crt",
+      "namespace": "default",
+      "resourceVersion": "339",
+      "uid": "f9dfd2f7-d0ff-4196-a334-80c8a9c80067"
+    }
+  },
+  "Endpoints": {
+    "apiVersion": "v1",
+    "kind": "Endpoints",
+    "metadata": {
+      "creationTimestamp": "2026-06-29T12:18:55Z",
+      "labels": {
+        "endpointslice.kubernetes.io/skip-mirror": "true"
+      },
+      "name": "kubernetes",
+      "namespace": "default",
+      "resourceVersion": "207",
+      "uid": "bbc66a4c-da2e-4fe6-bbcc-823f9ae263b5"
+    },
+    "subsets": [
+      {
+        "addresses": [
+          {
+            "ip": "172.18.0.2"
+          }
+        ],
+        "ports": [
+          {
+            "name": "https",
+            "port": 6443,
+            "protocol": "TCP"
+          }
+        ]
+      }
+    ]
+  },
+  "Secret": {
+    "apiVersion": "v1",
+    "data": {
+      "API_KEY": "ZGVtby1zdXBlcnNlY3JldC1rZXk=",
+      "JWT_SIGNING_SECRET": "Y2hhbmdlLW1lLWluLXByb2Q="
+    },
+    "kind": "Secret",
+    "metadata": {
+      "annotations": {
+        "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Secret\",\"metadata\":{\"annotations\":{},\"name\":\"app-secrets\",\"namespace\":\"demo\"},\"stringData\":{\"API_KEY\":\"demo-supersecret-key\",\"JWT_SIGNING_SECRET\":\"change-me-in-prod\"},\"type\":\"Opaque\"}\n"
+      },
+      "creationTimestamp": "2026-06-29T12:20:00Z",
+      "name": "app-secrets",
+      "namespace": "demo",
+      "resourceVersion": "523",
+      "uid": "4d7f1140-3b69-417c-94da-4bc7ad4ecdfa"
+    },
+    "type": "Opaque"
+  },
+  "PersistentVolumeClaim": {
+    "metadata": {
+      "name": "data",
+      "namespace": "demo",
+      "creationTimestamp": "2026-01-02T03:04:05Z"
+    },
+    "spec": {
+      "accessModes": [
+        "ReadWriteOnce",
+        "ReadWriteMany"
+      ],
+      "storageClassName": "gp3",
+      "volumeName": "pv-1"
+    },
+    "status": {
+      "phase": "Bound",
+      "capacity": {
+        "storage": "20Gi"
+      }
+    }
+  },
+  "ServiceAccount": {
+    "apiVersion": "v1",
+    "kind": "ServiceAccount",
+    "metadata": {
+      "creationTimestamp": "2026-06-29T12:19:02Z",
+      "name": "default",
+      "namespace": "default",
+      "resourceVersion": "355",
+      "uid": "017618b9-9ccb-4f45-a5a6-035ca719cd8a"
+    }
+  },
+  "DaemonSet": {
+    "apiVersion": "apps/v1",
+    "kind": "DaemonSet",
+    "metadata": {
+      "annotations": {
+        "deprecated.daemonset.template.generation": "1"
+      },
+      "creationTimestamp": "2026-06-29T12:18:58Z",
+      "generation": 1,
+      "labels": {
+        "app": "kindnet",
+        "k8s-app": "kindnet",
+        "tier": "node"
+      },
+      "name": "kindnet",
+      "namespace": "kube-system",
+      "resourceVersion": "400",
+      "uid": "ff87f1bb-4756-498a-bceb-33ea9288628e"
+    },
+    "spec": {
+      "revisionHistoryLimit": 10,
+      "selector": {
+        "matchLabels": {
+          "app": "kindnet"
+        }
+      },
+      "template": {
+        "metadata": {
+          "labels": {
+            "app": "kindnet",
+            "k8s-app": "kindnet",
+            "tier": "node"
+          }
+        },
+        "spec": {
+          "containers": [
+            {
+              "env": [
+                {
+                  "name": "HOST_IP",
+                  "valueFrom": {
+                    "fieldRef": {
+                      "apiVersion": "v1",
+                      "fieldPath": "status.hostIP"
+                    }
+                  }
+                },
+                {
+                  "name": "POD_IP",
+                  "valueFrom": {
+                    "fieldRef": {
+                      "apiVersion": "v1",
+                      "fieldPath": "status.podIP"
+                    }
+                  }
+                },
+                {
+                  "name": "POD_SUBNET",
+                  "value": "10.244.0.0/16"
+                },
+                {
+                  "name": "CONTROL_PLANE_ENDPOINT",
+                  "value": "kubelens-demo-control-plane:6443"
+                }
+              ],
+              "image": "docker.io/kindest/kindnetd:v20250512-df8de77b",
+              "imagePullPolicy": "IfNotPresent",
+              "name": "kindnet-cni",
+              "resources": {
+                "limits": {
+                  "cpu": "100m",
+                  "memory": "50Mi"
+                },
+                "requests": {
+                  "cpu": "100m",
+                  "memory": "50Mi"
+                }
+              },
+              "securityContext": {
+                "capabilities": {
+                  "add": [
+                    "NET_RAW",
+                    "NET_ADMIN"
+                  ]
+                },
+                "privileged": false
+              },
+              "terminationMessagePath": "/dev/termination-log",
+              "terminationMessagePolicy": "File",
+              "volumeMounts": [
+                {
+                  "mountPath": "/etc/cni/net.d",
+                  "name": "cni-cfg"
+                },
+                {
+                  "mountPath": "/run/xtables.lock",
+                  "name": "xtables-lock"
+                },
+                {
+                  "mountPath": "/lib/modules",
+                  "name": "lib-modules",
+                  "readOnly": true
+                },
+                {
+                  "mountPath": "/var/run/nri",
+                  "name": "nri-plugin"
+                }
+              ]
+            }
+          ],
+          "dnsPolicy": "ClusterFirst",
+          "hostNetwork": true,
+          "nodeSelector": {
+            "kubernetes.io/os": "linux"
+          },
+          "priorityClassName": "system-node-critical",
+          "restartPolicy": "Always",
+          "schedulerName": "default-scheduler",
+          "securityContext": {},
+          "serviceAccount": "kindnet",
+          "serviceAccountName": "kindnet",
+          "terminationGracePeriodSeconds": 30,
+          "tolerations": [
+            {
+              "operator": "Exists"
+            }
+          ],
+          "volumes": [
+            {
+              "hostPath": {
+                "path": "/etc/cni/net.d",
+                "type": ""
+              },
+              "name": "cni-cfg"
+            },
+            {
+              "hostPath": {
+                "path": "/run/xtables.lock",
+                "type": "FileOrCreate"
+              },
+              "name": "xtables-lock"
+            },
+            {
+              "hostPath": {
+                "path": "/lib/modules",
+                "type": ""
+              },
+              "name": "lib-modules"
+            },
+            {
+              "hostPath": {
+                "path": "/var/run/nri",
+                "type": ""
+              },
+              "name": "nri-plugin"
+            }
+          ]
+        }
+      },
+      "updateStrategy": {
+        "rollingUpdate": {
+          "maxSurge": 0,
+          "maxUnavailable": 1
+        },
+        "type": "RollingUpdate"
+      }
+    },
+    "status": {
+      "currentNumberScheduled": 1,
+      "desiredNumberScheduled": 1,
+      "numberAvailable": 1,
+      "numberMisscheduled": 0,
+      "numberReady": 1,
+      "observedGeneration": 1,
+      "updatedNumberScheduled": 1
+    }
+  },
+  "Ingress": {
+    "metadata": {
+      "name": "web",
+      "namespace": "demo",
+      "creationTimestamp": "2026-01-02T03:04:05Z"
+    },
+    "spec": {
+      "ingressClassName": "nginx",
+      "tls": [
+        {
+          "hosts": [
+            "a.example"
+          ]
+        }
+      ],
+      "rules": [
+        {
+          "host": "a.example"
+        },
+        {
+          "host": "b.example"
+        }
+      ]
+    },
+    "status": {
+      "loadBalancer": {
+        "ingress": [
+          {
+            "hostname": "lb.example"
+          },
+          {
+            "ip": "10.0.0.7"
+          }
+        ]
+      }
+    }
+  },
+  "HorizontalPodAutoscaler": {
+    "metadata": {
+      "name": "api",
+      "namespace": "demo",
+      "creationTimestamp": "2026-01-02T03:04:05Z"
+    },
+    "spec": {
+      "minReplicas": 2,
+      "maxReplicas": 10,
+      "scaleTargetRef": {
+        "kind": "Deployment",
+        "name": "api"
+      },
+      "metrics": [
+        {
+          "resource": {
+            "name": "cpu",
+            "target": {
+              "averageUtilization": 80
+            }
+          }
+        }
+      ]
+    },
+    "status": {
+      "currentReplicas": 3,
+      "currentMetrics": [
+        {
+          "resource": {
+            "current": {
+              "averageUtilization": 41
+            }
+          }
+        }
+      ]
+    }
+  },
+  "Role": {
+    "apiVersion": "rbac.authorization.k8s.io/v1",
+    "kind": "Role",
+    "metadata": {
+      "creationTimestamp": "2026-06-29T12:18:56Z",
+      "name": "kubeadm:bootstrap-signer-clusterinfo",
+      "namespace": "kube-public",
+      "resourceVersion": "224",
+      "uid": "8409f252-1759-4f27-849e-76375430651b"
+    },
+    "rules": [
+      {
+        "apiGroups": [
+          ""
+        ],
+        "resourceNames": [
+          "cluster-info"
+        ],
+        "resources": [
+          "configmaps"
+        ],
+        "verbs": [
+          "get"
+        ]
+      }
+    ]
+  },
+  "RoleBinding": {
+    "apiVersion": "rbac.authorization.k8s.io/v1",
+    "kind": "RoleBinding",
+    "metadata": {
+      "creationTimestamp": "2026-06-29T12:18:56Z",
+      "name": "kubeadm:bootstrap-signer-clusterinfo",
+      "namespace": "kube-public",
+      "resourceVersion": "225",
+      "uid": "3e274098-82ed-49e8-aa46-3724e70e0115"
+    },
+    "roleRef": {
+      "apiGroup": "rbac.authorization.k8s.io",
+      "kind": "Role",
+      "name": "kubeadm:bootstrap-signer-clusterinfo"
+    },
+    "subjects": [
+      {
+        "apiGroup": "rbac.authorization.k8s.io",
+        "kind": "User",
+        "name": "system:anonymous"
+      }
+    ]
+  },
+  "NetworkPolicy": {
+    "metadata": {
+      "name": "deny-all",
+      "namespace": "demo",
+      "creationTimestamp": "2026-01-02T03:04:05Z"
+    },
+    "spec": {
+      "podSelector": {
+        "matchLabels": {
+          "app": "web",
+          "tier": "front"
+        }
+      },
+      "policyTypes": [
+        "Ingress",
+        "Egress"
+      ]
+    }
+  }
+}
