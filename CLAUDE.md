@@ -20,6 +20,7 @@
 - The export kind list lives in FIVE places that must stay in sync: bash `NS_BATCHES`, `snapshot-node.js` / `-workers` / `-procs` `NS_BATCHES`, Go `nsBatches` (+ `kind-map.json` / `kindmap.go` for filenames). Same five-way duplication for the two dotfiles every exporter writes: `.export-context` (after the clean, `{context, startedAt}`; fresh run overwrites, `--resume` keeps) and `.export-complete` (after the last namespace, `{context, exportedAt, exporter}`). Miss one and that mode's snapshots silently carry no cluster name.
 - `cmd/server`: package-level `var`s init BEFORE `main()` chdirs to `PROJECT_ROOT` — never resolve config/files in a package-level initializer (that's why `fileAliases` is lazy). Also: Node passes config YAML through as-is, but Go re-declares typed structs — a config field/section not mirrored in `store/config.go` silently vanishes from `/api/config`.
 - Go route parity is by hand and drifts silently. Renaming a Node route without renaming the Go one leaves `dev:go` answering 404 with nothing in the logs (that's how `/api/snapshot` sat broken from 2026-03-07 to 2026-08-07), and a field added to a Node JSON response is absent in Go until someone adds it to `writeJSON`'s map. Change one side, change both, then `npm run test:go`.
+- The exporters' stdout is a third interface between the two backends, next to the route names and the JSON fields, and it drifted the same way. Both routes parse it with their own regexes (`api/utils/export-progress.ts`, `applyProgressChunk` in `cmd/server/routes/k8s_export.go`), and both were wrong about it until 2026-08-07: bash padded its namespace tag inside the brackets where the other four pad outside, and Go's patterns had no tag at all. Change what an exporter prints and both parsers need changing. `scripts/capture-exporter-output.sh` recaptures `test-fixtures/exporter-stdout/`, which both test suites read.
 - Export state (`paused`, `pausedDismissed`) lives in server memory on both backends but `paused` is recomputed from disk every poll — files present with no `.export-complete`. Clearing an in-memory flag alone gets undone one second later; that's why dismiss needs `pausedDismissed`, ANDed into the derived value and reset by any new export.
 - Where `k8s-snapshot` lives is decided in exactly three places, one per runtime, and they have to agree: `snapshotDir()` in `api/utils/paths.ts`, `store.SnapshotDir()` in `cmd/server/store/loader.go`, and `$K8S_SNAPSHOT_DIR / $K8S_SNAPSHOT_PATH` in the five exporters. All read `K8S_SNAPSHOT_PATH` first and otherwise use `<cwd>/k8s-snapshot`; the exporters also take `K8S_SNAPSHOT_DIR`, which is what the export route passes them explicitly rather than letting them infer from cwd. No package fallback, and nothing resolved at import (Go's package-level `var`s run before `main()` chdirs).
 - Every arrangement other than that one has shipped a silent bug. Read with a package fallback and write without: an export from a subdirectory landed in `api/k8s-snapshot` while Snapshot mode kept reading the checkout's copy. Resolve lazily but keep the fallback: after `discard` removed the user's directory the next delete found the package's. Route honours `K8S_SNAPSHOT_PATH` while exporters only honour `K8S_SNAPSHOT_DIR`: the export ran, wrote elsewhere, and the file count sat at 0 with no error. None of these crash — the tests that catch them compare the resolvers against each other (`api/utils/paths.spec.ts`, `cmd/server/routes/snapshot_dir_test.go`), not each against a fixed string.
@@ -50,6 +51,7 @@
 │       ├── snapshot-loader.ts  #   Constants, cache, YAML/text file loading
 │       ├── snapshot-parsers.ts #   Table generators, describe generators, helpers
 │       ├── snapshot-commands.ts#   Command parser + all kubectl action handlers
+│       ├── export-progress.ts #   Parses exporter stdout into progress state (Go twin: applyProgressChunk)
 │       └── graph-builder.ts   #   Graph construction logic (buildGraph, extractWorkloadEdges)
 ├── cmd/server/                # Go backend (mirrors Node.js routes)
 │   └── routes/
@@ -70,6 +72,7 @@
 │   ├── snapshot-node-procs.js #   Node.js child_process export
 │   ├── split-resources.js     #   Splits kubectl JSON into per-kind YAML files
 │   ├── init.ts                #   `npm run init` — generate kubelens.config.yaml from the cluster
+│   ├── capture-exporter-output.sh # Recaptures test-fixtures/exporter-stdout/ from a live cluster
 │   └── kind-map.json          #   Kind → filename mapping
 ├── src/app/
 │   ├── core/services/         #   kubectl, config, data-mode, snapshot, websocket, execution-context, theme
@@ -83,6 +86,7 @@
 │       └── k8s/               #   K8s resource views
 ├── kubelens.config.yaml       # Source of truth for resource kinds (tree + graph)
 ├── kubelens.default.yaml      # Neutral built-ins base for `kubelens init`; the CLI also copies it to config.yaml on first run
+├── test-fixtures/             # Committed captures both test suites read (exporter-stdout/)
 └── k8s-snapshot/              # Exported cluster data (gitignored)
 ```
 
@@ -124,8 +128,9 @@ Control: `POST /api/execute/stream/stop` (kill process), `POST /api/execute/stre
 - `bash scripts/snapshot-bash.sh` — CLI export (independent of server)
 - `ng test` — Unit tests
 - `npm run test:utils` — Backend unit tests: `api/utils/**/*.spec.ts` + `api/routes/**/*.spec.ts`. Hermetic: zero kubectl calls, and `K8S_SNAPSHOT_PATH` points at a nonexistent path so nothing reads a real export. `snapshot-commands.spec.ts` seeds `snapshot-loader`'s cache with fixtures; `routes/snapshot.spec.ts` starts a real Express app on an ephemeral port, drives it with Node's `fetch`, and refuses to run if the route resolves anywhere but its temp directory.
+- `npm run test:types` — `tsc -p tsconfig.check.json`, nothing emitted. `test:utils` runs through tsx, which strips types without checking them, so a suite can be green on code that does not compile. Covers the specs and itests too; `tsconfig.publish.json` excludes those, so nothing was checking them.
 - `npm run test:go` — Go backend tests (`net/http/httptest`, no cluster needed).
-- `npm run test:parity` — `api/**/*.itest.ts`. The one suite that deliberately shells out: it runs a real exporter and a real `go run` to compare the directory each implementation resolves, because that is not readable from either side alone. Needs a reachable cluster and a Go toolchain, and skips (not fakes) when either is missing. Kept out of `test:utils` so "zero external calls" stays a measurable property there.
+- `npm run test:parity` — `api/**/*.itest.ts`. The one suite that deliberately shells out: it runs a real exporter and a real `go run` to compare the directory each implementation resolves, and recaptures every exporter's stdout to check `test-fixtures/exporter-stdout/` is not stale. Neither is readable from one side alone. Needs a reachable cluster and a Go toolchain, and skips (not fakes) when either is missing. Kept out of `test:utils` so "zero external calls" stays a measurable property there.
 - No test drives `command: 'start'` on either backend — every mode spawns a real exporter against the live kubeconfig. Go covers the mode-to-command mapping by keeping it in a pure `exporterCommand`; the Node handler still has that switch inline.
 - `npm run test:e2e` — Playwright. Starts the dev server itself; first run needs `npx playwright install chromium` (or add `channel: 'chrome'` to use the system browser).
 

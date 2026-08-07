@@ -5,7 +5,7 @@ tsx (`tsx api/index.ts`); the published package runs the `.js` that
 `build:server` compiles beside each of them.
 The Go backend in [`cmd/`](../cmd/) is a parallel port — this is the real one.
 
-- `index.js` — entry point.
+- `index.ts` — entry point.
 - `routes/` — one file per HTTP endpoint (`/api/execute`, `/api/graph`, `/api/config`, …).
 - `utils/` — the logic.
 
@@ -22,9 +22,21 @@ Snapshot **export** (writing those files) is NOT here — it's in [`scripts/`](.
 `pnpm run test:utils` runs `utils/**/*.spec.ts` and `routes/**/*.spec.ts`, and
 makes no external calls at all. `pnpm run test:parity` runs `**/*.itest.ts`,
 which does the opposite on purpose: it starts a real exporter and a real `go
-run` to check that every implementation resolves the same snapshot directory.
-Two scripts because "this suite touches nothing" is only useful if it stays
-true.
+run` to check that every implementation resolves the same snapshot directory,
+and recaptures every exporter's stdout to check the committed samples still
+match. Two scripts because "this suite touches nothing" is only useful if it
+stays true.
+
+`pnpm run test:types` is separate from both. tsx runs the specs without checking
+types, so a green suite says nothing about whether the code compiles.
+
+Two suites read files instead of keeping their own copy of what another file
+says: `export-failure.spec.ts` renders the abort message out of
+`scripts/snapshot-bash.sh`, and `export-progress.spec.ts` reads captured
+exporter stdout from `test-fixtures/exporter-stdout/`. Both replaced hand-typed
+samples that had gone stale without anything failing. `*.fixture.ts` is the
+suffix for helpers that exist only for tests; `tsconfig.publish.json` excludes
+the pattern, so they stay out of the package.
 
 `routes/snapshot.spec.ts` is the only route spec so far: a real Express app on an
 ephemeral port, driven with Node's built-in `fetch`, no mocks. It covers the
@@ -34,7 +46,9 @@ exporter against the live kubeconfig, which is not something a unit test should
 do. The Go port avoids that by keeping the mode-to-command mapping in a pure
 function (`exporterCommand`); doing the same here would make it testable.
 
-`snapshot.js` resolves its snapshot directory once at require time from
-`process.cwd()`, so the spec chdirs into a temp directory *before* requiring the
-module. `node --test` runs each spec file in its own process, so that chdir does
-not reach the other specs.
+`snapshot.ts` resolves its snapshot directory per call through `snapshotDir()`,
+so the spec points `K8S_SNAPSHOT_PATH` at a temp directory and asks the route
+for its own `fileCount` before running anything. It used to resolve once at
+require time from `process.cwd()`, which meant a spec could only redirect it by
+chdir-ing before the import — and getting that order wrong deleted the repo's
+real snapshot.
