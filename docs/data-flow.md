@@ -2,7 +2,7 @@
 
 Who calls whom, from a click in the browser down to `kubectl`. Read this before touching `api/routes/` or any frontend service.
 
-Two backends live in this repo. The Node backend (`api/index.ts`, Express 5) is what `npm run dev` runs and what this doc describes. The Go backend under `cmd/server/` is a parallel implementation, reached by `npm run dev:go`, and not covered here. It answers the same paths on purpose, and keeping it that way is manual: rename a route on one side only and `dev:go` starts returning 404 with nothing in the logs. That is exactly what happened to `/api/snapshot` between 2026-03-07 and 2026-08-07.
+Two backends live in this repo. The Node backend (`api/index.ts`, Express 5) is what `pnpm run dev` runs and what this doc describes. The Go backend under `cmd/server/` is a parallel implementation, reached by `pnpm run dev:go`, and not covered here. It answers the same paths on purpose, and keeping it that way is manual: rename a route on one side only and `dev:go` starts returning 404 with nothing in the logs. That is exactly what happened to `/api/snapshot` between 2026-03-07 and 2026-08-07.
 
 ## HTTP endpoints
 
