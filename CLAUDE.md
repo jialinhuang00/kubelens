@@ -19,6 +19,8 @@
 - Snapshot mode replays from the same objects real kubectl reads (e.g. rollout history rebuilds from exported ReplicaSets' revision annotations; old snapshots without `replicasets.yaml` fall back to synthesized rows). Still canned/fake: `get events`, and `get namespaces` when the snapshot dir is missing — don't trust those outputs.
 - The export kind list lives in FIVE places that must stay in sync: bash `NS_BATCHES`, `snapshot-node.js` / `-workers` / `-procs` `NS_BATCHES`, Go `nsBatches` (+ `kind-map.json` / `kindmap.go` for filenames).
 - `cmd/server`: package-level `var`s init BEFORE `main()` chdirs to `PROJECT_ROOT` — never resolve config/files in a package-level initializer (that's why `fileAliases` is lazy). Also: Node passes config YAML through as-is, but Go re-declares typed structs — a config field/section not mirrored in `store/config.go` silently vanishes from `/api/config`.
+- Go route parity is by hand and drifts silently. Renaming a Node route without renaming the Go one leaves `dev:go` answering 404 with nothing in the logs (that's how `/api/snapshot` sat broken from 2026-03-07 to 2026-08-07), and a field added to a Node JSON response is absent in Go until someone adds it to `writeJSON`'s map. Change one side, change both, then `npm run test:go`.
+- Export state (`paused`, `pausedDismissed`) lives in server memory on both backends but `paused` is recomputed from disk every poll — files present with no `.export-complete`. Clearing an in-memory flag alone gets undone one second later.
 
 ## File Structure
 ```
@@ -46,9 +48,11 @@
 │       ├── execute.go         #   POST /api/execute
 │       ├── stream.go          #   WebSocket /api/execute/stream/ws + stop/clear
 │       ├── graph.go           #   GET  /api/graph
-│       ├── k8s_export.go      #   export control + progress
+│       ├── k8s_export.go      #   GET/POST /api/snapshot — export control + progress
+│       ├── k8s_export_test.go #   httptest coverage for the command dispatch + paused state
 │       ├── status.go          #   ping endpoints
 │       ├── registry.go        #   GET  /api/registry/tags — image tags (ECR/GCR/ACR by URL)
+│       ├── discovery.go       #   GET  /api/api-resources — cluster's kinds
 │       └── config.go          #   GET  /api/config — resource kinds (store/config.go loads it)
 ├── scripts/                   # CLI tools (bash 3.2 compatible)
 │   ├── snapshot-bash.sh       #   Parallel batched cluster export
@@ -109,6 +113,7 @@ Control: `POST /api/execute/stream/stop` (kill process), `POST /api/execute/stre
 - `bash scripts/snapshot-bash.sh` — CLI export (independent of server)
 - `ng test` — Unit tests
 - `npm run test:utils` — Backend unit tests. Points `K8S_SNAPSHOT_PATH` at a nonexistent path so nothing reads a real export; `snapshot-commands.spec.ts` seeds `snapshot-loader`'s in-memory cache with fixtures instead.
+- `npm run test:go` — Go backend tests (`net/http/httptest`, no cluster needed). The Node routes under `api/routes/` have no equivalent yet.
 - `npm run test:e2e` — Playwright. Starts the dev server itself; first run needs `npx playwright install chromium` (or add `channel: 'chrome'` to use the system browser).
 
 ## Deploy (EC2)

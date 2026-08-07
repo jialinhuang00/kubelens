@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -21,6 +22,11 @@ type exportState struct {
 	mu                 sync.Mutex
 	running            bool
 	paused             bool
+	// "I know there's a half-finished export; let me use the app anyway."
+	// handleExportProgress recomputes paused from disk on every poll, so clearing
+	// the flag above is not enough — the partial files are still there and the
+	// next poll would put the modal straight back. Only the user sets this.
+	pausedDismissed    bool
 	pid                int
 	startedAt          time.Time
 	totalNamespaces    int
@@ -49,16 +55,45 @@ var (
 	reDoneRes    = regexp.MustCompile(`← (\S+) (?:done|failed)`)
 )
 
+// The frontend calls GET /api/snapshot and POST /api/snapshot with a `command`
+// field. These used to be /api/k8s-export/{start,progress,stop}; commit daed7fa
+// renamed them in the Node backend and the frontend on 2026-03-07 and left this
+// file behind, so every export control here answered 404 under `npm run dev:go`.
 func registerK8sExport(mux *http.ServeMux) {
-	mux.HandleFunc("POST /api/k8s-export/start", handleExportStart)
-	mux.HandleFunc("GET /api/k8s-export/progress", handleExportProgress)
-	mux.HandleFunc("POST /api/k8s-export/stop", handleExportStop)
+	mux.HandleFunc("GET /api/snapshot", handleExportProgress)
+	mux.HandleFunc("POST /api/snapshot", handleExportCommand)
+	mux.HandleFunc("GET /api/export/ping", handleExportPing)
 }
 
-// POST /api/k8s-export/start
-// Spawns cmd/k8s-export binary (USE_GO_EXPORT=true) or scripts/k8s-export.sh.
-// Parses stdout to track namespace progress and ETA.
-func handleExportStart(w http.ResponseWriter, r *http.Request) {
+// POST /api/snapshot — one route, four commands, matching api/routes/snapshot.js.
+func handleExportCommand(w http.ResponseWriter, r *http.Request) {
+	body, _ := io.ReadAll(r.Body)
+	var cmd struct {
+		Command string `json:"command"`
+	}
+	json.Unmarshal(body, &cmd)
+
+	switch cmd.Command {
+	case "stop":
+		handleExportStop(w, r)
+	case "clear":
+		handleExportClear(w, r)
+	case "discard":
+		handleExportDiscard(w, r)
+	default:
+		handleExportStart(w, r, body)
+	}
+}
+
+// GET /api/export/ping — whether GNU parallel is installed, for the mode dropdown.
+func handleExportPing(w http.ResponseWriter, r *http.Request) {
+	_, err := exec.LookPath("parallel")
+	writeJSON(w, http.StatusOK, map[string]any{"parallel": err == nil})
+}
+
+// Start an export. Spawns whichever exporter `mode` names, and parses its stdout
+// for namespace progress and ETA.
+func handleExportStart(w http.ResponseWriter, r *http.Request, rawBody []byte) {
 	state.mu.Lock()
 	if state.running {
 		state.mu.Unlock()
@@ -67,12 +102,26 @@ func handleExportStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Resume bool `json:"resume"`
+		Resume  bool   `json:"resume"`
+		Mode    string `json:"mode"`
+		Workers int    `json:"workers"`
 	}
-	json.NewDecoder(r.Body).Decode(&body)
+	json.Unmarshal(rawBody, &body)
+
+	spawnCmd, args, err := exporterCommand(body.Mode, body.Workers)
+	if err != nil {
+		state.err = err.Error()
+		state.mu.Unlock()
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		return
+	}
+	if body.Resume {
+		args = append(args, "--resume")
+	}
 
 	state.running = true
 	state.paused = false
+	state.pausedDismissed = false
 	state.pid = 0
 	state.startedAt = time.Now()
 	state.totalNamespaces = 0
@@ -85,24 +134,7 @@ func handleExportStart(w http.ResponseWriter, r *http.Request) {
 	state.output = ""
 	state.mu.Unlock()
 
-	// Go server always uses the Go export binary.
-	// Falls back to scripts/k8s-export.sh if USE_BASH_EXPORT=true.
-	var cmd *exec.Cmd
-	if os.Getenv("USE_BASH_EXPORT") == "true" {
-		script := filepath.Join("scripts", "k8s-export.sh")
-		args := []string{script}
-		if body.Resume {
-			args = append(args, "--resume")
-		}
-		cmd = exec.Command("bash", args...)
-	} else {
-		binary := filepath.Join("cmd", "k8s-export", "k8s-export")
-		args := []string{}
-		if body.Resume {
-			args = append(args, "--resume")
-		}
-		cmd = exec.Command(binary, args...)
-	}
+	cmd := exec.Command(spawnCmd, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} // new process group for group kill
 	cmd.Dir = "."
 
@@ -140,7 +172,45 @@ func handleExportStart(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"started": true, "pid": cmd.Process.Pid, "resume": body.Resume})
 }
 
-// GET /api/k8s-export/progress
+// exporterCommand maps the mode the user picked in the dropdown to a command,
+// mirroring the same switch in api/routes/snapshot.js. The Go server used to
+// ignore mode entirely and always run its own binary, so picking "node" or
+// "bash" there ran neither.
+func exporterCommand(mode string, workers int) (string, []string, error) {
+	script := func(name, flag string) (string, []string, error) {
+		args := []string{filepath.Join("scripts", name)}
+		if workers > 0 {
+			args = append(args, flag, strconv.Itoa(workers))
+		}
+		if strings.HasSuffix(name, ".js") {
+			return "node", args, nil
+		}
+		return "bash", args, nil
+	}
+
+	switch mode {
+	case "node":
+		return script("snapshot-node.js", "--jobs")
+	case "workers":
+		return script("snapshot-node-workers.js", "--workers")
+	case "procs":
+		return script("snapshot-node-procs.js", "--procs")
+	case "go", "":
+		binary := filepath.Join("cmd", "k8s-export", "k8s-export")
+		if _, err := os.Stat(binary); err != nil {
+			return "", nil, fmt.Errorf("go exporter not built. Run: cd cmd/k8s-export && go build -o k8s-export . — or pick another mode")
+		}
+		args := []string{}
+		if workers > 0 {
+			args = append(args, "-jobs", strconv.Itoa(workers))
+		}
+		return binary, args, nil
+	default: // bash, bash-parallel
+		return script("snapshot-bash.sh", "--jobs")
+	}
+}
+
+// GET /api/snapshot
 // Polled every 1s by frontend during export.
 func handleExportProgress(w http.ResponseWriter, r *http.Request) {
 	liveCount, _ := countFiles(snapshotDir)
@@ -172,6 +242,17 @@ func handleExportProgress(w http.ResponseWriter, r *http.Request) {
 		} else if liveCount > 0 {
 			paused = true
 		}
+	}
+	if state.pausedDismissed {
+		paused = false
+	}
+
+	// Only the paused panel shows these two, and a running export polls this route
+	// once a second — no reason to shell out to kubectl on every one of those.
+	var snapshotContext, currentContext *string
+	if paused {
+		snapshotContext = readExportContext()
+		currentContext = currentKubectlContext()
 	}
 
 	var etaSeconds *int
@@ -205,10 +286,77 @@ func handleExportProgress(w http.ResponseWriter, r *http.Request) {
 		"fileCount":           liveCount,
 		"etaSeconds":          etaSeconds,
 		"error":               state.err,
+		"snapshotContext":     snapshotContext,
+		"currentContext":      currentContext,
 	})
 }
 
-// POST /api/k8s-export/stop
+// The cluster the export on disk was started against. Written by the exporters
+// right after they clear the directory; absent for snapshots exported before
+// that existed, and for a directory nobody has exported into yet.
+func readExportContext() *string {
+	raw, err := os.ReadFile(filepath.Join(snapshotDir, ".export-context"))
+	if err != nil {
+		return nil
+	}
+	var parsed struct {
+		Context string `json:"context"`
+	}
+	if err := json.Unmarshal(raw, &parsed); err != nil || parsed.Context == "" {
+		return nil
+	}
+	return &parsed.Context
+}
+
+func currentKubectlContext() *string {
+	out, err := exec.Command("kubectl", "config", "current-context").Output()
+	if err != nil {
+		return nil // no kubectl, no kubeconfig, or no context selected
+	}
+	name := strings.TrimSpace(string(out))
+	if name == "" {
+		return nil
+	}
+	return &name
+}
+
+// Dismiss a finished/failed/paused state so it stops blocking the home page.
+func handleExportClear(w http.ResponseWriter, r *http.Request) {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+
+	if state.running {
+		writeJSON(w, http.StatusConflict, map[string]any{"error": "Export running"})
+		return
+	}
+	state.err = ""
+	state.paused = false
+	state.pausedDismissed = true
+	writeJSON(w, http.StatusOK, map[string]any{"cleared": true})
+}
+
+// Throw the partial export away so the next run starts from nothing.
+func handleExportDiscard(w http.ResponseWriter, r *http.Request) {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+
+	if state.running {
+		writeJSON(w, http.StatusConflict, map[string]any{"error": "Export running"})
+		return
+	}
+	if err := os.RemoveAll(snapshotDir); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
+	state.paused = false
+	state.pausedDismissed = false
+	state.err = ""
+	state.fileCount = 0
+	state.totalNamespaces = 0
+	state.completedNamespaces = 0
+	writeJSON(w, http.StatusOK, map[string]any{"discarded": true})
+}
+
 // Sends SIGTERM to the entire process group (negative PID).
 func handleExportStop(w http.ResponseWriter, r *http.Request) {
 	state.mu.Lock()

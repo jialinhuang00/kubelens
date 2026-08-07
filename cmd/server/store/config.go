@@ -39,6 +39,10 @@ var (
 
 	templateCache map[string][]TemplateEntry
 	templateOnce  sync.Once
+
+	discoveryGroups    []string
+	discoveryResources []string
+	discoveryOnce      sync.Once
 )
 
 // LoadTemplates reads and caches the per-kind panel command templates.
@@ -80,6 +84,34 @@ func LoadResources() []ResourceConfig {
 		resourceCache = parsed.Resources
 	})
 	return resourceCache
+}
+
+// LoadDiscoveryExclude returns the groups and resource names `kubectl
+// api-resources` output should drop before it reaches the visibility panel:
+// leases, events, EKS networking internals and the like.
+func LoadDiscoveryExclude() (groups []string, resources []string) {
+	discoveryOnce.Do(func() {
+		data, err := os.ReadFile("kubelens.config.yaml")
+		if err != nil {
+			log.Printf("failed to read kubelens.config.yaml: %v", err)
+			return
+		}
+		var parsed struct {
+			Discovery struct {
+				Exclude struct {
+					Groups    []string `yaml:"groups"`
+					Resources []string `yaml:"resources"`
+				} `yaml:"exclude"`
+			} `yaml:"discovery"`
+		}
+		if err := yaml.Unmarshal(data, &parsed); err != nil {
+			log.Printf("failed to parse kubelens.config.yaml: %v", err)
+			return
+		}
+		discoveryGroups = parsed.Discovery.Exclude.Groups
+		discoveryResources = parsed.Discovery.Exclude.Resources
+	})
+	return discoveryGroups, discoveryResources
 }
 
 // A CRD's `kubectl get` target is group-qualified, so it differs from its key.
