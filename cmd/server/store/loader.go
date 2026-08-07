@@ -21,14 +21,27 @@ type K8sList struct {
 	Items      []K8sItem `yaml:"items"`
 }
 
-// BackupPath is the root directory for snapshot YAML files.
-// Override with K8S_SNAPSHOT_PATH env var.
-var BackupPath = func() string {
+// SnapshotDir is where the snapshot lives, for readers and writers alike:
+// K8S_SNAPSHOT_PATH if set, otherwise `k8s-snapshot` under the working
+// directory. Mirrors snapshotDir() in api/utils/paths.ts.
+//
+// A function, not a package-level var. Two reasons, and each has already cost
+// something. Go evaluates package-level initialisers before main() chdirs to
+// PROJECT_ROOT, so a relative K8S_SNAPSHOT_PATH would resolve against whatever
+// directory the process started in — the same trap as fileAliases. And it used
+// to be the only place in the Go backend that read this variable at all: the
+// export route held a bare "k8s-snapshot" string and the ping handler had its
+// own literal, so an export wrote one directory, the ping checked a second, and
+// Snapshot mode read a third.
+func SnapshotDir() string {
 	if p := os.Getenv("K8S_SNAPSHOT_PATH"); p != "" {
 		return p
 	}
+	if p := os.Getenv("K8S_SNAPSHOT_DIR"); p != "" {
+		return p
+	}
 	return "k8s-snapshot"
-}()
+}
 
 const DefaultNamespace = "demo"
 
@@ -59,7 +72,7 @@ func ResolveFilePath(filename, namespace string) string {
 	if namespace == "" {
 		return ""
 	}
-	nsDir := filepath.Join(BackupPath, namespace)
+	nsDir := filepath.Join(SnapshotDir(), namespace)
 
 	// Direct match.
 	p := filepath.Join(nsDir, filename)
@@ -148,9 +161,9 @@ func LoadText(filename, namespace string) string {
 	return s
 }
 
-// ListBackupNamespaces lists all namespace directories under BackupPath.
+// ListBackupNamespaces lists all namespace directories under the snapshot root.
 func ListBackupNamespaces() []string {
-	entries, err := os.ReadDir(BackupPath)
+	entries, err := os.ReadDir(SnapshotDir())
 	if err != nil {
 		return []string{DefaultNamespace}
 	}

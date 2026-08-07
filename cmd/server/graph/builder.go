@@ -47,7 +47,7 @@ func DiscoverNamespaces(dataPath string) []string {
 
 // SnapshotGetItemsFn returns a GetItemsFn that reads from k8s-snapshot/<ns>/.
 func SnapshotGetItemsFn(ns string) GetItemsFn {
-	nsDir := filepath.Join(store.BackupPath, ns)
+	nsDir := filepath.Join(store.SnapshotDir(), ns)
 	return func(_, resourceKey string) []K8sItem {
 		list := store.LoadYaml(resourceKey+".yaml", ns)
 		if list == nil {

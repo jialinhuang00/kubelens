@@ -280,7 +280,14 @@ router.post('/snapshot', async (req: Request, res: Response) => {
 
   const child = spawn(spawnCmd, args, {
     cwd: snapshotParentPath(),
-    env: { ...process.env },
+    // Tell the child exactly where to write instead of letting it infer the
+    // directory from its cwd. Inference held only while the route's path was
+    // always `<cwd>/k8s-snapshot`; once K8S_SNAPSHOT_PATH could move it, the two
+    // agreed only when that path happened to end in `k8s-snapshot`. Point it at
+    // `/data/mysnap` and the export landed in `/data/k8s-snapshot` while the
+    // route counted `/data/mysnap` — file count stuck at 0, no completion
+    // marker, no paused panel, no error. The export ran; the UI never moved.
+    env: { ...process.env, K8S_SNAPSHOT_DIR: snapshotPath() },
     detached: true,  // new process group — enables group kill on pause
   });
 

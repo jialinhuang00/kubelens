@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+
+	"kubelens/server/store"
 )
 
 func registerStatus(mux *http.ServeMux) {
@@ -64,8 +66,10 @@ func handleRealtimePing(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleSnapshotPing(w http.ResponseWriter, r *http.Request) {
-	// Resolve project root relative to cwd (server runs from project root via go run).
-	marker := filepath.Join("k8s-snapshot", ".export-complete")
+	// Through the shared helper, not a literal. This handler had its own copy of
+	// the string, so it answered about a directory the export route did not
+	// necessarily write to.
+	marker := filepath.Join(store.SnapshotDir(), ".export-complete")
 
 	_, err := os.Stat(marker)
 	writeJSON(w, http.StatusOK, map[string]bool{
@@ -82,7 +86,6 @@ func handleDebugMemory(w http.ResponseWriter, r *http.Request) {
 		"heapTotal": ms.HeapSys / 1024 / 1024,
 	})
 }
-
 
 // --- helpers ---
 

@@ -68,9 +68,11 @@ The export panel has four states, and only one of them is a variable the server 
 
 The first version of the dismiss button set an in-memory `paused = false` and looked like it worked, for one second. The next poll recomputed from disk and the modal returned. `pausedDismissed` exists to say "the user has seen this and wants past it"; the derived value is ANDed with it, and any new export resets it.
 
-Where that directory is comes from one place, `snapshotDir()` in `api/utils/paths.ts`: `K8S_SNAPSHOT_PATH` if set, otherwise `<cwd>/k8s-snapshot`. No fallback to the package's own copy, and nothing frozen at import.
+For this backend that directory comes from `snapshotDir()` in `api/utils/paths.ts`: `K8S_SNAPSHOT_PATH` if set, otherwise `<cwd>/k8s-snapshot`. No fallback to the package's own copy, and nothing frozen at import.
 
-Both halves of that sentence are scars. Readers used to fall back to the package while writers did not, so starting the server from `kubelens/api/` sent an export to `kubelens/api/k8s-snapshot` while Snapshot mode kept reading `kubelens/k8s-snapshot` — the panel said "Export complete", the data never changed, and nothing errored. And the path used to be a constant read at import; making it lazy without dropping the fallback meant that once `discard` removed the user's directory, the next delete found the package's.
+Every clause there is a scar. Readers used to fall back to the package while writers did not, so starting the server from `kubelens/api/` sent an export to `kubelens/api/k8s-snapshot` while Snapshot mode kept reading `kubelens/k8s-snapshot` — the panel said "Export complete", the data never changed, and nothing errored. The path used to be a constant read at import; making it lazy without dropping the fallback meant that once `discard` removed the user's directory, the next delete found the package's.
+
+The exporters are separate processes and resolve their own directory, so the export route passes them `K8S_SNAPSHOT_DIR` set to what it just resolved rather than letting them infer it from cwd. Inference matched only while the route's answer was always `<cwd>/k8s-snapshot`; point `K8S_SNAPSHOT_PATH` at `/data/mysnap` and the files landed in `/data/k8s-snapshot` while the route counted `/data/mysnap`. The Go backend has its own copy of this decision in `cmd/server/store/loader.go`, and `cmd/server/routes/snapshot_dir_test.go` is what keeps the two from drifting.
 
 Two dotfiles carry the rest, both written by whichever exporter ran:
 

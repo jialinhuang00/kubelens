@@ -15,6 +15,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"kubelens/server/store"
 )
 
 // exportState tracks the running export process and its progress.
@@ -55,7 +57,13 @@ var state = &exportState{
 	activeResources:  make(map[string]struct{}),
 }
 
-var snapshotDir = "k8s-snapshot"
+// Where this route reads and writes, through the one helper the loader and the
+// ping handler also use. It was a bare string here, so `K8S_SNAPSHOT_PATH`
+// moved Snapshot mode and left the export behind.
+//
+// Still a var so tests can point it at a temp directory; production never
+// assigns it.
+var snapshotDir = store.SnapshotDir
 
 var (
 	reDiscovered = regexp.MustCompile(`Discovered (\d+) namespaces`)
@@ -134,11 +142,11 @@ func handleExportStart(w http.ResponseWriter, r *http.Request, rawBody []byte) {
 	// this the first polls see .export-complete from last time and report the
 	// new export as already finished.
 	if !body.Resume {
-		os.Remove(filepath.Join(snapshotDir, ".export-complete"))
-		if entries, err := os.ReadDir(snapshotDir); err == nil {
+		os.Remove(filepath.Join(snapshotDir(), ".export-complete"))
+		if entries, err := os.ReadDir(snapshotDir()); err == nil {
 			for _, e := range entries {
 				if e.IsDir() {
-					os.Remove(filepath.Join(snapshotDir, e.Name(), ".done"))
+					os.Remove(filepath.Join(snapshotDir(), e.Name(), ".done"))
 				}
 			}
 		}
@@ -186,7 +194,7 @@ func handleExportStart(w http.ResponseWriter, r *http.Request, rawBody []byte) {
 	go pipeOutput(stderr, true)
 	go func() {
 		cmd.Wait()
-		count, _ := countFiles(snapshotDir)
+		count, _ := countFiles(snapshotDir())
 		state.mu.Lock()
 		if !state.startedAt.IsZero() {
 			secs := int(time.Since(state.startedAt).Seconds())
@@ -245,10 +253,10 @@ func exporterCommand(mode string, workers int) (string, []string, error) {
 // GET /api/snapshot
 // Polled every 1s by frontend during export.
 func handleExportProgress(w http.ResponseWriter, r *http.Request) {
-	liveCount, _ := countFiles(snapshotDir)
-	doneNs, _ := countDoneNamespaces(snapshotDir)
+	liveCount, _ := countFiles(snapshotDir())
+	doneNs, _ := countDoneNamespaces(snapshotDir())
 
-	_, errMarker := os.Stat(filepath.Join(snapshotDir, ".export-complete"))
+	_, errMarker := os.Stat(filepath.Join(snapshotDir(), ".export-complete"))
 	hasComplete := errMarker == nil
 
 	state.mu.Lock()
@@ -257,7 +265,7 @@ func handleExportProgress(w http.ResponseWriter, r *http.Request) {
 	totalNs := state.totalNamespaces
 	if totalNs == 0 && doneNs > 0 {
 		// Server restarted — count namespace dirs as fallback.
-		entries, err := os.ReadDir(snapshotDir)
+		entries, err := os.ReadDir(snapshotDir())
 		if err == nil {
 			for _, e := range entries {
 				if e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
@@ -344,7 +352,7 @@ func handleExportProgress(w http.ResponseWriter, r *http.Request) {
 // right after they clear the directory; absent for snapshots exported before
 // that existed, and for a directory nobody has exported into yet.
 func readExportContext() *string {
-	raw, err := os.ReadFile(filepath.Join(snapshotDir, ".export-context"))
+	raw, err := os.ReadFile(filepath.Join(snapshotDir(), ".export-context"))
 	if err != nil {
 		return nil
 	}
@@ -397,7 +405,7 @@ func handleExportDiscard(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusConflict, map[string]any{"error": "Export running"})
 		return
 	}
-	if err := os.RemoveAll(snapshotDir); err != nil {
+	if err := os.RemoveAll(snapshotDir()); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
 		return
 	}

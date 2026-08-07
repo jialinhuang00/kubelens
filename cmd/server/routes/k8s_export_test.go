@@ -46,7 +46,7 @@ func withSnapshotDir(t *testing.T) string {
 		t.Fatal(err)
 	}
 	prev := snapshotDir
-	snapshotDir = dir
+	snapshotDir = func() string { return dir }
 	t.Cleanup(func() { snapshotDir = prev })
 
 	// Stub the live-cluster lookup: the real one reads this machine's kubeconfig,

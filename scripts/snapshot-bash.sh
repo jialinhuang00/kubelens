@@ -27,8 +27,11 @@ RESUME=false
 PARALLEL_NS=3
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Output goes to the working directory, matching the node exporters. Run from
-# the project root, or set K8S_SNAPSHOT_DIR. (The server sets the child's cwd.)
-BASE_DIR="${K8S_SNAPSHOT_DIR:-$PWD/k8s-snapshot}"
+# the project root, or set either variable. The server passes K8S_SNAPSHOT_DIR
+# explicitly; K8S_SNAPSHOT_PATH is the app-wide name (api/utils/paths.ts), and
+# reading only the first meant a user who set that one exported to a directory
+# the app was not reading.
+BASE_DIR="${K8S_SNAPSHOT_DIR:-${K8S_SNAPSHOT_PATH:-$PWD/k8s-snapshot}}"
 
 # Namespaced resource types to export — split into parallel batches
 # Pods are handled separately (usually the most objects)

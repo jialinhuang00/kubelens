@@ -434,7 +434,11 @@ for (let i = 0; i < args.length; i++) {
 }
 
 async function main() {
-  const baseDir = process.env.K8S_SNAPSHOT_DIR ?? 'k8s-snapshot';
+  // Either name works. K8S_SNAPSHOT_DIR is this script's own knob and what
+  // the server sets when it spawns us; K8S_SNAPSHOT_PATH is the app-wide one
+  // (api/utils/paths.ts). Reading only the first meant a user who exported
+  // with K8S_SNAPSHOT_PATH set wrote somewhere the app was not reading.
+  const baseDir = process.env.K8S_SNAPSHOT_DIR ?? process.env.K8S_SNAPSHOT_PATH ?? 'k8s-snapshot';
 
   const kc = new k8s.KubeConfig();
   kc.loadFromDefault();

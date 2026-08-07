@@ -36,9 +36,14 @@ func main() {
 
 	_ = clusterScoped // reserved for future implementation
 
-	// Base directory: always relative to cwd (Node.js sets cwd to project root).
+	// Base directory: relative to cwd unless told otherwise. Either name works —
+	// the server passes K8S_SNAPSHOT_DIR explicitly, K8S_SNAPSHOT_PATH is the
+	// app-wide one (api/utils/paths.ts). Reading only the first meant a user who
+	// set that one exported to a directory the app was not reading.
 	baseDir := "k8s-snapshot"
 	if bd := os.Getenv("K8S_SNAPSHOT_DIR"); bd != "" {
+		baseDir = bd
+	} else if bd := os.Getenv("K8S_SNAPSHOT_PATH"); bd != "" {
 		baseDir = bd
 	}
 
