@@ -18,5 +18,7 @@
     "sourceMap": false
   },
   "include": ["api/**/*.ts", "scripts/init.ts", "shared/graph-types.ts"],
-  "exclude": ["node_modules", "src", "dist", "api/**/*.spec.ts", "api/**/*.itest.ts", "api/utils/test-fixtures.ts"]
+  // *.fixture.ts is the suffix for test-only helpers, so a new one is excluded by
+  // naming rather than by someone remembering to add it to this list.
+  "exclude": ["node_modules", "src", "dist", "api/**/*.spec.ts", "api/**/*.itest.ts", "api/**/*.fixture.ts", "api/utils/test-fixtures.ts"]
 }

@@ -1,15 +1,21 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { exportFailureMessage } from './export-failure';
+import { exporterMessage } from './exporter-message.fixture';
+import { snapshotDir } from './paths';
+
+const PROD = 'arn:aws:eks:ap-northeast-1:000000000000:cluster/prod';
 
 // What snapshot-bash.sh prints when it refuses to mix two clusters, colour and
-// all. This is the message the panel used to swallow.
-const CROSS_CLUSTER = `
-\x1b[31mERROR: k8s-snapshot holds a snapshot of arn:aws:eks:ap-northeast-1:000000000000:cluster/prod, and kubectl is on kind-kubelens-demo.\x1b[0m
-Adding namespaces from a second cluster would leave both in one directory.
-Nothing was changed. Switch context back to arn:aws:eks:ap-northeast-1:000000000000:cluster/prod to continue this snapshot,
-run a full export to replace it, or set K8S_SNAPSHOT_DIR to a different path.
-`;
+// all. This is the message the panel used to swallow. Read out of the script
+// rather than copied: the copy went stale the moment the script changed which
+// environment variable it names, and nothing here went red. See
+// exporter-message.fixture.ts.
+const CROSS_CLUSTER = exporterMessage('cross-cluster-abort', {
+  BASE_DIR: 'k8s-snapshot',
+  RECORDED: PROD,
+  CONTEXT: 'kind-kubelens-demo',
+});
 
 describe('exportFailureMessage', () => {
   it('carries the reason the exporter gave, not just the exit code', () => {
@@ -56,5 +62,33 @@ describe('exportFailureMessage', () => {
   it('caps the length so one runaway line cannot fill the panel', () => {
     const msg = exportFailureMessage(1, 'x'.repeat(50_000));
     assert.ok(msg.length < 800, `message was ${msg.length} chars`);
+  });
+});
+
+// The abort message tells the user which environment variable to set. Both ends
+// of that sentence are read from source here — the names out of the script, the
+// behaviour out of snapshotDir() — so renaming the variable in one place and not
+// the other fails instead of shipping advice that does nothing. The same check
+// exists in Go (cmd/server/routes/export_failure_test.go).
+describe('the variable the abort message names', () => {
+  it('is one the app actually honours', () => {
+    const named = [...new Set(CROSS_CLUSTER.match(/K8S_[A-Z_]+/g) ?? [])];
+    assert.ok(named.length > 0, 'the abort message names no environment variable at all');
+
+    const saved = { ...process.env };
+    try {
+      for (const name of named) {
+        delete process.env.K8S_SNAPSHOT_PATH;
+        delete process.env.K8S_SNAPSHOT_DIR;
+        process.env[name] = '/tmp/kubelens-abort-advice';
+        assert.equal(
+          snapshotDir(),
+          '/tmp/kubelens-abort-advice',
+          `snapshot-bash.sh tells the user to set ${name}, but snapshotDir() ignores it`,
+        );
+      }
+    } finally {
+      process.env = saved;
+    }
   });
 });

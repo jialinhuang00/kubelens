@@ -437,7 +437,10 @@ async function main() {
   // K8S_SNAPSHOT_PATH first, matching api/utils/paths.ts and
   // cmd/server/store/loader.go. This used to read DIR first, so with both
   // set the app and the exporter picked different directories.
-  const baseDir = process.env.K8S_SNAPSHOT_PATH ?? process.env.K8S_SNAPSHOT_DIR ?? 'k8s-snapshot';
+  // `||` not `??`: an empty string means unset here, the way bash's ${VAR:-} and
+  // Go's `!= ""` already read it. With `??` these three exporters were the only
+  // ones that would accept K8S_SNAPSHOT_PATH="" and export into the filesystem root.
+  const baseDir = process.env.K8S_SNAPSHOT_PATH || process.env.K8S_SNAPSHOT_DIR || 'k8s-snapshot';
 
   const kc = new k8s.KubeConfig();
   kc.loadFromDefault();

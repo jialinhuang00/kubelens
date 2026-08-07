@@ -122,11 +122,18 @@ FULL_WIPE=false
 if [[ "$FULL_WIPE" != true && -f "$CONTEXT_FILE" ]]; then
   RECORDED=$(sed -n 's/.*"context"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$CONTEXT_FILE")
   if [[ -n "$RECORDED" && "$RECORDED" != "$CONTEXT" ]]; then
+    # fixture:cross-cluster-abort:start
+    # Both backends test that this message survives the trip to the browser, and
+    # both read these lines out of this file rather than keeping a copy. The
+    # copies went stale the first time the wording changed, and nothing went red:
+    # a hand-typed fixture can only catch the formatter losing something it
+    # already handled, never the exporter changing what it says.
     printf "\n${RED}ERROR: %s holds a snapshot of %s, and kubectl is on %s.${RESET}\n" \
       "$BASE_DIR" "$RECORDED" "$CONTEXT" >&2
     printf "Adding namespaces from a second cluster would leave both in one directory.\n" >&2
     printf "Nothing was changed. Switch context back to %s to continue this snapshot,\n" "$RECORDED" >&2
     printf "run a full export to replace it, or set K8S_SNAPSHOT_PATH to a different path.\n" >&2
+    # fixture:cross-cluster-abort:end
     exit 1
   fi
 fi
