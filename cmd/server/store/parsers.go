@@ -8,10 +8,15 @@ import (
 
 // --- Helpers ---
 
-// Pad right-pads s to length n with spaces.
+// Pad right-pads s to length n with spaces. A value at least as long as the
+// column gets a single trailing space rather than none: `kubectl get svc`
+// printed `LoadBalancer10.96.155.77`, because TYPE is 12 wide and
+// `LoadBalancer` is 12 characters. Widening the column only moves the problem —
+// a ConfigMap or Role name can be any length at all. Mirrors pad() in
+// api/utils/snapshot-parsers.ts; api/utils/table-parity.itest.ts compares them.
 func Pad(s string, n int) string {
 	if len(s) >= n {
-		return s
+		return s + " "
 	}
 	return s + strings.Repeat(" ", n-len(s))
 }

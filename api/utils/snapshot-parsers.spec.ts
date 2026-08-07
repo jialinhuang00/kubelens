@@ -66,12 +66,16 @@ describe('pad', () => {
     assert.equal(pad('hi', 5), 'hi   ');
   });
 
-  it('returns string unchanged when equal to length', () => {
-    assert.equal(pad('hello', 5), 'hello');
+  // A value that fills or overflows its column still gets one space, so the row
+  // stays readable. `kubectl get svc` printed `LoadBalancer10.96.155.77`
+  // because TYPE is 12 wide and `LoadBalancer` is 12 characters, and no
+  // column width can prevent it for a name the user chose.
+  it('adds one space when the value exactly fills the column', () => {
+    assert.equal(pad('hello', 5), 'hello ');
   });
 
-  it('returns string unchanged when longer than length', () => {
-    assert.equal(pad('toolong', 3), 'toolong');
+  it('adds one space when the value overflows, and never truncates', () => {
+    assert.equal(pad('toolong', 3), 'toolong ');
   });
 
   it('converts non-string to string', () => {

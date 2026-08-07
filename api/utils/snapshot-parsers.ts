@@ -41,16 +41,22 @@ export function findItem(yamlData: K8sList | null, name: string): K8sItem | null
  * Right-pad a value to a fixed width with spaces. Used for table column alignment.
  * @param str - Value to pad (coerced to string; null/undefined → '')
  * @param len - Target width
- * @returns Padded string. If input is already >= len, returned as-is (no truncation)
+ * A value at least as long as the column gets a single trailing space rather
+ * than none. Without it the column runs into the next one and the row becomes
+ * unreadable: `kubectl get svc` printed `LoadBalancer10.96.155.77`, because
+ * TYPE is 12 wide and `LoadBalancer` is 12 characters. Widening the column only
+ * moves the problem — a ConfigMap or Role name can be any length at all.
+ *
+ * @returns Padded string. Never truncates.
  * @example
- * pad('web', 10)   // → 'web       '
- * pad('toolong', 3) // → 'toolong'
- * pad(42, 5)        // → '42   '
- * pad(null, 3)      // → '   '
+ * pad('web', 10)     // → 'web       '
+ * pad('toolong', 3)  // → 'toolong '
+ * pad(42, 5)         // → '42   '
+ * pad(null, 3)       // → '   '
  */
 export function pad(str: unknown, len: number): string {
   const s = String(str || '');
-  return s.length >= len ? s : s + ' '.repeat(len - s.length);
+  return s.length >= len ? s + ' ' : s + ' '.repeat(len - s.length);
 }
 
 /**
