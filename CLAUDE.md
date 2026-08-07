@@ -17,10 +17,11 @@
 - `npm run init` generates `kubelens.config.yaml` for the current cluster: built-ins from `kubelens.default.yaml` + CRDs discovered via `kubectl api-resources` (shipped `default: []`, off). Pure detection logic in `api/utils/init-detect.ts` (unit-tested); `--force`/`--merge` flags.
 - Image tag lookups are registry-agnostic: `/api/registry/tags` detects ECR/GCR/ACR from the image URL and shells out to `aws`/`gcloud`/`az`.
 - Snapshot mode replays from the same objects real kubectl reads (e.g. rollout history rebuilds from exported ReplicaSets' revision annotations; old snapshots without `replicasets.yaml` fall back to synthesized rows). Still canned/fake: `get events`, and `get namespaces` when the snapshot dir is missing — don't trust those outputs.
-- The export kind list lives in FIVE places that must stay in sync: bash `NS_BATCHES`, `snapshot-node.js` / `-workers` / `-procs` `NS_BATCHES`, Go `nsBatches` (+ `kind-map.json` / `kindmap.go` for filenames).
+- The export kind list lives in FIVE places that must stay in sync: bash `NS_BATCHES`, `snapshot-node.js` / `-workers` / `-procs` `NS_BATCHES`, Go `nsBatches` (+ `kind-map.json` / `kindmap.go` for filenames). Same five-way duplication for the two dotfiles every exporter writes: `.export-context` (after the clean, `{context, startedAt}`; fresh run overwrites, `--resume` keeps) and `.export-complete` (after the last namespace, `{context, exportedAt, exporter}`). Miss one and that mode's snapshots silently carry no cluster name.
 - `cmd/server`: package-level `var`s init BEFORE `main()` chdirs to `PROJECT_ROOT` — never resolve config/files in a package-level initializer (that's why `fileAliases` is lazy). Also: Node passes config YAML through as-is, but Go re-declares typed structs — a config field/section not mirrored in `store/config.go` silently vanishes from `/api/config`.
 - Go route parity is by hand and drifts silently. Renaming a Node route without renaming the Go one leaves `dev:go` answering 404 with nothing in the logs (that's how `/api/snapshot` sat broken from 2026-03-07 to 2026-08-07), and a field added to a Node JSON response is absent in Go until someone adds it to `writeJSON`'s map. Change one side, change both, then `npm run test:go`.
-- Export state (`paused`, `pausedDismissed`) lives in server memory on both backends but `paused` is recomputed from disk every poll — files present with no `.export-complete`. Clearing an in-memory flag alone gets undone one second later.
+- Export state (`paused`, `pausedDismissed`) lives in server memory on both backends but `paused` is recomputed from disk every poll — files present with no `.export-complete`. Clearing an in-memory flag alone gets undone one second later; that's why dismiss needs `pausedDismissed`, ANDed into the derived value and reset by any new export.
+- The paused panel reads `.export-context`, never `.export-complete`: "paused" means the completion marker is missing, so it can't be the thing that records the cluster. `GET /api/snapshot` returns `snapshotContext` + `currentContext` only while paused — a running export polls every second and each lookup spawns kubectl.
 
 ## File Structure
 ```
@@ -101,7 +102,8 @@ Frontend → `api/routes/execute.js` → `snapshot-handler.ts` → reads `k8s-sn
 Home page → `api/routes/snapshot.js` → spawns export script → writes `k8s-snapshot/`
 - Multiple export modes: bash, node, workers, procs, go
 - Progress: stdout parsing → in-memory `exportState` → polled by frontend every 1s
-- `.export-complete` marker = snapshot available
+- `.export-complete` marker = snapshot available; `.export-context` = which cluster it came from
+- Interrupted export → paused panel with three exits: Resume, Start over (`command: 'discard'`, deletes the directory), or dismiss (`command: 'clear'`)
 
 ### Streaming (WebSocket)
 Frontend → `websocket.service.ts` → `ws://host/api/execute/stream/ws` → server spawns kubectl →
@@ -110,6 +112,7 @@ Control: `POST /api/execute/stream/stop` (kill process), `POST /api/execute/stre
 
 ## Development
 - `npm run dev` — frontend (4200) + backend (3042), proxy forwards `/api`
+- `npm run dev:go` — same ports, Go backend instead of Node
 - `bash scripts/snapshot-bash.sh` — CLI export (independent of server)
 - `ng test` — Unit tests
 - `npm run test:utils` — Backend unit tests. Points `K8S_SNAPSHOT_PATH` at a nonexistent path so nothing reads a real export; `snapshot-commands.spec.ts` seeds `snapshot-loader`'s in-memory cache with fixtures instead.

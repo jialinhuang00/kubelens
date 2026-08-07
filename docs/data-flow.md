@@ -2,7 +2,7 @@
 
 Who calls whom, from a click in the browser down to `kubectl`. Read this before touching `api/routes/` or any frontend service.
 
-Two backends live in this repo. The Node backend (`api/index.js`, Express 5) is what `npm run dev` runs and what this doc describes. The Go backend under `cmd/server/` is a parallel implementation and not covered here.
+Two backends live in this repo. The Node backend (`api/index.js`, Express 5) is what `npm run dev` runs and what this doc describes. The Go backend under `cmd/server/` is a parallel implementation, reached by `npm run dev:go`, and not covered here. It answers the same paths on purpose, and keeping it that way is manual: rename a route on one side only and `dev:go` starts returning 404 with nothing in the logs. That is exactly what happened to `/api/snapshot` between 2026-03-07 and 2026-08-07.
 
 ## HTTP endpoints
 
@@ -17,11 +17,11 @@ All routers mount under `/api` (`api/index.js:36-42`). In prod, anything outside
 | GET | `/api/config` | `api/routes/config.js:8` | `{resources, templates}` from `kubelens.config.yaml` |
 | GET | `/api/api-resources` | `api/routes/discovery.js:23` | discovered kinds from `kubectl api-resources` |
 | GET | `/api/registry/tags` | `api/routes/registry.js:114` | image tags; detects ECR/GAR/GCR/ACR from `?image=` |
-| POST | `/api/snapshot` | `api/routes/snapshot.js:64` | export control: `start` / `stop` / `clear` |
-| GET | `/api/snapshot` | `api/routes/snapshot.js:259` | export progress (running, totals, ETA) |
+| POST | `/api/snapshot` | `api/routes/snapshot.js:98` | export control: `start` / `stop` / `clear` / `discard` |
+| GET | `/api/snapshot` | `api/routes/snapshot.js:321` | export progress (running, totals, ETA, contexts) |
 | GET | `/api/realtime/ping` | `api/routes/status.js:13` | kubectl health + version |
-| GET | `/api/export/ping` | `api/routes/status.js:56` | is GNU `parallel` installed |
-| GET | `/api/snapshot/ping` | `api/routes/status.js:66` | does `k8s-snapshot/.export-complete` exist |
+| GET | `/api/export/ping` | `api/routes/status.js:58` | is GNU `parallel` installed |
+| GET | `/api/snapshot/ping` | `api/routes/status.js:68` | does `k8s-snapshot/.export-complete` exist |
 | GET | `/api/debug/memory` | `api/index.js:18` | rss / heap in MB |
 
 Every `/api/` request can carry `?snapshot=true`. The frontend never adds it by hand: `snapshotInterceptor` (`src/app/core/interceptors/snapshot.interceptor.ts:10`) appends it to all `/api/` calls while snapshot mode is on. Handlers that see it read from `k8s-snapshot/` instead of running kubectl.
@@ -59,6 +59,27 @@ The expensive question: how many kubectl processes does one user action cost?
 **Graph load — 4 calls.** `fetchLiveData()` (`api/routes/graph.js:37-82`) reads the graph kinds from `kubelens.config.yaml`, splits built-ins from CRDs, then runs one `kubectl get <all-builtins-joined> -A -o json` plus one call per CRD. The config currently lists 3 graph CRDs (Gateway, HTTPRoute, TCPRoute), so a load is 1 batch + 3 = 4 invocations, all in a single `Promise.all`. Add a graph CRD to the config and the count grows by one. Results are keyed by `group/kind` so same-named Kinds from different groups don't collide (`graph.js:49-52`).
 
 **Terminal namespace select — 2 phases.** `ResourceTreeService.loadForNamespace()` (`src/app/features/terminal/services/resource-tree.service.ts:85-135`) runs phase 1 as one batch `kubectl get <priority-kinds> -n <ns> -o name` (`KubectlService.getResourceNamesBatch()`, `kubectl.service.ts:250`), renders the tree, then phase 2 fetches every remaining kind in parallel, one call each (`getResourceNames()`, `kubectl.service.ts:281`). Priority kinds show up fast; the long tail fills in behind.
+
+## Export state: disk, not memory
+
+The export panel has four states, and only one of them is a variable the server can set. `paused` is derived from the filesystem on every poll (`snapshot.js:342`): not running, no error, files present, no `.export-complete`. A run killed halfway leaves exactly that, so the panel comes back after a server restart, a browser reload, anything.
+
+The first version of the dismiss button set an in-memory `paused = false` and looked like it worked, for one second. The next poll recomputed from disk and the modal returned. `pausedDismissed` exists to say "the user has seen this and wants past it"; the derived value is ANDed with it, and any new export resets it.
+
+Two dotfiles carry the rest, both written by whichever exporter ran:
+
+```
+.export-context    written after the clean, before the first fetch
+                   {"context": "<kubectl context>", "startedAt": "<ISO>"}
+.export-complete    written when every namespace finished
+                   {"context": ..., "exportedAt": ..., "exporter": "bash|node|node-workers|node-procs|go"}
+```
+
+They answer different questions and the paused panel needs the first one. "Paused" means `.export-complete` is missing, so the completion marker is never readable in the state that wants it. A fresh export replaces `.export-context`; a resume keeps it, because overwriting would erase the context the panel compares against.
+
+`GET /api/snapshot` returns `snapshotContext` and `currentContext` (the live `kubectl config current-context`), both null unless paused — a running export polls once a second and there is no reason to spawn kubectl that often. The home panel prints both and colours them red when they differ, because resuming then would finish one cluster's export against another and leave both in one directory.
+
+`POST /api/snapshot {"command":"discard"}` deletes the whole directory. That is the only way to get rid of a partial export from the UI.
 
 ## Frontend services
 

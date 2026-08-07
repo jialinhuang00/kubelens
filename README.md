@@ -57,6 +57,8 @@ Optional (only for image tag lookups in the rollout panel):
 - **Realtime** — runs kubectl against your live cluster (the default).
 - **Snapshot** — reads exported YAML from `k8s-snapshot/`. Create one from the landing page **Export** panel, then switch to Snapshot mode; no cluster needed after that. (`scripts/snapshot-bash.sh` does the same from the CLI if you prefer.)
 
+An interrupted export leaves a partial `k8s-snapshot/`, and the landing page offers three ways on: **Resume** finishes the namespaces it never reached, **Start over** deletes what is there and exports again, or leave it and use kubelens as it is. A snapshot records which cluster it came from, so if you point kubectl elsewhere between the two runs the panel shows both names and says not to resume — that would put half of each cluster in one directory.
+
 ## Configuration
 
 Everything the app shows comes from `kubelens.config.yaml`, not from hardcoded lists. A clone has that file committed; `npx kubelens` writes one on first run. It works untouched, and editing it is how you change what appears.
@@ -119,9 +121,11 @@ See the `tables:` comment in `kubelens.default.yaml` for the full transform list
 
 ```bash
 pnpm run dev         # frontend + backend
+pnpm run dev:go      # frontend + the Go backend instead
 pnpm run build       # production build
 pnpm test            # unit tests (Karma)
 pnpm run test:utils  # backend unit tests (node:test)
+pnpm run test:go     # Go backend tests (net/http/httptest)
 pnpm run test:e2e    # browser tests (Playwright)
 ```
 

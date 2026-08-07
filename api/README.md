@@ -14,3 +14,10 @@ Two snapshot concerns live in `utils/`, don't confuse them:
 - Everything else — `config-loader`, `graph-builder`, `api-resources`, `init-detect`.
 
 Snapshot **export** (writing those files) is NOT here — it's in [`scripts/`](../scripts/).
+
+## Tests
+
+`pnpm run test:utils` covers `utils/` only. Nothing in `routes/` has a test, so
+changes to export control, the paused state or the SPA fallback are verified by
+hand. The Go port has route tests (`pnpm run test:go`) if you want a reference for
+what the same coverage would look like here.
