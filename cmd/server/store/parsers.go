@@ -8,23 +8,29 @@ import (
 
 // --- Helpers ---
 
-// Pad right-pads s to length n with spaces. A value at least as long as the
-// column gets TWO trailing spaces: `kubectl get svc` printed
-// `LoadBalancer10.96.155.77`, because TYPE is 12 wide and `LoadBalancer` is 12
-// characters. Widening the column only moves the problem — a ConfigMap or Role
-// name can be any length at all.
+// Pad right-pads s toward width n, leaving a gap of at least two spaces however
+// long s is. The frontend splits these rows back into cells on `/\s{2,}/`
+// (src/app/features/dashboard/services/output-parser.service.ts), so a
+// one-space gap merges two values into one cell and shifts every later column
+// left — a row that looks plausible and is wrong.
 //
-// Two, because the frontend splits these rows back into columns on `/\s{2,}/`
-// (src/app/features/dashboard/services/output-parser.service.ts). One space
-// reads fine as text and still merges two values into a single cell.
+// Three ways a gap gets too small, all seen in this repo's own data:
+//
+//	value longer than the column   "kubeadm:bootstrap-signer-clusterinfo" in NAME(40)
+//	value exactly fills it         "LoadBalancer" in TYPE(12)
+//	value one short of it          "lb.example,10.0.0.7" in ADDRESS(20)
+//
+// Widening the column fixes none of them — a name the user chose has no bound.
 //
 // Mirrors pad() in api/utils/snapshot-parsers.ts; table-parity.itest.ts
-// compares the two.
+// compares the two, and table-roundtrip.spec.ts checks the frontend can still
+// split the result.
 func Pad(s string, n int) string {
-	if len(s) >= n {
-		return s + "  "
+	gap := n - len(s)
+	if gap < 2 {
+		gap = 2
 	}
-	return s + strings.Repeat(" ", n-len(s))
+	return s + strings.Repeat(" ", gap)
 }
 
 // GetAge returns a human-readable age from an ISO 8601 timestamp.

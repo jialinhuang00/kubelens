@@ -41,27 +41,28 @@ export function findItem(yamlData: K8sList | null, name: string): K8sItem | null
  * Right-pad a value to a fixed width with spaces. Used for table column alignment.
  * @param str - Value to pad (coerced to string; null/undefined → '')
  * @param len - Target width
- * A value at least as long as the column gets TWO trailing spaces, not one and
- * not none. `kubectl get svc` printed `LoadBalancer10.96.155.77`, because TYPE
- * is 12 wide and `LoadBalancer` is 12 characters. Widening the column only moves
- * the problem — a ConfigMap or Role name can be any length at all.
+ * The gap after a value is never smaller than two spaces, however long the value
+ * is. The frontend splits these rows back into cells on `/\s{2,}/`
+ * (dashboard/services/output-parser.service.ts), so a one-space gap merges two
+ * values into one cell and shifts every later column left — a row that looks
+ * plausible and is wrong.
  *
- * Two, because the frontend splits these rows back into columns on
- * `/\s{2,}/` (dashboard/services/output-parser.service.ts). One space reads
- * fine as text and still merges TYPE and CLUSTER-IP into a single cell, which
- * shifts every later column left by one — worse than the run-together text,
- * because the row looks plausible and is wrong.
+ * Three ways a gap gets too small, all seen in this repo's own data:
+ *   value longer than the column   `kubeadm:bootstrap-signer-clusterinfo` in NAME(40)
+ *   value exactly fills it         `LoadBalancer` in TYPE(12)
+ *   value one short of it          `lb.example,10.0.0.7` in ADDRESS(20)
+ * Widening the column fixes none of them — a name the user chose has no bound.
  *
  * @returns Padded string. Never truncates.
  * @example
- * pad('web', 10)     // → 'web       '
- * pad('toolong', 3)  // → 'toolong  '
- * pad(42, 5)         // → '42   '
+ * pad('web', 10)     // → 'web       '   (7 spaces: the column is wide enough)
+ * pad('hello', 5)    // → 'hello  '      (2: the value fills the column)
+ * pad('toolong', 3)  // → 'toolong  '    (2: the value overflows)
  * pad(null, 3)       // → '   '
  */
 export function pad(str: unknown, len: number): string {
   const s = String(str || '');
-  return s.length >= len ? s + '  ' : s + ' '.repeat(len - s.length);
+  return s + ' '.repeat(Math.max(2, len - s.length));
 }
 
 /**

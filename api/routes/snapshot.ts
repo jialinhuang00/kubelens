@@ -13,6 +13,10 @@ import { nextEta } from '../utils/export-eta';
 import { kubectlContext } from '../utils/kubectl-context';
 import { exportFailureMessage } from '../utils/export-failure';
 import { applyProgressChunk } from '../utils/export-progress';
+import { tailChars } from '../utils/tail';
+
+// Matches stderrTailLimit in cmd/server/routes/k8s_export.go.
+const STDERR_TAIL_LIMIT = 2000;
 
 // Resolved per call rather than once at import. The server never moves, so this
 // costs two `existsSync` calls on a route polled once a second and changes
@@ -334,7 +338,8 @@ router.post('/snapshot', async (req: Request, res: Response) => {
     // and kubectl is on Y") but only on stderr, and the UI renders `error` and
     // nothing else — so a Resume that hit the cross-cluster guard used to show
     // "Export failed: Process exited with code 1" and no reason at all.
-    exportState.stderrTail = (exportState.stderrTail + text).slice(-2000);
+    // tailChars, not .slice(): the cut can land inside a character. See utils/tail.ts.
+    exportState.stderrTail = tailChars(exportState.stderrTail + text, STDERR_TAIL_LIMIT);
   });
 
   child.on('close', (code) => {

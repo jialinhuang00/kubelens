@@ -15,6 +15,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"unicode/utf8"
 
 	"kubelens/server/store"
 )
@@ -502,6 +503,27 @@ func handleExportStop(w http.ResponseWriter, r *http.Request) {
 
 const stderrTailLimit = 2000
 
+// tailBytes keeps the last `limit` bytes of s without cutting a character in
+// half. Go strings are bytes, so `s[len(s)-limit:]` lands mid-character two
+// times out of three for CJK text — and the text this trims is the exporter's
+// stderr, which carries the kubectl context: a name the user chose, so it can
+// be Chinese or an emoji. "叢集" cut one byte short prints "\xa2集", and the
+// panel shows a replacement glyph.
+//
+// The cut moves forward to the next character boundary, dropping at most three
+// bytes, so the cap still holds. The TypeScript half is tailChars in
+// api/utils/tail.ts; its strings are UTF-16, so only emoji can break there.
+func tailBytes(s string, limit int) string {
+	if len(s) <= limit {
+		return s
+	}
+	t := s[len(s)-limit:]
+	for len(t) > 0 && !utf8.RuneStart(t[0]) {
+		t = t[1:]
+	}
+	return t
+}
+
 // pipeOutput reads from a pipe, writes to stdout, and parses progress markers.
 // `isStderr` keeps a separate tail of the error stream: the exporters explain
 // refusals in full there ("holds a snapshot of X, and kubectl is on Y"), and the
@@ -522,10 +544,7 @@ func pipeOutput(r io.Reader, isStderr bool) {
 				state.output += text
 			}
 			if isStderr {
-				state.stderrTail += text
-				if len(state.stderrTail) > stderrTailLimit {
-					state.stderrTail = state.stderrTail[len(state.stderrTail)-stderrTailLimit:]
-				}
+				state.stderrTail = tailBytes(state.stderrTail+text, stderrTailLimit)
 			}
 
 			applyProgressChunk(state, text)

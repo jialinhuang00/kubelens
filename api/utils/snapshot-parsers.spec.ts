@@ -79,6 +79,13 @@ describe('pad', () => {
     assert.equal(pad('toolong', 3), 'toolong  ');
   });
 
+  it('adds two spaces when the value is one short of the column', () => {
+    // The case the two-space fix still missed: padding to width leaves exactly
+    // one space, and one space is not a separator. Ingress ADDRESS is 20 wide
+    // and `lb.example,10.0.0.7` is 19 characters.
+    assert.equal(pad('lb.example,10.0.0.7', 20), 'lb.example,10.0.0.7  ');
+  });
+
   it('leaves a gap the frontend parser can split on', () => {
     // The invariant that matters: after padding, /\s{2,}/ separates the value
     // from whatever follows it. This is the check the earlier one-space fix
