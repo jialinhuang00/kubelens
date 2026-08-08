@@ -242,12 +242,22 @@ function interpolate(template: string, item: K8sItem): string {
 export function renderTable(spec: TableSpec, items: K8sItem[]): string {
   const cols = spec.columns;
   const last = cols.length - 1;
-  const header = cols.map((c, i) => (i === last ? c.name : pad(c.name, c.width ?? 0))).join('');
-  const rows = items.map(item =>
-    cols.map((c, i) => {
-      const v = interpolate(c.value, item);
-      return i === last ? v : pad(v, c.width ?? 0);
-    }).join('')
+
+  // Expand each column to fit its widest value, so one long name does not shift
+  // every column after it. `width` in the config is a minimum, not a fixed size:
+  // a RoleBinding called `system::leader-locking-kube-controller-manager` is 44
+  // characters in a column declared 40 wide, and every row without such a name
+  // used to line up while that one did not. Real kubectl sizes columns this way.
+  const cells = items.map(item => cols.map(c => interpolate(c.value, item)));
+  const widths = cols.map((c, i) => {
+    if (i === last) return 0; // trailing column is never padded
+    const longest = Math.max(c.name.length, ...cells.map(row => row[i].length));
+    return Math.max(c.width ?? 0, longest + 2);
+  });
+
+  const header = cols.map((c, i) => (i === last ? c.name : pad(c.name, widths[i]))).join('');
+  const rows = cells.map(row =>
+    row.map((v, i) => (i === last ? v : pad(v, widths[i]))).join('')
   );
   return [header, ...rows].join('\n');
 }

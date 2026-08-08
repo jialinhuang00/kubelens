@@ -297,11 +297,11 @@ func handleGet(p *ParsedCommand) CommandResult {
 	switch p.Resource {
 	case "namespaces", "namespace", "ns":
 		return handleGetNamespaces(p)
-	case "nodes", "node":
+	case "nodes", "node", "no":
 		return handleGetNodes(p)
 	case "events", "event", "ev":
 		return handleGetEvents(p)
-	case "pods", "pod":
+	case "pods", "pod", "po":
 		return handleGetPods(p)
 	case "replicasets", "replicaset", "rs":
 		return handleGetReplicasets(p)

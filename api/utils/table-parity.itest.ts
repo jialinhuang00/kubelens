@@ -88,6 +88,13 @@ func main() {
 	// Aliases and the snapshot-only kinds: "ep" must answer "endpoints/x", the
 	// canonical prefix, not the alias the caller typed.
 	aliasNames := store.HandleCommand("kubectl get ep -n demo -o name")
+	// kubectl's own short names for the kinds handleGet answers itself. "ns" and
+	// "ev" were in the dispatch; "po" and "no" were not, so both backends called
+	// them unknown resource types.
+	shortNames := map[string]string{}
+	for _, k := range []string{"po", "pods", "no", "nodes", "ns", "ev"} {
+		shortNames[k] = store.HandleCommand("kubectl get " + k + " -n demo").Stdout
+	}
 
 	b, _ := json.Marshal(map[string]any{
 		"tables":   out,
@@ -95,6 +102,7 @@ func main() {
 		"prefixes": store.NamePrefixMap(),
 		"names":      names.Stdout,
 		"aliasNames": aliasNames.Stdout,
+		"shortNames": shortNames,
 	})
 	fmt.Print(string(b))
 }
@@ -114,7 +122,8 @@ describe('the two backends render the same table from the same config', () => {
       prefixes: Record<string, string>;
       names: string;
       aliasNames: string;
-    } = { tables: {}, files: {}, prefixes: {}, names: '', aliasNames: '' };
+      shortNames: Record<string, string>;
+    } = { tables: {}, files: {}, prefixes: {}, names: '', aliasNames: '', shortNames: {} };
     try {
       fs.mkdirSync(probeDir, { recursive: true });
       fs.writeFileSync(path.join(probeDir, 'main.go'), PROBE);
@@ -158,6 +167,17 @@ describe('the two backends render the same table from the same config', () => {
       if (probe.aliasNames) {
         assert.doesNotMatch(probe.aliasNames, /^ep\//m, `alias leaked into output: ${probe.aliasNames}`);
         assert.match(probe.aliasNames, /^endpoints\/\S+$/m);
+      }
+    });
+
+    it("answers kubectl's short names the same as the long ones", () => {
+      // `kubectl get po` is valid kubectl. Both backends used to answer
+      // "Unknown resource type: po" because the dispatch listed 'pods' and
+      // 'pod' but not the short name, and no map below it covered the gap.
+      for (const [short, long] of [['po', 'pods'], ['no', 'nodes']] as const) {
+        assert.ok(probe.shortNames[short], `Go: '${short}' produced nothing`);
+        assert.equal(probe.shortNames[short], probe.shortNames[long], `Go: ${short} != ${long}`);
+        assert.equal(probe.shortNames[short], handleCommand(`kubectl get ${short} -n demo`).stdout);
       }
     });
 

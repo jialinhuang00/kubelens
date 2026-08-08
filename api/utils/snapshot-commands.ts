@@ -50,15 +50,6 @@ export interface ParsedCommand {
 
 // --- Resource mapping ---
 
-// Kinds with bespoke (non-file) snapshot handling — synthesized or read from a
-// text snapshot, not a `<key>.yaml`. These override the config-derived map.
-const SPECIAL_NULL: Record<string, null> = {
-  pods: null, pod: null, po: null,
-  nodes: null, node: null, no: null,
-  namespaces: null, namespace: null, ns: null,
-  events: null, event: null,
-};
-
 // Snapshot-exported kinds that aren't in the resource config (no tree/graph role).
 const SNAPSHOT_EXTRA: Record<string, string> = {
   endpoints: 'endpoints.yaml', endpoint: 'endpoints.yaml', ep: 'endpoints.yaml',
@@ -86,11 +77,18 @@ const SNAPSHOT_EXTRA_PREFIX: Record<string, string> = {
 
 // Resource name / alias → snapshot file. Derived from kubelens.config.yaml (so a
 // kind added there is resolvable here too), then overlaid with the snapshot-only
-// extras and the special non-file kinds. Built lazily, once.
+// extras. Built lazily, once.
+//
+// A SPECIAL_NULL table used to be layered on top, mapping pods / nodes /
+// namespaces / events to null to mean "known, but not read from a file". It had
+// no reader: the check below is `if (!yamlFile)`, where null and undefined are
+// the same, so `kubectl get po` answered "Unknown resource type" exactly like a
+// name nobody has ever heard of. Those kinds are intercepted by handleGet's
+// dispatch long before this map is consulted.
 let _resourceFileMap: Record<string, string | null> | null = null;
 function resourceFileMap(): Record<string, string | null> {
   if (!_resourceFileMap) {
-    _resourceFileMap = { ...getResourceFileMap(), ...SNAPSHOT_EXTRA, ...SPECIAL_NULL };
+    _resourceFileMap = { ...getResourceFileMap(), ...SNAPSHOT_EXTRA };
   }
   return _resourceFileMap;
 }
@@ -291,7 +289,7 @@ function handleGet(parsed: ParsedCommand): CommandResult {
     return handleGetNamespaces(parsed);
   }
 
-  if (['nodes', 'node'].includes(parsed.resource!)) {
+  if (['nodes', 'node', 'no'].includes(parsed.resource!)) {
     return handleGetNodes(parsed);
   }
 
@@ -299,7 +297,7 @@ function handleGet(parsed: ParsedCommand): CommandResult {
     return handleGetEvents(parsed);
   }
 
-  if (['pods', 'pod'].includes(parsed.resource!)) {
+  if (['pods', 'pod', 'po'].includes(parsed.resource!)) {
     return handleGetPods(parsed);
   }
 
@@ -392,8 +390,9 @@ function handleGet(parsed: ParsedCommand): CommandResult {
 
 /**
  * `kubectl get <type[,type...]> -o name` → one `<prefix>/<name>` line per item.
- * Resolves each type to its config-derived snapshot file (bypassing the SPECIAL_NULL
- * overlay so pods/replicasets read from their YAML), prefixing names the way kubectl does.
+ * Builds its own file map rather than using resourceFileMap(), so pods and
+ * replicasets resolve to their YAML here even though handleGet answers them
+ * from elsewhere. Prefixes names the way kubectl does.
  */
 function handleGetName(parsed: ParsedCommand): CommandResult {
   const fileMap = { ...getResourceFileMap(), ...SNAPSHOT_EXTRA };

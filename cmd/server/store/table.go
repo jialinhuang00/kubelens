@@ -339,27 +339,56 @@ func RenderTable(spec TableSpec, items []K8sItem) string {
 	cols := spec.Columns
 	last := len(cols) - 1
 
+	// Expand each column to fit its widest value, so one long name does not shift
+	// every column after it. Width in the config is a minimum, not a fixed size:
+	// a RoleBinding called "system::leader-locking-kube-controller-manager" is 44
+	// characters in a column declared 40 wide, and every row without such a name
+	// used to line up while that one did not. Real kubectl sizes columns this way.
+	cells := make([][]string, len(items))
+	for r, item := range items {
+		cells[r] = make([]string, len(cols))
+		for i, c := range cols {
+			cells[r][i] = interpolate(c.Value, item)
+		}
+	}
+
+	widths := make([]int, len(cols))
+	for i, c := range cols {
+		if i == last {
+			continue // trailing column is never padded
+		}
+		longest := len(c.Name)
+		for _, row := range cells {
+			if n := len(row[i]); n > longest {
+				longest = n
+			}
+		}
+		widths[i] = c.Width
+		if longest+2 > widths[i] {
+			widths[i] = longest + 2
+		}
+	}
+
 	var header strings.Builder
 	for i, c := range cols {
 		if i == last {
 			header.WriteString(c.Name)
 		} else {
-			header.WriteString(Pad(c.Name, c.Width))
+			header.WriteString(Pad(c.Name, widths[i]))
 		}
 	}
 
 	lines := []string{header.String()}
-	for _, item := range items {
-		var row strings.Builder
-		for i, c := range cols {
-			v := interpolate(c.Value, item)
+	for _, row := range cells {
+		var b strings.Builder
+		for i, v := range row {
 			if i == last {
-				row.WriteString(v)
+				b.WriteString(v)
 			} else {
-				row.WriteString(Pad(v, c.Width))
+				b.WriteString(Pad(v, widths[i]))
 			}
 		}
-		lines = append(lines, row.String())
+		lines = append(lines, b.String())
 	}
 	return strings.Join(lines, "\n")
 }

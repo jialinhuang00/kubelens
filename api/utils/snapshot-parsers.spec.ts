@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  renderTable,
   extractNames, findItem, pad, getAge, getDuration,
   generateDeploymentTable, generateServiceTable, generateConfigmapTable,
   generateCronjobTable, generateStatefulsetTable, generateJobTable, generateEndpointTable,
@@ -84,6 +85,29 @@ describe('pad', () => {
     // one space, and one space is not a separator. Ingress ADDRESS is 20 wide
     // and `lb.example,10.0.0.7` is 19 characters.
     assert.equal(pad('lb.example,10.0.0.7', 20), 'lb.example,10.0.0.7  ');
+  });
+
+  it('widens a column to fit its longest value, so later columns stay aligned', () => {
+    // `width` is a minimum. One long name used to push every column after it
+    // right on that row only, leaving the table ragged — a RoleBinding called
+    // `system::leader-locking-kube-controller-manager` is 44 characters in a
+    // column declared 40 wide. Real kubectl sizes columns to their contents.
+    const spec = {
+      columns: [
+        { name: 'NAME', value: '{.metadata.name}', width: 10 },
+        { name: 'AGE', value: 'x' },
+      ],
+    };
+    const out = renderTable(spec as never, [
+      { metadata: { name: 'short' } },
+      { metadata: { name: 'a-very-long-name-past-the-width' } },
+    ] as never);
+
+    const [header, ...rows] = out.split('\n');
+    const at = (l: string) => l.indexOf('x');
+    assert.equal(rows[0].length, rows[1].length, `rows differ in width:\n${out}`);
+    assert.deepEqual(new Set([header.indexOf('AGE'), at(rows[0]), at(rows[1])]).size, 1,
+      `the last column starts at different offsets:\n${out}`);
   });
 
   it('leaves a gap the frontend parser can split on', () => {
