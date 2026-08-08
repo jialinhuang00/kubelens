@@ -52,6 +52,7 @@
 │       ├── snapshot-parsers.ts #   Table generators, describe generators, helpers
 │       ├── snapshot-commands.ts#   Command parser + all kubectl action handlers
 │       ├── export-progress.ts #   Parses exporter stdout into progress state (Go twin: applyProgressChunk)
+│       ├── tail.ts          #   Trims stderr without splitting a character (Go twin: tailBytes)
 │       └── graph-builder.ts   #   Graph construction logic (buildGraph, extractWorkloadEdges)
 ├── cmd/server/                # Go backend (mirrors Node.js routes)
 │   └── routes/
@@ -133,6 +134,7 @@ Control: `POST /api/execute/stream/stop` (kill process), `POST /api/execute/stre
 - `pnpm run test:utils` — Backend unit tests: `api/utils/**/*.spec.ts` + `api/routes/**/*.spec.ts`. Hermetic: zero kubectl calls, and `K8S_SNAPSHOT_PATH` points at a nonexistent path so nothing reads a real export. `snapshot-commands.spec.ts` seeds `snapshot-loader`'s cache with fixtures; `routes/snapshot.spec.ts` starts a real Express app on an ephemeral port, drives it with Node's `fetch`, and refuses to run if the route resolves anywhere but its temp directory.
 - `pnpm run test:types` — `tsc -p tsconfig.check.json`, nothing emitted. `test:utils` runs through tsx, which strips types without checking them, so a suite can be green on code that does not compile. Covers the specs and itests too; `tsconfig.publish.json` excludes those, so nothing was checking them.
 - `pnpm run test:go` — Go backend tests (`net/http/httptest`, no cluster needed).
+- The Snapshot-mode table format has THREE implementations, not two: `renderTable` (Node), `RenderTable` (Go), and the frontend splitting the text back into cells on `/\s{2,}/` (`dashboard/services/output-parser.service.ts`). `pad()` therefore guarantees a two-space gap however long the value is — a one-space gap reads fine and merges two columns into one cell. `api/utils/table-roundtrip.spec.ts` drives the real frontend service with the real backend renderer; it is the only test that crosses that boundary.
 - `pnpm run test:parity` — `api/**/*.itest.ts`. The one suite that deliberately shells out: it runs a real exporter and a real `go run` to compare the directory each implementation resolves, recaptures every exporter's stdout to check `test-fixtures/exporter-stdout/` is not stale, and renders every `tables:` kind through both backends to compare the text. None of those is readable from one side alone. Needs a reachable cluster and a Go toolchain, and skips (not fakes) when either is missing. Kept out of `test:utils` so "zero external calls" stays a measurable property there.
 - No test drives `command: 'start'` on either backend — every mode spawns a real exporter against the live kubeconfig. Go covers the mode-to-command mapping by keeping it in a pure `exporterCommand`; the Node handler still has that switch inline.
 - `pnpm run test:e2e` — Playwright. Starts the dev server itself; first run needs `npx playwright install chromium` (or add `channel: 'chrome'` to use the system browser).
