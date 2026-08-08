@@ -5,7 +5,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { PKG_ROOT } from './paths';
-import { loadTables, getResourceFileMap } from './config-loader';
+import { loadTables, getResourceFileMap, getNamePrefixMap } from './config-loader';
+import { handleCommand } from './snapshot-handler';
 import { renderTable } from './snapshot-parsers';
 
 /**
@@ -81,7 +82,16 @@ func main() {
 		}
 		out[kind] = store.RenderTable(spec, []store.K8sItem{item})
 	}
-	b, _ := json.Marshal(map[string]any{"tables": out, "files": store.ResourceFileMap()})
+	// -o name is what the Terminal sidebar calls to list a namespace's resources.
+	// This backend had no path for it at all until 2026-08-08.
+	names := store.HandleCommand("kubectl get deployments,services,configmaps -n demo -o name")
+
+	b, _ := json.Marshal(map[string]any{
+		"tables":   out,
+		"files":    store.ResourceFileMap(),
+		"prefixes": store.NamePrefixMap(),
+		"names":    names.Stdout,
+	})
 	fmt.Print(string(b))
 }
 `;
@@ -94,8 +104,12 @@ describe('the two backends render the same table from the same config', () => {
     const kinds = Object.keys(loadTables());
 
     const probeDir = path.join(PKG_ROOT, 'cmd', 'server', 'cmd', 'table-probe');
-    let probe: { tables: Record<string, string>; files: Record<string, string> } =
-      { tables: {}, files: {} };
+    let probe: {
+      tables: Record<string, string>;
+      files: Record<string, string>;
+      prefixes: Record<string, string>;
+      names: string;
+    } = { tables: {}, files: {}, prefixes: {}, names: '' };
     try {
       fs.mkdirSync(probeDir, { recursive: true });
       fs.writeFileSync(path.join(probeDir, 'main.go'), PROBE);
@@ -113,6 +127,20 @@ describe('the two backends render the same table from the same config', () => {
       // dev:go answered "Unknown resource type" while Node printed a table.
       // Both sides now build it from the config's `resources:` entries.
       assert.deepEqual(probe.files, getResourceFileMap());
+    });
+
+    it('maps every name and alias to the same `-o name` prefix', () => {
+      assert.deepEqual(probe.prefixes, getNamePrefixMap());
+    });
+
+    it('answers `-o name` the same way, including the comma-joined batch form', () => {
+      // The sidebar sends one comma-joined request per namespace and reads
+      // `<prefix>/<name>` back. Go used to fall through to a table here, so the
+      // sidebar under dev:go could not expand anything — and every backend test
+      // was green, because none of them asked this backend for `-o name`.
+      const node = handleCommand('kubectl get deployments,services,configmaps -n demo -o name');
+      assert.equal(probe.names, node.stdout);
+      assert.match(probe.names, /^\w[\w.]*\/\S+$/m, `not <prefix>/<name>: ${JSON.stringify(probe.names)}`);
     });
 
     it('has a fixture for every kind the config declares a table for', () => {

@@ -192,9 +192,69 @@ func HandleCommand(command string) CommandResult {
 
 // --- GET ---
 
+// NamePrefixMap maps every kubectl resource name and alias to the prefix real
+// kubectl puts in front of `-o name` output ("deployments" → "deployment.apps").
+// Built from kubelens.config.yaml, like ResourceFileMap.
+func NamePrefixMap() map[string]string {
+	m := map[string]string{}
+	for _, r := range LoadResources() {
+		m[r.Key] = r.NamePrefix
+		m[strings.ToLower(r.Kind)] = r.NamePrefix
+		for _, a := range r.Aliases {
+			m[a] = r.NamePrefix
+		}
+	}
+	return m
+}
+
+// handleGetName answers `-o name`, including the comma-joined form
+// (`get deployments,pods,services -o name`), emitting `<namePrefix>/<name>`.
+//
+// This backend had no `-o name` path at all until 2026-08-08: it fell through
+// and printed a whole table. That is the exact call the Terminal sidebar makes
+// to list a namespace's resources (kubectl.service.ts getResourceNamesBatch), so
+// under `dev:go` the sidebar could not expand anything — the frontend was
+// looking for `service/gateway` and being handed a header row.
+//
+// Mirrors handleGetName in api/utils/snapshot-commands.ts.
+func handleGetName(p *ParsedCommand) CommandResult {
+	files := ResourceFileMap()
+	prefixes := NamePrefixMap()
+
+	var lines []string
+	for _, t := range strings.Split(p.Resource, ",") {
+		t = strings.TrimSpace(t)
+		if t == "" {
+			continue
+		}
+		file, ok := files[t]
+		if !ok || file == "" {
+			continue // unknown type: kubectl would error, but stay lenient for the batch
+		}
+		data := LoadYaml(file, p.Namespace)
+		if data == nil {
+			continue
+		}
+		prefix := prefixes[t]
+		if prefix == "" {
+			prefix = t
+		}
+		for _, name := range ExtractNames(data) {
+			lines = append(lines, prefix+"/"+name)
+		}
+	}
+	return CommandResult{Success: true, Stdout: strings.Join(lines, "\n")}
+}
+
 func handleGet(p *ParsedCommand) CommandResult {
 	if p.Flags["getAll"] == true {
 		return handleGetAll(p)
+	}
+
+	// Before the per-kind switch: `-o name` takes comma-joined types, which none
+	// of the single-kind handlers below can parse.
+	if p.Output == "name" && p.Resource != "" && p.ResourceName == "" {
+		return handleGetName(p)
 	}
 	switch p.Resource {
 	case "namespaces", "namespace", "ns":
