@@ -85,12 +85,16 @@ func main() {
 	// -o name is what the Terminal sidebar calls to list a namespace's resources.
 	// This backend had no path for it at all until 2026-08-08.
 	names := store.HandleCommand("kubectl get deployments,services,configmaps -n demo -o name")
+	// Aliases and the snapshot-only kinds: "ep" must answer "endpoints/x", the
+	// canonical prefix, not the alias the caller typed.
+	aliasNames := store.HandleCommand("kubectl get ep -n demo -o name")
 
 	b, _ := json.Marshal(map[string]any{
 		"tables":   out,
 		"files":    store.ResourceFileMap(),
 		"prefixes": store.NamePrefixMap(),
-		"names":    names.Stdout,
+		"names":      names.Stdout,
+		"aliasNames": aliasNames.Stdout,
 	})
 	fmt.Print(string(b))
 }
@@ -109,7 +113,8 @@ describe('the two backends render the same table from the same config', () => {
       files: Record<string, string>;
       prefixes: Record<string, string>;
       names: string;
-    } = { tables: {}, files: {}, prefixes: {}, names: '' };
+      aliasNames: string;
+    } = { tables: {}, files: {}, prefixes: {}, names: '', aliasNames: '' };
     try {
       fs.mkdirSync(probeDir, { recursive: true });
       fs.writeFileSync(path.join(probeDir, 'main.go'), PROBE);
@@ -141,6 +146,19 @@ describe('the two backends render the same table from the same config', () => {
       const node = handleCommand('kubectl get deployments,services,configmaps -n demo -o name');
       assert.equal(probe.names, node.stdout);
       assert.match(probe.names, /^\w[\w.]*\/\S+$/m, `not <prefix>/<name>: ${JSON.stringify(probe.names)}`);
+    });
+
+    it('resolves an alias to the canonical `-o name` prefix, on both sides', () => {
+      // `kubectl get ep -o name` answers `endpoints/gateway` — the alias never
+      // appears in the output. Node used to echo whatever the caller typed
+      // (`ep/gateway`) because Endpoints has no `resources:` entry to take a
+      // namePrefix from, and Go did not recognise the kind at all.
+      const node = handleCommand('kubectl get ep -n demo -o name');
+      assert.equal(probe.aliasNames, node.stdout);
+      if (probe.aliasNames) {
+        assert.doesNotMatch(probe.aliasNames, /^ep\//m, `alias leaked into output: ${probe.aliasNames}`);
+        assert.match(probe.aliasNames, /^endpoints\/\S+$/m);
+      }
     });
 
     it('has a fixture for every kind the config declares a table for', () => {

@@ -192,9 +192,35 @@ func HandleCommand(command string) CommandResult {
 
 // --- GET ---
 
+// Snapshot-exported kinds with no entry in the config's `resources:` (no tree or
+// graph role), and the `-o name` prefix real kubectl gives each. Mirrors
+// SNAPSHOT_EXTRA / SNAPSHOT_EXTRA_PREFIX in api/utils/snapshot-commands.ts.
+//
+// Prefixes verified against kubectl, not derived: `kubectl get endpoints -o
+// name` on a live cluster, and `kubectl create poddisruptionbudget --dry-run
+// -o name` for the kind this cluster has no instance of.
+var (
+	snapshotExtraFile = map[string]string{
+		"endpoints": "endpoints.yaml", "endpoint": "endpoints.yaml", "ep": "endpoints.yaml",
+		"poddisruptionbudgets": "poddisruptionbudgets.yaml",
+		"poddisruptionbudget":  "poddisruptionbudgets.yaml",
+		"pdb":                  "poddisruptionbudgets.yaml",
+	}
+	snapshotExtraPrefix = map[string]string{
+		"endpoints": "endpoints", "endpoint": "endpoints", "ep": "endpoints",
+		"poddisruptionbudgets": "poddisruptionbudget.policy",
+		"poddisruptionbudget":  "poddisruptionbudget.policy",
+		"pdb":                  "poddisruptionbudget.policy",
+	}
+)
+
 // NamePrefixMap maps every kubectl resource name and alias to the prefix real
 // kubectl puts in front of `-o name` output ("deployments" → "deployment.apps").
-// Built from kubelens.config.yaml, like ResourceFileMap.
+//
+// A projection of kubelens.config.yaml and nothing else, matching
+// getNamePrefixMap in api/utils/config-loader.ts. The snapshot-only kinds are
+// merged in at the call site on both sides — folding them in here instead made
+// the two maps differ, which table-parity.itest.ts caught immediately.
 func NamePrefixMap() map[string]string {
 	m := map[string]string{}
 	for _, r := range LoadResources() {
@@ -218,8 +244,20 @@ func NamePrefixMap() map[string]string {
 //
 // Mirrors handleGetName in api/utils/snapshot-commands.ts.
 func handleGetName(p *ParsedCommand) CommandResult {
-	files := ResourceFileMap()
-	prefixes := NamePrefixMap()
+	files := map[string]string{}
+	for k, v := range ResourceFileMap() {
+		files[k] = v
+	}
+	for k, v := range snapshotExtraFile {
+		files[k] = v
+	}
+	prefixes := map[string]string{}
+	for k, v := range NamePrefixMap() {
+		prefixes[k] = v
+	}
+	for k, v := range snapshotExtraPrefix {
+		prefixes[k] = v
+	}
 
 	var lines []string
 	for _, t := range strings.Split(p.Resource, ",") {

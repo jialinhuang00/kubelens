@@ -65,6 +65,25 @@ const SNAPSHOT_EXTRA: Record<string, string> = {
   poddisruptionbudgets: 'poddisruptionbudgets.yaml', poddisruptionbudget: 'poddisruptionbudgets.yaml', pdb: 'poddisruptionbudgets.yaml',
 };
 
+/**
+ * `-o name` prefixes for the kinds above. Without these, handleGetName fell back
+ * to whatever the user typed, so `kubectl get ep -o name` answered `ep/gateway`
+ * where real kubectl answers `endpoints/gateway` — the alias leaked into output
+ * that is supposed to be canonical.
+ *
+ * Both verified against kubectl rather than derived: `kubectl get endpoints -o
+ * name` on a live cluster, and `kubectl create poddisruptionbudget --dry-run
+ * -o name` for the one this cluster has no instance of.
+ *
+ * Mirrors snapshotExtraPrefix in cmd/server/store/commands.go.
+ */
+const SNAPSHOT_EXTRA_PREFIX: Record<string, string> = {
+  endpoints: 'endpoints', endpoint: 'endpoints', ep: 'endpoints',
+  poddisruptionbudgets: 'poddisruptionbudget.policy',
+  poddisruptionbudget: 'poddisruptionbudget.policy',
+  pdb: 'poddisruptionbudget.policy',
+};
+
 // Resource name / alias → snapshot file. Derived from kubelens.config.yaml (so a
 // kind added there is resolvable here too), then overlaid with the snapshot-only
 // extras and the special non-file kinds. Built lazily, once.
@@ -378,7 +397,7 @@ function handleGet(parsed: ParsedCommand): CommandResult {
  */
 function handleGetName(parsed: ParsedCommand): CommandResult {
   const fileMap = { ...getResourceFileMap(), ...SNAPSHOT_EXTRA };
-  const prefixMap = getNamePrefixMap();
+  const prefixMap = { ...getNamePrefixMap(), ...SNAPSHOT_EXTRA_PREFIX };
   const lines: string[] = [];
   for (const type of parsed.resource!.split(',').map(t => t.trim()).filter(Boolean)) {
     const file = fileMap[type];
