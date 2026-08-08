@@ -1,6 +1,6 @@
 {
   "name": "kubelens",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "license": "MIT",
   "description": "Browser-based Kubernetes visualization: WebGL resource graph + multi-window kubectl terminal, live or from offline snapshots",
   "keywords": [
