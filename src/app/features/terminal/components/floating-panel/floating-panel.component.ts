@@ -1,4 +1,4 @@
-import { Component, input, output, inject, computed, signal, effect } from '@angular/core';
+import { Component, input, output, inject, computed, signal, effect, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDrag, CdkDragHandle, CdkDragEnd, CdkDragMove } from '@angular/cdk/drag-drop';
@@ -20,6 +20,7 @@ import { TemplateService } from '../../../dashboard/services/template.service';
   imports: [CommonModule, FormsModule, CdkDrag, CdkDragHandle, OutputDisplayComponent, RolloutConsoleComponent],
   providers: [UiStateService, RegistryService],
   templateUrl: './floating-panel.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './floating-panel.component.scss',
 })
 export class FloatingPanelComponent {

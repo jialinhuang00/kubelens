@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ConfigService, kindId } from '../../../core/services/config.service';
 import { VisibilityService } from '../../../core/services/visibility.service';
 
@@ -96,6 +96,7 @@ const DISCOVERED_COLOR = '#8a8a8a';
       }
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [`
     .vis-wrap { position: relative; }
     .vis-btn {

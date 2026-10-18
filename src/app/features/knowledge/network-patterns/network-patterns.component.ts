@@ -1,4 +1,4 @@
-import { Component, input, computed } from '@angular/core';
+import { Component, input, computed, ChangeDetectionStrategy } from '@angular/core';
 import { NgClass } from '@angular/common';
 
 export type NetworkType =
@@ -673,6 +673,7 @@ export const NETWORK_DIAGRAMS: Record<NetworkType, NetDiagram> = {
   standalone: true,
   imports: [NgClass],
   templateUrl: './network-patterns.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './network-patterns.component.scss',
 })
 export class NetworkPatternsComponent {

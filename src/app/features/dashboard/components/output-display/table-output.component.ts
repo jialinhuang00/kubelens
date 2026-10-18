@@ -1,13 +1,14 @@
-import { Component, Input, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Input, inject, ChangeDetectionStrategy } from '@angular/core';
+
 import { KubeResource } from '../../../../shared/models/kubectl.models';
 import { ClipboardService } from '../../../../shared/services/clipboard.service';
 import { PodPhase } from '../../../universe/models/graph.models';
 
 @Component({
   selector: 'app-one-table',
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './table-output.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './table-output.component.scss'
 })
 export class TableOutputComponent {

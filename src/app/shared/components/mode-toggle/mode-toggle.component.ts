@@ -1,4 +1,4 @@
-import { Component, inject, output, signal } from '@angular/core';
+import { Component, inject, output, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { DataModeService } from '../../../core/services/data-mode.service';
@@ -34,6 +34,7 @@ import { DataModeService } from '../../../core/services/data-mode.service';
       </span>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [`
     .mode-toggle {
       display: flex;

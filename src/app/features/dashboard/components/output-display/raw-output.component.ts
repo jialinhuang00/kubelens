@@ -1,10 +1,11 @@
-import { Component, Input, ElementRef, ViewChild, OnChanges, SimpleChanges } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Input, ElementRef, ViewChild, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
+
 
 @Component({
   selector: 'app-raw-output',
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './raw-output.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './raw-output.component.scss'
 })
 export class RawOutputComponent implements OnChanges {

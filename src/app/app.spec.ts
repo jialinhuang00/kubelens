@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { App } from './app';
@@ -17,7 +17,7 @@ describe('App', () => {
       imports: [App],
       providers: [
         provideRouter([]),        // App renders a <router-outlet>
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(), // App's ngOnInit pings for snapshot availability
       ],
     }).compileComponents();

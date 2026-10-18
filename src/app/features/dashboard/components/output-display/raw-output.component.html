@@ -1,3 +1,5 @@
 <div class="terminal-output p-2 text-xs" #scrollContainer>
-  <pre>{{ existingOutput }}<span class="flash" *ngIf="newOutput">{{ newOutput }}</span></pre>
+  <pre>{{ existingOutput }}@if (newOutput) {
+    <span class="flash">{{ newOutput }}</span>
+  }</pre>
 </div>

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { DataModeService } from './core/services/data-mode.service';
 import { TopNavComponent } from './shared/components/top-nav/top-nav.component';
@@ -12,6 +12,7 @@ import { TopNavComponent } from './shared/components/top-nav/top-nav.component';
       <main class="app-outlet"><router-outlet></router-outlet></main>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [`
     .app-shell { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
     .app-outlet { flex: 1; min-height: 0; overflow: auto; }

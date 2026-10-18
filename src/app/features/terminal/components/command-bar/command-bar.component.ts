@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NamespaceService } from '../../../k8s/services/namespace.service';
 import { PanelManagerService } from '../../services/panel-manager.service';
@@ -51,6 +51,7 @@ import { DataModeService } from '../../../../core/services/data-mode.service';
       </div>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [`
     .command-bar {
       flex-shrink: 0;

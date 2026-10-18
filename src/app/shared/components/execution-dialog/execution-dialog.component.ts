@@ -1,11 +1,12 @@
-import { Component, inject, signal, effect, OnDestroy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal, effect, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
+
 import { ExecutionDialogService } from '../../../core/services/execution-dialog.service';
 
 @Component({
   selector: 'app-execution-dialog',
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './execution-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './execution-dialog.component.scss'
 })
 export class ExecutionDialogComponent implements OnDestroy {

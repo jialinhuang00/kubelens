@@ -1,4 +1,4 @@
-import { Component, signal, HostListener } from '@angular/core';
+import { Component, signal, HostListener, ChangeDetectionStrategy } from '@angular/core';
 import { TerminalSidebarComponent } from './terminal-sidebar/terminal-sidebar.component';
 import { PanelAreaComponent } from './panel-area/panel-area.component';
 import { CommandBarComponent } from './command-bar/command-bar.component';
@@ -11,6 +11,7 @@ import { VisibilityPanelComponent } from '../../../shared/components/visibility-
   standalone: true,
   imports: [TerminalSidebarComponent, PanelAreaComponent, CommandBarComponent, HandbookComponent, MemMonitorComponent, VisibilityPanelComponent],
   templateUrl: './terminal.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './terminal.component.scss',
 })
 export class TerminalComponent {

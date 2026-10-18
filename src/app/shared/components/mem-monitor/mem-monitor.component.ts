@@ -1,4 +1,4 @@
-import { Component, OnDestroy, HostListener, signal, inject } from '@angular/core';
+import { Component, OnDestroy, HostListener, signal, inject, ChangeDetectionStrategy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { API_BASE } from '../../../core/constants/api';
 
@@ -33,6 +33,7 @@ interface ServerMem { rss: number; heapUsed: number; heapTotal: number; }
       </div>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [`
     :host { position: relative; display: inline-flex; }
 

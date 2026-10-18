@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DataModeService } from '../../core/services/data-mode.service';
 import { SnapshotService, ExportMode } from '../../core/services/snapshot.service';
@@ -11,6 +11,7 @@ import { MemMonitorComponent } from '../../shared/components/mem-monitor/mem-mon
   standalone: true,
   imports: [RouterLink, TickFlashDirective, HandbookComponent, MemMonitorComponent],
   templateUrl: './home.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './home.component.scss',
 })
 export class HomeComponent implements OnInit {

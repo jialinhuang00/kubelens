@@ -1,13 +1,14 @@
-import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Input, Output, EventEmitter, signal, ChangeDetectionStrategy } from '@angular/core';
+
 import { MatIconModule } from '@angular/material/icon';
 import { CommandTemplate } from '../../../../shared/models/kubectl.models';
 import { DeploymentStatus, RolloutButtonStates } from '../../../k8s/services/deployment.service';
 
 @Component({
   selector: 'app-rollout-console',
-  imports: [CommonModule, MatIconModule],
+  imports: [MatIconModule],
   templateUrl: './rollout-console.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './rollout-console.component.scss'
 })
 export class RolloutConsoleComponent {

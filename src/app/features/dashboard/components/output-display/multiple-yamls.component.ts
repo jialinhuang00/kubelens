@@ -1,12 +1,13 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
+
 import { YamlDisplayComponent } from '../yaml-display/yaml-display.component';
 import { YamlItem } from '../../../../shared/models/kubectl.models';
 
 @Component({
   selector: 'app-multiple-yamls',
-  imports: [CommonModule, YamlDisplayComponent],
+  imports: [YamlDisplayComponent],
   templateUrl: './multiple-yamls.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './multiple-yamls.component.scss'
 })
 export class MultipleYamlsComponent {

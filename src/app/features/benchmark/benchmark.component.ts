@@ -1,4 +1,4 @@
-import { Component, signal, afterNextRender } from '@angular/core';
+import { Component, signal, afterNextRender, ChangeDetectionStrategy } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { RACE_GROUPS, TCP_ROWS, PRIM_CARDS, RaceItem, RaceGroup } from './benchmark.data';
 
@@ -7,6 +7,7 @@ import { RACE_GROUPS, TCP_ROWS, PRIM_CARDS, RaceItem, RaceGroup } from './benchm
   standalone: true,
   imports: [RouterLink],
   templateUrl: './benchmark.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './benchmark.component.scss',
 })
 export class BenchmarkComponent {

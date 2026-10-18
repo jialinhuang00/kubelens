@@ -2,6 +2,7 @@ import {
   Component, AfterViewChecked,
   ViewChild, ViewChildren, ElementRef, QueryList,
   signal, computed, inject, effect,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { DataModeService } from '../../core/services/data-mode.service';
@@ -1221,6 +1222,7 @@ export const CRD_GLOSSARY: Record<CrdField, CrdInfo> = {
   selector: 'app-knowledge',
   imports: [NetworkPatternsComponent, RouterLink],
   templateUrl: './knowledge.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./knowledge.component.scss'],
 })
 export class KnowledgeComponent implements AfterViewChecked {

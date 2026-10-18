@@ -10,6 +10,7 @@ import {
   ViewChild,
   AfterViewInit,
   HostListener,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { DecimalPipe, KeyValuePipe, NgTemplateOutlet } from '@angular/common';
@@ -47,6 +48,7 @@ import {
   selector: 'app-universe',
   imports: [DecimalPipe, KeyValuePipe, NgTemplateOutlet, NamespaceChipsComponent, HandbookComponent, VisibilityPanelComponent, MemMonitorComponent],
   templateUrl: './universe.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./universe.component.scss'],
 })
 export class UniverseComponent implements OnInit, AfterViewInit, OnDestroy {

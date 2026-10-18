@@ -1,4 +1,4 @@
-import { Component, signal, HostListener } from '@angular/core';
+import { Component, signal, HostListener, ChangeDetectionStrategy } from '@angular/core';
 
 interface Page { title: string; lines: string[] }
 interface Spread { en: { left: Page; right: Page }; zh: { left: Page; right: Page } }
@@ -686,6 +686,7 @@ const SPREADS: Spread[] = [
       }
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [`
     .handbook-wrap { position: relative; }
 

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TableData } from '../../../../shared/models/kubectl.models';
 import { ClipboardService } from '../../../../shared/services/clipboard.service';
@@ -8,6 +8,7 @@ import { PodPhase } from '../../../universe/models/graph.models';
   selector: 'app-multiple-tables',
   imports: [CommonModule],
   templateUrl: './multiple-tables.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './multiple-tables.component.scss'
 })
 export class MultipleTablesComponent {

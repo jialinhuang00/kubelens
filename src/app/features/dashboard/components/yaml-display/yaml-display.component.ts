@@ -1,11 +1,11 @@
-import { Component, Input, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Input, signal, ChangeDetectionStrategy } from '@angular/core';
+
 import { YamlParserService, YamlLine } from '../../services/yaml-parser.service';
 
 @Component({
   selector: 'app-one-yaml',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `
     <div class="yaml-container">
       <div class="yaml-content-container">
@@ -27,6 +27,7 @@ import { YamlParserService, YamlLine } from '../../services/yaml-parser.service'
       </div>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./yaml-display.component.scss']
 })
 export class YamlDisplayComponent {

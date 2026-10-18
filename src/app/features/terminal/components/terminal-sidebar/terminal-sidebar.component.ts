@@ -1,5 +1,5 @@
-import { Component, inject, signal, effect, OnInit, DestroyRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal, effect, OnInit, DestroyRef, ChangeDetectionStrategy } from '@angular/core';
+
 import { NamespaceChipsComponent } from '../../../../shared/components/namespace-chips/namespace-chips.component';
 import { NamespaceService } from '../../../k8s/services/namespace.service';
 import { ResourceTreeService } from '../../services/resource-tree.service';
@@ -12,8 +12,9 @@ import { CommandTemplate } from '../../../../shared/models/kubectl.models';
 @Component({
   selector: 'app-terminal-sidebar',
   standalone: true,
-  imports: [CommonModule, NamespaceChipsComponent],
+  imports: [NamespaceChipsComponent],
   templateUrl: './terminal-sidebar.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './terminal-sidebar.component.scss',
 })
 export class TerminalSidebarComponent implements OnInit {

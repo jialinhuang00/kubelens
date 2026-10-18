@@ -1,5 +1,5 @@
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Input, Output, EventEmitter, inject, ChangeDetectionStrategy } from '@angular/core';
+
 import { TableOutputComponent } from './table-output.component';
 import { RawOutputComponent } from './raw-output.component';
 import { MultipleTablesComponent } from './multiple-tables.component';
@@ -11,14 +11,14 @@ import { UiStateService } from '../../services/ui-state.service';
 @Component({
   selector: 'app-output-display',
   imports: [
-    CommonModule,
     TableOutputComponent,
     RawOutputComponent,
     MultipleTablesComponent,
     MultipleYamlsComponent,
     YamlDisplayComponent
-  ],
+],
   templateUrl: './output-display.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './output-display.component.scss'
 })
 export class OutputDisplayComponent {

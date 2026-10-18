@@ -1,13 +1,14 @@
-import { Component, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+
 import { PanelManagerService } from '../../services/panel-manager.service';
 import { FloatingPanelComponent } from '../floating-panel/floating-panel.component';
 
 @Component({
   selector: 'app-panel-area',
   standalone: true,
-  imports: [CommonModule, FloatingPanelComponent],
+  imports: [FloatingPanelComponent],
   templateUrl: './panel-area.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './panel-area.component.scss',
 })
 export class PanelAreaComponent {
