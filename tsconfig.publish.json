@@ -11,6 +11,10 @@
     "target": "ES2022",
     "module": "commonjs",
     "moduleResolution": "node",
+    // TypeScript 6 (arrived with the Angular 22 upgrade) turns "node" (node10)
+    // into an error. Silencing it keeps the emitted CommonJS identical; moving
+    // to node16 resolution is the real fix and has to happen before TS 7.
+    "ignoreDeprecations": "6.0",
     "esModuleInterop": true,
     "strict": true,
     "skipLibCheck": true,
