@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"net/url"
 	"os/exec"
 	"sync"
 	"time"
@@ -12,8 +13,19 @@ import (
 	"kubelens/server/store"
 )
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+var upgrader = websocket.Upgrader{CheckOrigin: originAllowed}
+
+// originAllowed mirrors api/routes/execute.ts: a page on another site can open
+// this socket from the user's browser, and only the Origin header tells it
+// apart. The frontend dials location.host, so a real Origin names the same
+// host as the request. No Origin means a non-browser client.
+func originAllowed(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+	u, err := url.Parse(origin)
+	return err == nil && u.Host == r.Host
 }
 
 // streamProcess tracks a running kubectl process for stop/clear.

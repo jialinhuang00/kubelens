@@ -1,6 +1,6 @@
 import express from 'express';
 import type { Request, Response } from 'express';
-import type { Server as HttpServer } from 'http';
+import type { Server as HttpServer, IncomingMessage } from 'http';
 import { execFile, spawn } from 'child_process';
 import type { ChildProcess } from 'child_process';
 import { promisify } from 'util';
@@ -276,17 +276,35 @@ interface StreamInit {
   snapshot?: boolean;
 }
 
+// A page on any site can open a WebSocket to 127.0.0.1:3042 from the user's
+// own browser: CORS does not cover the handshake, only the Origin header
+// arrives. The frontend builds its URL from location.host, so a legitimate
+// Origin always names the host this request was addressed to. No Origin at
+// all means a non-browser client (curl, wscat), which is not this attack.
+export function originAllowed(req: Pick<IncomingMessage, 'headers'>): boolean {
+  const origin = req.headers.origin;
+  if (!origin) return true;
+  try {
+    return new URL(origin).host === req.headers.host;
+  } catch {
+    return false;
+  }
+}
+
 // Attach WebSocket server to the HTTP server for /api/execute/stream/ws
 function mountWebSocket(httpServer: HttpServer): void {
   const wss = new WebSocketServer({ noServer: true });
 
   httpServer.on('upgrade', (req, socket, head) => {
-    if (req.url === '/api/execute/stream/ws') {
-      wss.handleUpgrade(req, socket, head, (ws) => {
-        wss.emit('connection', ws, req);
-      });
+    if (req.url !== '/api/execute/stream/ws') return; // other paths (e.g. webpack HMR) are left alone
+    if (!originAllowed(req)) {
+      socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
+      socket.destroy();
+      return;
     }
-    // Other paths (e.g. webpack HMR) are left alone
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit('connection', ws, req);
+    });
   });
 
   wss.on('connection', (ws: WebSocket) => {

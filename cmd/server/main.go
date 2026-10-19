@@ -41,7 +41,9 @@ func main() {
 	fmt.Printf("Realtime ping: http://localhost:%s/api/realtime/ping\n", port)
 	fmt.Printf("Graph endpoint: http://localhost:%s/api/graph\n", port)
 
-	log.Fatal(http.ListenAndServe(net.JoinHostPort(host, port), corsMiddleware(mux)))
+	// No CORS headers: the frontend is same-origin (served here, or through the
+	// ng serve proxy), and "Allow-Origin: *" let any site POST commands.
+	log.Fatal(http.ListenAndServe(net.JoinHostPort(host, port), mux))
 }
 
 // loadDotEnv reads a .env file and sets any vars not already in the environment.
@@ -67,17 +69,4 @@ func loadDotEnv(path string) {
 			os.Setenv(k, v)
 		}
 	}
-}
-
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
 }
