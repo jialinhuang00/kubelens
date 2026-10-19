@@ -59,6 +59,16 @@ Optional (only for image tag lookups in the rollout panel):
 
 An interrupted export leaves a partial `k8s-snapshot/`, and the landing page offers three ways on: **Resume** finishes the namespaces it never reached, **Start over** deletes what is there and exports again, or leave it and use kubelens as it is. A snapshot records which cluster it came from, so if you point kubectl elsewhere between the two runs the panel shows both names and says not to resume — that would put half of each cluster in one directory.
 
+## What touches the cluster
+
+kubelens is a local UI over the `kubectl` you already have. It has no permissions of its own.
+
+- **Runs on your machine, with your kubeconfig.** The server spawns `kubectl` as your user; what it can do is exactly what your RBAC lets `kubectl` do, no more and no less. Nothing is installed in the cluster: no agent, no CRD, no ServiceAccount.
+- **Every button is a kubectl command you can read.** The panel actions are plain kubectl strings in `kubelens.config.yaml` (see `templates` below); open the file and you have the full list of what a click can run. Some of the defaults mutate: the Pod panel has a **Delete**, the Deployment panel swaps images. Remove those lines from the config if you want a read-only setup, and use a read-only kubeconfig if you want that enforced.
+- **Listens on 127.0.0.1 only.** Anyone who can reach the port can run kubectl as you, so the server refuses connections from other hosts unless you start it with `--host 0.0.0.0` (say, behind an authenticating reverse proxy).
+- **Stays local.** The config, exported snapshots and `.env` live in the directory you ran it from. Nothing is sent anywhere except the cluster your kubeconfig points at, and the registry CLI (`aws` / `gcloud` / `az`) when you open the image tag list.
+- **Snapshot mode makes no calls at all.** It replays `k8s-snapshot/*.yaml` from disk; share a snapshot directory and someone can browse the cluster with no kubeconfig.
+
 ## Configuration
 
 Everything the app shows comes from `kubelens.config.yaml`, not from hardcoded lists. A clone has that file committed; `npx kubelens` writes one on first run. It works untouched, and editing it is how you change what appears.

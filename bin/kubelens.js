@@ -14,7 +14,10 @@ function help() {
 kubelens — browser-based Kubernetes visualization
 
 Usage:
-  kubelens [--port <n>]     start the server (default port 3042)
+  kubelens [--port <n>] [--host <addr>]
+                            start the server (default 127.0.0.1:3042)
+                            --host 0.0.0.0 exposes it to the network; anyone who
+                            can reach the port can run kubectl as you
   kubelens init [--force|--merge]
                             generate kubelens.config.yaml from the current cluster
   kubelens --version
@@ -103,6 +106,10 @@ if (argv[0] === 'init') {
   const portFlag = argv.indexOf('--port');
   if (portFlag !== -1 && argv[portFlag + 1]) {
     process.env.PORT = argv[portFlag + 1];
+  }
+  const hostFlag = argv.indexOf('--host');
+  if (hostFlag !== -1 && argv[hostFlag + 1]) {
+    process.env.HOST = argv[hostFlag + 1];
   }
 
   const distPath = path.join(pkgRoot, 'dist', 'kubelens', 'browser');

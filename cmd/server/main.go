@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -26,15 +27,21 @@ func main() {
 	if port == "" {
 		port = "3000"
 	}
+	// Loopback only unless asked, same as api/index.ts: every request here runs
+	// kubectl with the user's kubeconfig. HOST=0.0.0.0 opts in.
+	host := os.Getenv("HOST")
+	if host == "" {
+		host = "127.0.0.1"
+	}
 
 	mux := http.NewServeMux()
 	routes.Register(mux)
 
-	fmt.Printf("kubelens Go server running on http://localhost:%s\n", port)
+	fmt.Printf("kubelens Go server running on http://localhost:%s (bound to %s)\n", port, host)
 	fmt.Printf("Realtime ping: http://localhost:%s/api/realtime/ping\n", port)
 	fmt.Printf("Graph endpoint: http://localhost:%s/api/graph\n", port)
 
-	log.Fatal(http.ListenAndServe(":"+port, corsMiddleware(mux)))
+	log.Fatal(http.ListenAndServe(net.JoinHostPort(host, port), corsMiddleware(mux)))
 }
 
 // loadDotEnv reads a .env file and sets any vars not already in the environment.

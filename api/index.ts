@@ -10,6 +10,10 @@ const server = http.createServer(app);
 // Number(), not the raw env string: listen() takes a number, and an unset or
 // unparseable PORT falls through to the default the same way `|| 3042` did.
 const PORT = Number(process.env.PORT) || 3042;
+// Loopback only unless asked. Every request that reaches this port runs kubectl
+// with the user's kubeconfig, so binding 0.0.0.0 hands that to whoever shares
+// the network. `--host 0.0.0.0` (or HOST=) opts in, e.g. behind a reverse proxy.
+const HOST = process.env.HOST || '127.0.0.1';
 
 // Always load snapshot handler — per-request snapshot mode via ?snapshot=true
 import './utils/snapshot-handler';
@@ -65,8 +69,8 @@ if (fs.existsSync(distPath)) {
   });
 }
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`kubelens server running on http://localhost:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`kubelens server running on http://localhost:${PORT} (bound to ${HOST})`);
   console.log(`Realtime ping: http://localhost:${PORT}/api/realtime/ping`);
   console.log(`Graph endpoint: http://localhost:${PORT}/api/graph`);
   console.log(`WebSocket streaming ready on /api/execute/stream/ws`);

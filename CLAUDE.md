@@ -157,7 +157,9 @@ pm2 restart kubelens
 |------|-------|
 | Path | `/home/ec2-user/kubelens/` |
 | Port | 8080 (`PORT=8080` in pm2 env) |
-| Start | `PORT=8080 pm2 start "npx tsx api/index.ts" --name kubelens` |
+| Start | `HOST=0.0.0.0 PORT=8080 pm2 start "npx tsx api/index.ts" --name kubelens` |
+
+Since 2026-09-30 both servers bind `127.0.0.1` unless `HOST` (or `--host`) says otherwise. The pm2 process on EC2 predates that and was started without `HOST`; the next `pm2 restart` reuses the old env, so it keeps `0.0.0.0` until someone runs `pm2 delete kubelens` and starts it with the line above. Whether anything in front of it (nginx, a security group) needs the external bind at all has not been checked from here.
 
 Frontend: `npm run build` → `dist/kubelens/browser/` (static files). Backend: no build, tsx runs directly.
 Production mode: Express serves `dist/` + API on one port. Dev mode: `dist/` absent → static serve skipped.
