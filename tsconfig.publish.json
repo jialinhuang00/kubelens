@@ -9,12 +9,12 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "commonjs",
-    "moduleResolution": "node",
-    // TypeScript 6 (arrived with the Angular 22 upgrade) turns "node" (node10)
-    // into an error. Silencing it keeps the emitted CommonJS identical; moving
-    // to node16 resolution is the real fix and has to happen before TS 7.
-    "ignoreDeprecations": "6.0",
+    // node16 resolves imports the way node itself does. package.json has no
+    // "type": "module", so every file here is still CommonJS and extensionless
+    // relative imports keep working. The old "node" (node10) setting is an
+    // error from TypeScript 6 on and is removed in TypeScript 7.
+    "module": "node16",
+    "moduleResolution": "node16",
     "esModuleInterop": true,
     "strict": true,
     "skipLibCheck": true,

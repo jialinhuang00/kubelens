@@ -5,10 +5,18 @@
 //
 // Wider than tsconfig.publish.json on purpose: the specs and itests are excluded
 // from the published build, so nothing was checking them at all.
+//
+// "node20" instead of the inherited "node16": three specs import
+// OutputParserService, which imports @angular/core, an ES module. Under node16 a
+// CommonJS file may not require() an ES module (TS1479). Node 20.19+ and 22 can,
+// and the specs only ever run on the dev machine's Node 22. Published code still
+// goes through build:server with node16, so a require() of an ES module in api/
+// fails there, which it should: package.json allows Node 18.
 {
   "extends": "./tsconfig.publish.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "module": "node20"
   },
   "include": ["api/**/*.ts", "scripts/init.ts", "shared/graph-types.ts"],
   "exclude": ["node_modules", "src", "dist"]
