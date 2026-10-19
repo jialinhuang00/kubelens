@@ -41,9 +41,15 @@ func main() {
 	fmt.Printf("Realtime ping: http://localhost:%s/api/realtime/ping\n", port)
 	fmt.Printf("Graph endpoint: http://localhost:%s/api/graph\n", port)
 
+	policy := routes.HostPolicyFromEnv()
+	if policy.Open {
+		log.Printf("Host check is off: bound to %s with no KUBELENS_ALLOWED_HOSTS. Any DNS name pointed at this machine reaches kubectl.", host)
+	}
+
 	// No CORS headers: the frontend is same-origin (served here, or through the
 	// ng serve proxy), and "Allow-Origin: *" let any site POST commands.
-	log.Fatal(http.ListenAndServe(net.JoinHostPort(host, port), mux))
+	// The Host guard wraps everything, the WebSocket upgrade included.
+	log.Fatal(http.ListenAndServe(net.JoinHostPort(host, port), policy.Guard(mux)))
 }
 
 // loadDotEnv reads a .env file and sets any vars not already in the environment.

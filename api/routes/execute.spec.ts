@@ -40,8 +40,8 @@ describe('WebSocket handshake', () => {
   });
   after(() => new Promise<void>(resolve => server.close(() => resolve())));
 
-  const dial = (origin: string) => new Promise<number | 'open'>(resolve => {
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/api/execute/stream/ws`, { origin });
+  const dial = (origin: string, host?: string) => new Promise<number | 'open'>(resolve => {
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/api/execute/stream/ws`, { origin, headers: host ? { Host: host } : {} });
     ws.on('open', () => { ws.close(); resolve('open'); });
     ws.on('unexpected-response', (_req, res) => resolve(res.statusCode ?? 0));
     ws.on('error', () => {});
@@ -52,5 +52,8 @@ describe('WebSocket handshake', () => {
   });
   it('opens for its own page', async () => {
     assert.equal(await dial(`http://127.0.0.1:${port}`), 'open');
+  });
+  it('refuses DNS rebinding, where Origin and Host agree on the attacker name', async () => {
+    assert.equal(await dial(`http://evil.example:${port}`, `evil.example:${port}`), 403);
   });
 });

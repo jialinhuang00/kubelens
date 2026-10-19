@@ -19,6 +19,15 @@ const HOST = process.env.HOST || '127.0.0.1';
 import './utils/snapshot-handler';
 console.log('snapshot-handler loaded — use ?snapshot=true on requests to enable snapshot mode');
 
+// Before anything else: a request whose Host is not ours came through DNS
+// rebinding, whatever its Origin says.
+import { hostAllowed, hostPolicy } from './utils/host-guard';
+const policy = hostPolicy();
+app.use((req: Request, res: Response, next) => {
+  if (hostAllowed(req.headers.host, policy)) return next();
+  res.status(403).json({ error: `Host ${req.headers.host ?? '(none)'} is not allowed. Set KUBELENS_ALLOWED_HOSTS to reach kubelens by this name.` });
+});
+
 app.use(express.json());
 
 // GET /api/debug/memory — server RSS for memory leak testing
@@ -49,7 +58,7 @@ app.use('/api', configRouter);
 app.use('/api', discoveryRouter);
 
 // WebSocket streaming for kubectl long-running commands
-mountWebSocket(server);
+mountWebSocket(server, policy);
 
 // Production: serve Angular build output (skipped in dev — dist/ doesn't exist)
 const distPath = path.join(__dirname, '..', 'dist', 'kubelens', 'browser');
@@ -74,4 +83,7 @@ server.listen(PORT, HOST, () => {
   console.log(`Realtime ping: http://localhost:${PORT}/api/realtime/ping`);
   console.log(`Graph endpoint: http://localhost:${PORT}/api/graph`);
   console.log(`WebSocket streaming ready on /api/execute/stream/ws`);
+  if (policy.open) {
+    console.warn(`Host check is off: bound to ${HOST} with no KUBELENS_ALLOWED_HOSTS. Any DNS name pointed at this machine reaches kubectl.`);
+  }
 });

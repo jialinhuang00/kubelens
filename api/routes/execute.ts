@@ -1,6 +1,7 @@
 import express from 'express';
 import type { Request, Response } from 'express';
 import type { Server as HttpServer, IncomingMessage } from 'http';
+import { hostAllowed, hostPolicy, type HostPolicy } from '../utils/host-guard';
 import { execFile, spawn } from 'child_process';
 import type { ChildProcess } from 'child_process';
 import { promisify } from 'util';
@@ -291,13 +292,15 @@ export function originAllowed(req: Pick<IncomingMessage, 'headers'>): boolean {
   }
 }
 
-// Attach WebSocket server to the HTTP server for /api/execute/stream/ws
-function mountWebSocket(httpServer: HttpServer): void {
+// Attach WebSocket server to the HTTP server for /api/execute/stream/ws.
+// The upgrade never passes through express middleware, so the Host check from
+// api/index.ts runs here again.
+function mountWebSocket(httpServer: HttpServer, policy: HostPolicy = hostPolicy()): void {
   const wss = new WebSocketServer({ noServer: true });
 
   httpServer.on('upgrade', (req, socket, head) => {
     if (req.url !== '/api/execute/stream/ws') return; // other paths (e.g. webpack HMR) are left alone
-    if (!originAllowed(req)) {
+    if (!hostAllowed(req.headers.host, policy) || !originAllowed(req)) {
       socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
       socket.destroy();
       return;
